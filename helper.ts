@@ -1,11 +1,11 @@
-import * as ts from 'typescript'
+import type * as TS from 'typescript'
 
 
 /** Property or element access types. */
-export type AccessNode = ts.PropertyAccessExpression | ts.ElementAccessExpression
+export type AccessNode = TS.PropertyAccessExpression | TS.ElementAccessExpression
 
 /** Property access types. */
-export type AssignmentNode = ts.BinaryExpression | ts.PostfixUnaryExpression | ts.PrefixUnaryExpression
+export type AssignmentNode = TS.BinaryExpression | TS.PostfixUnaryExpression | TS.PrefixUnaryExpression
 
 /** Resolved names after resolve importing of a node. */
 export interface ResolvedImportNames {
@@ -17,14 +17,17 @@ export interface ResolvedImportNames {
 /** Help to get and check. */
 export namespace Helper {
 
-	let printer: ts.Printer = ts.createPrinter()
-	let typeChecker: ts.TypeChecker
-	let transformContext: ts.TransformationContext | undefined = undefined
+	let ts: typeof TS
+	let printer: TS.Printer
+	let typeChecker: TS.TypeChecker
+	let transformContext: TS.TransformationContext | undefined = undefined
 
 
 	
 	//// Set context checker and transformation context.
-	export function setContext(checker: ts.TypeChecker, context: ts.TransformationContext | undefined) {
+	export function setContext(typescript: typeof TS, checker: TS.TypeChecker, context: TS.TransformationContext | undefined) {
+		ts = typescript
+		printer = typescript.createPrinter()
 		typeChecker = checker
 		transformContext = context
 	}
@@ -34,7 +37,7 @@ export namespace Helper {
 	//// Global, share
 
 	/** Get node full text, can output from a newly created node. */
-	export function getFullText(node: ts.Node) {
+	export function getFullText(node: TS.Node) {
 		if (node.pos >= 0) {
 			try {
 				return node.getText()
@@ -49,7 +52,7 @@ export namespace Helper {
 	}
 
 	/** get text without quoted for string, otherwise get full text. */
-	export function getText(node: ts.Node): string {
+	export function getText(node: TS.Node): string {
 		if (ts.isStringLiteral(node)) {
 			return node.text
 		}
@@ -59,7 +62,7 @@ export namespace Helper {
 	}
 
 	/** Returns the identifier, like variable or declaration name of a given node if possible. */
-	export function getIdentifier(node: ts.Node): ts.Identifier | undefined {
+	export function getIdentifier(node: TS.Node): TS.Identifier | undefined {
 
 		// Identifier itself.
 		if (ts.isIdentifier(node)) {
@@ -118,7 +121,7 @@ export namespace Helper {
 
 
 	/** Test whether a node is an variable name identifier. */
-	export function isVariableIdentifier(node: ts.Node): node is ts.Identifier {
+	export function isVariableIdentifier(node: TS.Node): node is TS.Identifier {
 		if (!ts.isIdentifier(node)) {
 			return false
 		}
@@ -178,13 +181,13 @@ export namespace Helper {
 	}
 
 	/** Whether be function, method, or get/set accessor, or arrow function. */
-	export function isFunctionLike(node: ts.Node): node is ts.FunctionLikeDeclaration {
+	export function isFunctionLike(node: TS.Node): node is TS.FunctionLikeDeclaration {
 		return isNonArrowFunctionLike(node)
 			|| ts.isArrowFunction(node)
 	}
 
 	/** Whether be function, method, or get/set accessor, but arrow function is excluded. */
-	export function isNonArrowFunctionLike(node: ts.Node): node is ts.FunctionLikeDeclaration {
+	export function isNonArrowFunctionLike(node: TS.Node): node is TS.FunctionLikeDeclaration {
 		return ts.isMethodDeclaration(node)
 			|| ts.isMethodSignature(node)
 			|| ts.isFunctionDeclaration(node)
@@ -194,13 +197,13 @@ export namespace Helper {
 	}
 
 	/** Whether be a property declaration or signature. */
-	export function isPropertyLike(node: ts.Node): node is ts.PropertySignature | ts.PropertyDeclaration {
+	export function isPropertyLike(node: TS.Node): node is TS.PropertySignature | TS.PropertyDeclaration {
 		return ts.isPropertySignature(node) || ts.isPropertyDeclaration(node)
 	}
 
 	/** Whether be property or signature, or get accessor. */
-	export function isPropertyOrGetAccessor(node: ts.Node):
-		node is ts.PropertySignature | ts.PropertyDeclaration | ts.GetAccessorDeclaration
+	export function isPropertyOrGetAccessor(node: TS.Node):
+		node is TS.PropertySignature | TS.PropertyDeclaration | TS.GetAccessorDeclaration
 	{
 		return ts.isPropertySignature(node)
 			|| ts.isPropertyDeclaration(node)
@@ -208,8 +211,8 @@ export namespace Helper {
 	}
 
 	/** Whether be property or signature, get/set accessor. */
-	export function isPropertyOrGetSetAccessor(node: ts.Node):
-		node is ts.PropertySignature | ts.PropertyDeclaration | ts.GetAccessorDeclaration | ts.SetAccessorDeclaration
+	export function isPropertyOrGetSetAccessor(node: TS.Node):
+		node is TS.PropertySignature | TS.PropertyDeclaration | TS.GetAccessorDeclaration | TS.SetAccessorDeclaration
 	{
 		return ts.isPropertySignature(node)
 			|| ts.isPropertyDeclaration(node)
@@ -218,34 +221,34 @@ export namespace Helper {
 	}
 
 	/** Whether be a method declaration or signature. */
-	export function isMethodLike(node: ts.Node): node is ts.MethodSignature | ts.MethodDeclaration {
+	export function isMethodLike(node: TS.Node): node is TS.MethodSignature | TS.MethodDeclaration {
 		return ts.isMethodSignature(node) || ts.isMethodDeclaration(node)
 	}
 
 	/** Whether node represents a type-only node. */
-	export function isTypeDeclaration(node: ts.Node): node is ts.TypeAliasDeclaration | ts.InterfaceDeclaration {
+	export function isTypeDeclaration(node: TS.Node): node is TS.TypeAliasDeclaration | TS.InterfaceDeclaration {
 		return ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node)
 	}
 
 	/** Whether be `this`. */
-	export function isThis(node: ts.Node): node is ts.ThisExpression {
+	export function isThis(node: TS.Node): node is TS.ThisExpression {
 		return node.kind === ts.SyntaxKind.ThisKeyword
 	}
 
 	/** Test whether of `Array` type. */
-	export function isArray(rawNode: ts.Node): boolean {
+	export function isArray(rawNode: TS.Node): boolean {
 		let type = Helper.types.typeOf(rawNode)
 		return Helper.types.isArrayType(type)
 	}
 
 	/** Test whether be element of `[a...]`. */
-	export function isArraySpreadElement(node: ts.Node): boolean {
+	export function isArraySpreadElement(node: TS.Node): boolean {
 		return node.parent && ts.isSpreadElement(node.parent)
 			&& node.parent.parent && ts.isArrayLiteralExpression(node.parent.parent)
 	}
 
 	/** Whether function will instantly run. */
-	export function isInstantlyRunFunction(node: ts.Node): node is ts.FunctionLikeDeclaration {
+	export function isInstantlyRunFunction(node: TS.Node): node is TS.FunctionLikeDeclaration {
 
 		// [...].map(fn)
 		return isFunctionLike(node)
@@ -255,7 +258,7 @@ export namespace Helper {
 	}
 
 	/** Test whether be `Map` or `Set`, or of `Array` type. */
-	export function isListStruct(rawNode: ts.Node): boolean {
+	export function isListStruct(rawNode: TS.Node): boolean {
 		let type = Helper.types.typeOf(rawNode)
 		let typeNode = Helper.types.getOrMakeTypeNode(rawNode)
 		let objName = typeNode ? Helper.types.getTypeNodeReferenceName(typeNode) : undefined
@@ -267,12 +270,12 @@ export namespace Helper {
 	
 
 	/** Visit node and all descendant nodes, find a node match test fn. */
-	export function findInward(node: ts.Node, test: (node: ts.Node) => boolean) : ts.Node | null {
+	export function findInward(node: TS.Node, test: (node: TS.Node) => boolean) : TS.Node | null {
 		if (test(node)) {
 			return node
 		}
 
-		let found: ts.Node | null = null
+		let found: TS.Node | null = null
 
 		ts.visitEachChild(node, (n) => {
 			found ||= findInward(n, test)
@@ -289,21 +292,21 @@ export namespace Helper {
 
 		/** Get all decorator from a class declaration, a property or method declaration. */
 		export function getDecorators(
-			node: ts.ClassDeclaration | ts.MethodDeclaration | ts.PropertyDeclaration | ts.GetAccessorDeclaration | ts.SetAccessorDeclaration
-		): ts.Decorator[] {
-			return (node.modifiers?.filter((m: ts.ModifierLike) => ts.isDecorator(m)) || []) as ts.Decorator[]
+			node: TS.ClassDeclaration | TS.MethodDeclaration | TS.PropertyDeclaration | TS.GetAccessorDeclaration | TS.SetAccessorDeclaration
+		): TS.Decorator[] {
+			return (node.modifiers?.filter((m: TS.ModifierLike) => ts.isDecorator(m)) || []) as TS.Decorator[]
 		}
 
 		/** Get the first decorator from a class declaration, a property or method declaration. */
 		export function getFirst(
-			node: ts.ClassDeclaration | ts.MethodDeclaration | ts.PropertyDeclaration | ts.GetAccessorDeclaration | ts.SetAccessorDeclaration
-		): ts.Decorator | undefined {
-			return node.modifiers?.find((m: ts.ModifierLike) => ts.isDecorator(m)) as ts.Decorator | undefined
+			node: TS.ClassDeclaration | TS.MethodDeclaration | TS.PropertyDeclaration | TS.GetAccessorDeclaration | TS.SetAccessorDeclaration
+		): TS.Decorator | undefined {
+			return node.modifiers?.find((m: TS.ModifierLike) => ts.isDecorator(m)) as TS.Decorator | undefined
 		}
 
 		/** Get the first decorator from a class declaration, a property or method declaration. */
 		export function getFirstName(
-			node: ts.ClassDeclaration | ts.MethodDeclaration | ts.PropertyDeclaration | ts.GetAccessorDeclaration | ts.SetAccessorDeclaration
+			node: TS.ClassDeclaration | TS.MethodDeclaration | TS.PropertyDeclaration | TS.GetAccessorDeclaration | TS.SetAccessorDeclaration
 		): string | undefined {
 			let decorator = getFirst(node)
 			let decoName = decorator ? getName(decorator) : undefined
@@ -312,7 +315,7 @@ export namespace Helper {
 		}
 
 		/** Get the first decorator name of a decorator. */
-		export function getName(node: ts.Decorator): string | undefined {
+		export function getName(node: TS.Decorator): string | undefined {
 			let resolved = symbol.resolveImport(node)
 			if (resolved) {
 				return resolved.memberName
@@ -336,7 +339,7 @@ export namespace Helper {
 		 * Get name of a class member.
 		 * For a constructor function, it returns `constructor`
 		 */
-		export function getMemberName(node: ts.ClassElement): string {
+		export function getMemberName(node: TS.ClassElement): string {
 			if (ts.isConstructorDeclaration(node)) {
 				return 'constructor'
 			}
@@ -349,7 +352,7 @@ export namespace Helper {
 		 * Get one class member declaration by it's name.
 		 * `resolveExtend` specifies whether will look at extended class.
 		 */
-		export function getMember(node: ts.ClassDeclaration, memberName: string, resolveExtend: boolean = false): ts.ClassElement | undefined {
+		export function getMember(node: TS.ClassDeclaration, memberName: string, resolveExtend: boolean = false): TS.ClassElement | undefined {
 			if (resolveExtend) {
 				let prop = getMember(node, memberName, false)
 				if (prop) {
@@ -366,7 +369,7 @@ export namespace Helper {
 			else {
 				return node.members.find(m => {
 					return getMemberName(m) === memberName
-				}) as ts.PropertyDeclaration | undefined
+				}) as TS.PropertyDeclaration | undefined
 			}
 		}
 
@@ -374,7 +377,7 @@ export namespace Helper {
 		 * Get one class property declaration by it's name.
 		 * `resolveExtend` specifies whether will look at extended class.
 		 */
-		export function getProperty(node: ts.ClassDeclaration, propertyName: string, resolveExtend: boolean = false): ts.PropertyDeclaration | undefined {
+		export function getProperty(node: TS.ClassDeclaration, propertyName: string, resolveExtend: boolean = false): TS.PropertyDeclaration | undefined {
 			if (resolveExtend) {
 				let prop = getProperty(node, propertyName, false)
 				if (prop) {
@@ -392,7 +395,7 @@ export namespace Helper {
 				return node.members.find(m => {
 					return ts.isPropertyDeclaration(m)
 						&& getMemberName(m) === propertyName
-				}) as ts.PropertyDeclaration | undefined
+				}) as TS.PropertyDeclaration | undefined
 			}
 		}
 
@@ -400,7 +403,7 @@ export namespace Helper {
 		 * Get one class method declaration by it's name.
 		 * `resolveExtend` specifies whether will look at extended class.
 		 */
-		export function getMethod(node: ts.ClassDeclaration, methodName: string, resolveExtend: boolean = false): ts.MethodDeclaration | undefined {
+		export function getMethod(node: TS.ClassDeclaration, methodName: string, resolveExtend: boolean = false): TS.MethodDeclaration | undefined {
 			if (resolveExtend) {
 				let prop = getMethod(node, methodName, false)
 				if (prop) {
@@ -418,12 +421,12 @@ export namespace Helper {
 				return node.members.find(m => {
 					return ts.isMethodDeclaration(m)
 						&& getMemberName(m) === methodName
-				}) as ts.MethodDeclaration | undefined
+				}) as TS.MethodDeclaration | undefined
 			}
 		}
 
 		/** Get extends expression. */
-		export function getExtends(node: ts.ClassDeclaration): ts.ExpressionWithTypeArguments | undefined {
+		export function getExtends(node: TS.ClassDeclaration): TS.ExpressionWithTypeArguments | undefined {
 			let extendHeritageClause = node.heritageClauses?.find(hc => {
 				return hc.token === ts.SyntaxKind.ExtendsKeyword
 			})
@@ -441,7 +444,7 @@ export namespace Helper {
 		}
 
 		/** Get super class declaration. */
-		export function getSuper(node: ts.ClassDeclaration): ts.ClassDeclaration | undefined {
+		export function getSuper(node: TS.ClassDeclaration): TS.ClassDeclaration | undefined {
 			let extendsNode = getExtends(node)
 			if (!extendsNode) {
 				return undefined
@@ -450,11 +453,11 @@ export namespace Helper {
 			let exp = extendsNode.expression
 			let superClass = symbol.resolveDeclaration(exp, ts.isClassDeclaration)
 
-			return superClass as ts.ClassDeclaration | undefined
+			return superClass as TS.ClassDeclaration | undefined
 		}
 
 		/** Test whether is derived class of a specified named class, and of specified module. */
-		export function isDerivedOf(node: ts.ClassDeclaration, declName: string, moduleName: string): boolean {
+		export function isDerivedOf(node: TS.ClassDeclaration, declName: string, moduleName: string): boolean {
 			let extendHeritageClause = node.heritageClauses?.find(hc => {
 				return hc.token === ts.SyntaxKind.ExtendsKeyword
 			})
@@ -489,7 +492,7 @@ export namespace Helper {
 		 * Test whether class or super class implements a type with specified name and located at specified module.
 		 * If `outerModuleName` specified, and importing from a relative path, it implies import from this module.
 		 */
-		export function isImplemented(node: ts.ClassDeclaration, typeName: string, moduleName: string, outerModuleName?: string): boolean {
+		export function isImplemented(node: TS.ClassDeclaration, typeName: string, moduleName: string, outerModuleName?: string): boolean {
 			let implementClauses = node.heritageClauses?.find(h => {
 				return h.token === ts.SyntaxKind.ImplementsKeyword
 			})
@@ -536,8 +539,8 @@ export namespace Helper {
 		}
 
 		/** Get constructor. */
-		export function getConstructor(node: ts.ClassDeclaration, resolveExtend: boolean = false): ts.ConstructorDeclaration | undefined {
-			let cons = node.members.find(v => ts.isConstructorDeclaration(v)) as ts.ConstructorDeclaration | undefined
+		export function getConstructor(node: TS.ClassDeclaration, resolveExtend: boolean = false): TS.ConstructorDeclaration | undefined {
+			let cons = node.members.find(v => ts.isConstructorDeclaration(v)) as TS.ConstructorDeclaration | undefined
 			if (cons) {
 				return cons
 			}
@@ -553,7 +556,7 @@ export namespace Helper {
 		}
 
 		/** Get constructor parameter list, even from super class. */
-		export function getConstructorParameters(node: ts.ClassDeclaration): ts.ParameterDeclaration[] | undefined {
+		export function getConstructorParameters(node: TS.ClassDeclaration): TS.ParameterDeclaration[] | undefined {
 			let constructor = getConstructor(node, true)
 			if (constructor) {
 				return [...constructor.parameters]
@@ -563,7 +566,7 @@ export namespace Helper {
 		}
 
 		/** Whether property or method has specified modifier. */
-		export function hasModifier(node: ts.PropertyDeclaration | ts.MethodDeclaration, name: 'readonly' | 'static' | 'protected' | 'private'): boolean {
+		export function hasModifier(node: TS.PropertyDeclaration | TS.MethodDeclaration, name: 'readonly' | 'static' | 'protected' | 'private'): boolean {
 			for (let modifier of node.modifiers || []) {
 				if (modifier.kind === ts.SyntaxKind.ReadonlyKeyword && name === 'readonly') {
 					return true
@@ -589,13 +592,13 @@ export namespace Helper {
 	export namespace access {
 
 		/** Whether be accessing like `a.b` or `a[b]`. */
-		export function isAccess(node: ts.Node): node is AccessNode {
+		export function isAccess(node: TS.Node): node is AccessNode {
 			return ts.isPropertyAccessExpression(node)
 				|| ts.isElementAccessExpression(node)
 		}
 
 		/** get accessing property node. */
-		export function getPropertyNode(node: AccessNode): ts.Expression {
+		export function getPropertyNode(node: AccessNode): TS.Expression {
 			return ts.isPropertyAccessExpression(node)
 				? node.name
 				: node.argumentExpression
@@ -612,8 +615,8 @@ export namespace Helper {
 		 * `a.b!.c` -> `a`
 		 * `(a.b as any).c` -> `a`
 		 */
-		export function getTopmost(node: AccessNode): ts.Expression {
-			let topmost: ts.Expression = node
+		export function getTopmost(node: AccessNode): TS.Expression {
+			let topmost: TS.Expression = node
 
 			while (true) {
 				if (Helper.access.isAccess(topmost)) {
@@ -643,7 +646,7 @@ export namespace Helper {
 	export namespace assign {
 
 		/** Whether be property assignment like `a = x`. */
-		export function isAssignment(node: ts.Node): node is AssignmentNode {
+		export function isAssignment(node: TS.Node): node is AssignmentNode {
 			if (ts.isBinaryExpression(node)) {
 				return node.operatorToken.kind === ts.SyntaxKind.EqualsToken
 					|| node.operatorToken.kind === ts.SyntaxKind.PlusEqualsToken
@@ -678,7 +681,7 @@ export namespace Helper {
 		 * get the value assigning from.
 		 * `b` of `a = b`
 		 */
-		export function getFromExpression(node: AssignmentNode): ts.Expression {
+		export function getFromExpression(node: AssignmentNode): TS.Expression {
 			if (ts.isBinaryExpression(node)) {
 				return node.right
 			}
@@ -693,7 +696,7 @@ export namespace Helper {
 		 * `a` of `a = b`
 		 * `a, b` of `[a, b] = c`
 		 */
-		export function getToExpressions(node: AssignmentNode): ts.Expression[] {
+		export function getToExpressions(node: AssignmentNode): TS.Expression[] {
 			if (ts.isBinaryExpression(node)) {
 				return [...walkAssignToExpressions(node.left)]
 			}
@@ -703,7 +706,7 @@ export namespace Helper {
 		}
 
 		/** Walk for assign to expressions.  */
-		function* walkAssignToExpressions(node: ts.Expression): Iterable<ts.Expression> {
+		function* walkAssignToExpressions(node: TS.Expression): Iterable<TS.Expression> {
 			if (ts.isArrayLiteralExpression(node)) {
 				for (let el of node.elements) {
 					yield* walkAssignToExpressions(el)
@@ -733,7 +736,7 @@ export namespace Helper {
 		 * - keys: ['a']
 		 */
 		interface VariableDeclarationName {
-			node: ts.Identifier
+			node: TS.Identifier
 			name: string
 			keys: (string | number)[]
 		}
@@ -743,13 +746,13 @@ export namespace Helper {
 		 * `let [a, b]` = ... -> `[a, b]`
 		 * `let {a, b}` = ... -> `[a, b]`
 		 */
-		export function* walkDeclarationNames(node: ts.VariableDeclaration): Iterable<VariableDeclarationName> {
+		export function* walkDeclarationNames(node: TS.VariableDeclaration): Iterable<VariableDeclarationName> {
 			return yield* walkVariablePatternElement(node.name, [])
 		}
 
 		/** Get all declared variable name from a variable pattern. */
 		function* walkVariablePatternElement(
-			node: ts.BindingName | ts.BindingElement | ts.ObjectBindingPattern | ts.ArrayBindingPattern | ts.OmittedExpression,
+			node: TS.BindingName | TS.BindingElement | TS.ObjectBindingPattern | TS.ArrayBindingPattern | TS.OmittedExpression,
 			keys: (string | number)[]
 		): Iterable<VariableDeclarationName> {
 			if (ts.isOmittedExpression(node)) {
@@ -791,8 +794,8 @@ export namespace Helper {
 		 * Will firstly try to get type node when doing declaration,
 		 * If can't find, make a new type node, but it can't be resolved.
 		 */
-		export function getOrMakeTypeNode(node: ts.Node): ts.TypeNode | undefined {
-			let typeNode: ts.TypeNode | undefined
+		export function getOrMakeTypeNode(node: TS.Node): TS.TypeNode | undefined {
+			let typeNode: TS.TypeNode | undefined
 
 			// `class {a: Type = xxx}`
 			if (access.isAccess(node)) {
@@ -818,7 +821,7 @@ export namespace Helper {
 		}
 
 		/** Get type of a node. */
-		export function typeOf(node: ts.Node): ts.Type {
+		export function typeOf(node: TS.Node): TS.Type {
 			return typeChecker.getTypeAtLocation(node)
 		}
 
@@ -826,22 +829,22 @@ export namespace Helper {
 		 * Get type node of a type.
 		 * Note the returned type node is not in source file, so can't be resolved.
 		 */
-		export function typeToTypeNode(type: ts.Type): ts.TypeNode | undefined {
+		export function typeToTypeNode(type: TS.Type): TS.TypeNode | undefined {
 			return typeChecker.typeToTypeNode(type, undefined, undefined)
 		}
 
 		/** Get type of a type node. */
-		export function typeOfTypeNode(typeNode: ts.TypeNode): ts.Type | undefined {
+		export function typeOfTypeNode(typeNode: TS.TypeNode): TS.Type | undefined {
 			return typeChecker.getTypeFromTypeNode(typeNode)
 		}
 
 		/** Get full text of a type, all type parameters are included. */
-		export function getTypeFullText(type: ts.Type): string {
+		export function getTypeFullText(type: TS.Type): string {
 			return typeChecker.typeToString(type)
 		}
 
 		/** Get the reference name of a type node, all type parameters are excluded. */
-		export function getTypeNodeReferenceName(node: ts.TypeNode): string | undefined {
+		export function getTypeNodeReferenceName(node: TS.TypeNode): string | undefined {
 			if (!ts.isTypeReferenceNode(node)) {
 				return undefined
 			}
@@ -855,7 +858,7 @@ export namespace Helper {
 		}
 
 		/** Get the returned type of a method / function declaration. */
-		export function getReturnType(node: ts.SignatureDeclaration): ts.Type | undefined {
+		export function getReturnType(node: TS.SignatureDeclaration): TS.Type | undefined {
 			let signature = typeChecker.getSignatureFromDeclaration(node)
 			if (!signature) {
 				return undefined
@@ -865,7 +868,7 @@ export namespace Helper {
 		}
 
 		/** Whether returned `void` or `Promise<void>`. */
-		export function isVoidReturning(node: ts.FunctionLikeDeclaration): boolean {
+		export function isVoidReturning(node: TS.FunctionLikeDeclaration): boolean {
 			let type = types.getReturnType(node)
 			if (!type) {
 				return false
@@ -878,7 +881,7 @@ export namespace Helper {
 
 
 		/** Test whether type is object. */
-		export function isObjectType(type: ts.Type): boolean {
+		export function isObjectType(type: TS.Type): boolean {
 			if (type.isUnionOrIntersection()) {
 				return type.types.every(t => isObjectType(t))
 			}
@@ -887,7 +890,7 @@ export namespace Helper {
 		}
 
 		/** Test whether type represents a value. */
-		export function isValueType(type: ts.Type): boolean {
+		export function isValueType(type: TS.Type): boolean {
 			if (type.isUnionOrIntersection()) {
 				return type.types.every(t => isValueType(t))
 			}
@@ -904,17 +907,17 @@ export namespace Helper {
 		}
 
 		/** Test whether type represents a string. */
-		export function isStringType(type: ts.Type): boolean {
+		export function isStringType(type: TS.Type): boolean {
 			return (type.getFlags() & ts.TypeFlags.StringLike) > 0
 		}
 
 		/** Test whether type represents a number. */
-		export function isNumericType(type: ts.Type): boolean {
+		export function isNumericType(type: TS.Type): boolean {
 			return (type.getFlags() & ts.TypeFlags.NumberLike) > 0
 		}
 
 		/** Test whether type represents a value, and not null or undefined. */
-		export function isNonNullableValueType(type: ts.Type): boolean {
+		export function isNonNullableValueType(type: TS.Type): boolean {
 			if (type.isUnionOrIntersection()) {
 				return type.types.every(t => isNonNullableValueType(t))
 			}
@@ -932,13 +935,13 @@ export namespace Helper {
 		 * Test whether type of a node extends `Array<any>`.
 		 * Note array tuple like `[number, number]` is not included.
 		 */
-		export function isArrayType(type: ts.Type): boolean {
+		export function isArrayType(type: TS.Type): boolean {
 			return typeChecker.isArrayType(type)
 		}
 
 
 		/** Analysis whether the property declaration resolve from a node is readonly. */
-		export function isReadonly(node: ts.Node): boolean {
+		export function isReadonly(node: TS.Node): boolean {
 
 			// `class A{readonly p}` -> `p` and `this['p']` are readonly.
 			// `interface A{readonly p}` -> `p` and `this['p']` are readonly.
@@ -982,21 +985,21 @@ export namespace Helper {
 		 * `A & B` -> `[A, B]`
 		 * `Omit<A, B>` -> `[A, B]`
 		 */
-		export function destructTypeNode(node: ts.TypeNode):
-			(ts.TypeReferenceNode | ts.TypeLiteralNode | ts.TypeQueryNode)[]
+		export function destructTypeNode(node: TS.TypeNode):
+			(TS.TypeReferenceNode | TS.TypeLiteralNode | TS.TypeQueryNode)[]
 		{
-			let list: (ts.TypeReferenceNode | ts.TypeLiteralNode)[] = []
-			ts.visitNode(node, (n: ts.TypeNode) => destructTypeNodeVisitor(n, list))
+			let list: (TS.TypeReferenceNode | TS.TypeLiteralNode)[] = []
+			ts.visitNode(node, (n: TS.TypeNode) => destructTypeNodeVisitor(n, list))
 
 			return list
 		}
 
-		function destructTypeNodeVisitor(node: ts.Node, list: ts.TypeNode[]): ts.Node {
+		function destructTypeNodeVisitor(node: TS.Node, list: TS.TypeNode[]): TS.Node {
 			if (ts.isTypeReferenceNode(node) || ts.isTypeLiteralNode(node) || ts.isTypeQueryNode(node)) {
 				list.push(node)
 			}
 
-			return ts.visitEachChild(node, (n: ts.Node) => destructTypeNodeVisitor(n, list), transformContext)
+			return ts.visitEachChild(node, (n: TS.Node) => destructTypeNodeVisitor(n, list), transformContext)
 		}
 	}
 
@@ -1009,7 +1012,7 @@ export namespace Helper {
 	export namespace symbol {
 
 		/** Test whether a node has an import name and located at a module. */
-		export function isImportedFrom(node: ts.Node, memberName: string, moduleName: string): boolean {
+		export function isImportedFrom(node: TS.Node, memberName: string, moduleName: string): boolean {
 			let nm = resolveImport(node)
 
 			if (nm && nm.memberName === memberName && nm.moduleName === moduleName) {
@@ -1021,7 +1024,7 @@ export namespace Helper {
 		}
 
 		/** Resolve the import name and module. */
-		export function resolveImport(node: ts.Node): ResolvedImportNames | undefined {
+		export function resolveImport(node: TS.Node): ResolvedImportNames | undefined {
 			let memberName: string | null = null
 			let moduleName: string | null = null
 
@@ -1070,7 +1073,7 @@ export namespace Helper {
 		 *  - If wanting to resolve to it's latest imported place, set to `false`.
 		 * Default value is `false`.
 		 */
-		export function resolveSymbol(node: ts.Node, resolveAlias: boolean): ts.Symbol | undefined {
+		export function resolveSymbol(node: TS.Node, resolveAlias: boolean): TS.Symbol | undefined {
 			let symbol = typeChecker.getSymbolAtLocation(node)
 
 			// Get symbol from identifier.
@@ -1088,9 +1091,9 @@ export namespace Helper {
 		}
 
 		/** Resolves the declarations of a node. */
-		export function resolveDeclarations<T extends ts.Declaration>(
-			node: ts.Node,
-			test?: (node: ts.Node) => node is T,
+		export function resolveDeclarations<T extends TS.Declaration>(
+			node: TS.Node,
+			test?: (node: TS.Node) => node is T,
 			resolveAlias: boolean = true
 		): T[] | undefined {
 			let symbol = resolveSymbol(node, resolveAlias)
@@ -1107,9 +1110,9 @@ export namespace Helper {
 		}
 
 		/** Resolves the first declaration from a node. */
-		export function resolveDeclaration<T extends ts.Node>(
-			node: ts.Node,
-			test?: (node: ts.Node) => node is T,
+		export function resolveDeclaration<T extends TS.Node>(
+			node: TS.Node,
+			test?: (node: TS.Node) => node is T,
 			resolveAlias: boolean = true
 		): T | undefined {
 			let decls = resolveDeclarations(node, undefined, resolveAlias)
@@ -1117,7 +1120,7 @@ export namespace Helper {
 		}
 
 		/** Resolves all declarations from a symbol. */
-		export function resolveDeclarationsBySymbol<T extends ts.Node>(symbol: ts.Symbol, test?: (node: ts.Node) => node is T): T[] | undefined {
+		export function resolveDeclarationsBySymbol<T extends TS.Node>(symbol: TS.Symbol, test?: (node: TS.Node) => node is T): T[] | undefined {
 			let decls = symbol.getDeclarations()
 			if (test && decls) {
 				decls = decls.filter(decl => test(decl))
@@ -1127,7 +1130,7 @@ export namespace Helper {
 		}
 
 		/** Resolves the first declaration from a symbol. */
-		export function resolveDeclarationBySymbol<T extends ts.Node>(symbol: ts.Symbol, test?: (node: ts.Node) => node is T): T | undefined {
+		export function resolveDeclarationBySymbol<T extends TS.Node>(symbol: TS.Symbol, test?: (node: TS.Node) => node is T): T | undefined {
 			let decls = symbol.getDeclarations()
 			return (test ? decls?.find(test) : decls?.[0]) as T | undefined
 		}
@@ -1137,7 +1140,7 @@ export namespace Helper {
 		 * Resolve interface and all it's extended interfaces,
 		 * and all the interface like type literals: `type A = {...}`.
 		 */
-		export function* resolveChainedInterfaces(node: ts.Node): Iterable<ts.InterfaceDeclaration | ts.TypeLiteralNode> {
+		export function* resolveChainedInterfaces(node: TS.Node): Iterable<TS.InterfaceDeclaration | TS.TypeLiteralNode> {
 			
 			// `{...}`
 			if (ts.isTypeLiteralNode(node)) {
@@ -1175,7 +1178,7 @@ export namespace Helper {
 
 			// Resolve and continue.
 			else {
-				let test = (n: ts.Node): n is ts.InterfaceDeclaration | ts.TypeAliasDeclaration => {
+				let test = (n: TS.Node): n is TS.InterfaceDeclaration | TS.TypeAliasDeclaration => {
 					return ts.isInterfaceDeclaration(n) || ts.isTypeAliasDeclaration(n)
 				}
 
@@ -1193,8 +1196,8 @@ export namespace Helper {
 		 * Resolve class declarations and interface and all it's extended,
 		 * and all the interface like type literals: `type A = {...}`.
 		 */
-		export function* resolveChainedClassesAndInterfaces(node: ts.Node):
-			Iterable<ts.InterfaceDeclaration | ts.TypeLiteralNode | ts.ClassDeclaration | ts.ClassExpression>
+		export function* resolveChainedClassesAndInterfaces(node: TS.Node):
+			Iterable<TS.InterfaceDeclaration | TS.TypeLiteralNode | TS.ClassDeclaration | TS.ClassExpression>
 		{
 			
 			// `{...}`
@@ -1251,7 +1254,7 @@ export namespace Helper {
 
 			// Resolve and continue.
 			else {
-				let test = (n: ts.Node): n is ts.InterfaceDeclaration | ts.TypeAliasDeclaration | ts.ClassLikeDeclaration => {
+				let test = (n: TS.Node): n is TS.InterfaceDeclaration | TS.TypeAliasDeclaration | TS.ClassLikeDeclaration => {
 					return ts.isInterfaceDeclaration(n)
 						|| ts.isTypeAliasDeclaration(n)
 						|| ts.isClassLike(n)
@@ -1273,7 +1276,7 @@ export namespace Helper {
 		 * - `typeof Cls`
 		 * - `{new(): Cls}`
 		 */
-		export function* resolveInstanceDeclarations(typeNode: ts.TypeNode): Iterable<ts.ClassDeclaration> {
+		export function* resolveInstanceDeclarations(typeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
 			let typeNodes = types.destructTypeNode(typeNode)
 			if (typeNodes.length === 0) {
 				return
@@ -1293,7 +1296,7 @@ export namespace Helper {
 				else {
 					for (let decl of symbol.resolveChainedInterfaces(typeNode)) {
 						let newCons = decl.members.find(m => ts.isConstructSignatureDeclaration(m) || ts.isConstructorDeclaration(m)) as
-							ts.ConstructSignatureDeclaration | ts.ConstructorDeclaration | undefined
+						TS.ConstructSignatureDeclaration | TS.ConstructorDeclaration | undefined
 
 						if (!newCons) {
 							continue
@@ -1311,7 +1314,7 @@ export namespace Helper {
 		}
 		
 		/** Destruct type node, and resolve class declarations of each. */
-		function* resolveInstanceDeclarationsOfTypeNodeNormally(typeNode: ts.TypeNode): Iterable<ts.ClassDeclaration> {
+		function* resolveInstanceDeclarationsOfTypeNodeNormally(typeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
 			let typeNodes = types.destructTypeNode(typeNode)
 			if (typeNodes.length === 0) {
 				return
@@ -1332,13 +1335,13 @@ export namespace Helper {
 		 * and are interface like or type literal like.
 		 */
 		export function resolveExtendedInterfaceLikeTypeParameters(
-			node: ts.ClassDeclaration, finalHeritageName: string, finalHeritageTypeParameterIndex: number
-		): (ts.InterfaceDeclaration | ts.TypeLiteralNode)[] {
+			node: TS.ClassDeclaration, finalHeritageName: string, finalHeritageTypeParameterIndex: number
+		): (TS.InterfaceDeclaration | TS.TypeLiteralNode)[] {
 
-			let classDecl: ts.ClassDeclaration | undefined = node
+			let classDecl: TS.ClassDeclaration | undefined = node
 
 			// <A & B, C> -> [[A, B], [C]]
-			let refedTypeParameters: (ts.InterfaceDeclaration | ts.TypeLiteralNode)[][] = []
+			let refedTypeParameters: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][] = []
 			
 			// Assumes `A<B> extends C<D & B>`
 			while (classDecl) {
@@ -1373,12 +1376,12 @@ export namespace Helper {
 
 		/** Analysis type references, and remap type reference from input parameters to super parameters. */
 		function remapRefedTypeParameters(
-			refed: (ts.InterfaceDeclaration | ts.TypeLiteralNode)[][],
-			selfParameters: ts.NodeArray<ts.TypeParameterDeclaration> | undefined,
-			extendsParameters: ts.NodeArray<ts.TypeNode>
-		): (ts.InterfaceDeclaration | ts.TypeLiteralNode)[][] {
-			let selfMap: Map<string, (ts.InterfaceDeclaration | ts.TypeLiteralNode)[]> = new Map()
-			let remapped: (ts.InterfaceDeclaration | ts.TypeLiteralNode)[][] = []
+			refed: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][],
+			selfParameters: TS.NodeArray<TS.TypeParameterDeclaration> | undefined,
+			extendsParameters: TS.NodeArray<TS.TypeNode>
+		): (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][] {
+			let selfMap: Map<string, (TS.InterfaceDeclaration | TS.TypeLiteralNode)[]> = new Map()
+			let remapped: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][] = []
 
 			// Assume `A<B> extends C<D & B>`
 
@@ -1397,7 +1400,7 @@ export namespace Helper {
 			for (let i = 0; i < extendsParameters.length; i++) {
 				let param = extendsParameters[i]
 				let destructed = types.destructTypeNode(param)
-				let paramRefed: (ts.InterfaceDeclaration | ts.TypeLiteralNode)[] = []
+				let paramRefed: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[] = []
 
 				for (let ref of destructed) {
 					if (ts.isTypeReferenceNode(ref)) {
@@ -1424,7 +1427,7 @@ export namespace Helper {
 
 
 		/** Check whether a property or get accessor declare in typescript library. */
-		export function isOfTypescriptLib(rawNode: ts.Node): boolean {
+		export function isOfTypescriptLib(rawNode: TS.Node): boolean {
 
 			// Like `this.el.style.display`
 			let decl = resolveDeclaration(rawNode)
@@ -1443,14 +1446,14 @@ export namespace Helper {
 	export namespace imports {
 
 		/** Get import statement come from specified module name. */
-		export function getImportFromModule(moduleName: string, sourceFile: ts.SourceFile): ts.ImportDeclaration | undefined {
+		export function getImportFromModule(moduleName: string, sourceFile: TS.SourceFile): TS.ImportDeclaration | undefined {
 			return sourceFile.statements.find(st => {
 				return ts.isImportDeclaration(st)
 					&& ts.isStringLiteral(st.moduleSpecifier)
 					&& st.moduleSpecifier.text === moduleName
 					&& st.importClause?.namedBindings
 					&& ts.isNamedImports(st.importClause?.namedBindings)
-			}) as ts.ImportDeclaration | undefined
+			}) as TS.ImportDeclaration | undefined
 		}
 	}
 }
