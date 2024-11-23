@@ -15,11 +15,12 @@ export interface ResolvedImportNames {
 
 
 /** Help to get and check. */
-export function helperOf(ts: typeof TS, typeChecker: TS.TypeChecker, transformContext: TS.TransformationContext | undefined) {
+export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker, transformContext: TS.TransformationContext | undefined) {
 	let printer = ts.createPrinter()
 
 
-	//// Global, share
+	
+	//// Global
 
 	/** Get node full text, can output from a newly created node. */
 	function getFullText(node: TS.Node) {
