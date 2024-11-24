@@ -15,7 +15,7 @@ export interface ResolvedImportNames {
 
 
 /** Help to get and check. */
-export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker, transformContext: TS.TransformationContext | undefined) {
+export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 	let printer = ts.createPrinter()
 
 
@@ -263,10 +263,10 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker, tran
 
 		let found: TS.Node | null = null
 
-		ts.visitEachChild(node, (n) => {
+		ts.forEachChild(node, (n) => {
 			found ||= findInward(n, test)
-			return n
-		}, transformContext)
+			return found
+		})
 
 		return found
 	}
@@ -976,19 +976,19 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker, tran
 			(TS.TypeReferenceNode | TS.TypeLiteralNode | TS.TypeQueryNode)[]
 		{
 			let list: (TS.TypeReferenceNode | TS.TypeLiteralNode)[] = []
-			ts.visitNode(node, (n: TS.TypeNode) => destructTypeNodeVisitor(n, list))
+			destructTypeNodeRecursively(node, list)
 
 			return list
 		},
 
 	}
 
-	function destructTypeNodeVisitor(node: TS.Node, list: TS.TypeNode[]): TS.Node {
+	function destructTypeNodeRecursively(node: TS.Node, list: TS.TypeNode[]) {
 		if (ts.isTypeReferenceNode(node) || ts.isTypeLiteralNode(node) || ts.isTypeQueryNode(node)) {
 			list.push(node)
 		}
 
-		return ts.visitEachChild(node, (n: TS.Node) => destructTypeNodeVisitor(n, list), transformContext)
+		ts.forEachChild(node, (n: TS.Node) => destructTypeNodeRecursively(n, list))
 	}
 
 
