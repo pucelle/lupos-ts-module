@@ -13,6 +13,9 @@ export interface ResolvedImportNames {
 	moduleName: string
 }
 
+/** Type of Helper functions. */
+export type Helper = ReturnType<typeof helperOfContext>
+
 
 /** Help to get and check. */
 export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
@@ -256,12 +259,12 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 	
 
 	/** Visit node and all descendant nodes, find a node match test fn. */
-	function findInward(node: TS.Node, test: (node: TS.Node) => boolean) : TS.Node | null {
+	function findInward(node: TS.Node, test: (node: TS.Node) => boolean) : TS.Node | undefined {
 		if (test(node)) {
 			return node
 		}
 
-		let found: TS.Node | null = null
+		let found: TS.Node | undefined = undefined
 
 		ts.forEachChild(node, (n) => {
 			found ||= findInward(n, test)
@@ -270,6 +273,18 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 
 		return found
 	}
+
+	/** Get innermost node at specified offset index. */
+	function getNodeAtOffset(node: TS.Node, offset: number): TS.Node | undefined {
+		if (offset >= node.getStart() && offset < node.getEnd()) {
+			return node.forEachChild(child => {
+				return getNodeAtOffset(child, offset) || undefined
+			}) || node
+		}
+
+		return undefined
+	}
+
 
 
 
@@ -1464,6 +1479,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		isInstantlyRunFunction,
 		isListStruct,
 		findInward,
+		getNodeAtOffset,
 		deco,
 		class: cls,
 		access,
