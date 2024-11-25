@@ -3,57 +3,121 @@ import {HTMLNode, HTMLNodeType} from './html-node'
 import {HTMLTokenParser, HTMLTokenType} from './html-token-parser'
 
 
+/** Attribute names and values */
+export interface HTMLAttribute {
+
+	nameStart: number
+	nameEnd: number
+	valueStart: number
+	valueEnd: number
+
+	name: string
+
+	/** Original attribute value. */
+	rawValue: string | null
+
+	/** Quotes have been removed. */
+	value: string | null
+
+	/** Whether raw attribute value has been quoted. */
+	quoted: boolean
+
+	/** Whether has been removed. */
+	removed?: boolean
+}
+
+
 export class HTMLRoot extends HTMLNode {
 
 	static fromString(string: string, mapper: PositionMapper): HTMLRoot {
 		let tokens = HTMLTokenParser.parseToTokens(string)
 		let tree = new HTMLRoot()
 		let current: HTMLNode | null = tree
+		let currentAttr: HTMLAttribute | null = null
 
 		for (let token of tokens) {
 			let start = mapper.mapInOrder(token.start)
 			let end = mapper.mapInOrder(token.end)
 
 			switch (token.type) {
-				case HTMLTokenType.StartTag:
-					let attrs = token.attrs!.map(attr => {
-						return {
-							...attr,
-							start: mapper.mapInOrder(attr.start),
-						}
-					})
-
-					let node = new HTMLNode(HTMLNodeType.Tag, start, end, token.tagName, attrs)
+				case HTMLTokenType.StartTagName:
+					let node = new HTMLNode(HTMLNodeType.Tag, start, end, token.text, [])
 					current.append(node)
-
-					if (!token.selfClose) {
-						current = node
-					}
 					break
 
-				case HTMLTokenType.EndTag:
+				case HTMLTokenType.EndTagName:
 					do {
-						if (current.tagName === token.tagName) {
+						if (current.tagName === token.text) {
 							current = current.parent
 							break
 						}
 
-						if (token.tagName === '') {
+						if (token.text === '') {
 							current = current.parent
 							break
 						}
 
 						current = current.parent
 					} while (current)
+					break
 
+				case HTMLTokenType.TagEnd:
+					if (current && current.type === HTMLNodeType.Tag
+						&& HTMLTokenParser.SelfClosingTags.includes(current.tagName!)
+					) {
+						current = current.parent
+					}
+					break
+
+				case HTMLTokenType.SelfCloseTagEnd:
+					if (current && current.type === HTMLNodeType.Tag) {
+						current = current.parent
+					}
+					break
+				
+				case HTMLTokenType.AttributeName:
+					if (current && current.type === HTMLNodeType.Tag) {
+						currentAttr = {
+							nameStart: token.start,
+							nameEnd: token.end,
+							valueStart: -1,
+							valueEnd: -1,
+							name: token.text,
+							rawValue: null,
+							value: null,
+							quoted: false,
+						}
+						
+						current.attrs!.push(currentAttr)
+					}
+					break
+
+				case HTMLTokenType.AttributeValue:
+					if (currentAttr) {
+						let quoted = token.text[0] === '"' || token.text[0] === '\''
+						let value = token.text
+
+						if (quoted) {
+							value = value.replace(/\\([\\'"])/g, '$1').slice(1, -1)
+						}
+
+						currentAttr.valueStart = token.start
+						currentAttr.valueEnd = token.end
+						currentAttr.rawValue = token.text
+						currentAttr.value = value
+						currentAttr.quoted = quoted
+					}
 					break
 
 				case HTMLTokenType.Text:
-					current.append(new HTMLNode(HTMLNodeType.Text, start, end, undefined, undefined, token.text))
+					let text = trimText(token.text)
+					if (text) {
+						current.append(new HTMLNode(HTMLNodeType.Text, start, end, undefined, undefined, token.text))
+					}
 					break
 
-				case HTMLTokenType.Comment:
-					current.append(new HTMLNode(HTMLNodeType.Comment, start, end))
+				case HTMLTokenType.CommentText:
+					current.append(new HTMLNode(HTMLNodeType.Comment, start, end, undefined, undefined, token.text.trim()))
 					break
 			}
 
@@ -96,4 +160,11 @@ export class HTMLRoot extends HTMLNode {
 			return super.getContentHTMLString()
 		}
 	}
+}
+
+
+/** Trim text by removing `\r\n\t` and spaces in the front and end of each line. */
+function trimText(text: string) {
+	return text.replace(/^[\r\n\t ]+|[\r\n\t ]+$/gm, '')
+		.replace(/[\r\n]/g, '')
 }

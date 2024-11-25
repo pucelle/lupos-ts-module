@@ -1,5 +1,5 @@
 import {TemplateSlotPlaceholder} from './template-slot-placeholder'
-import {HTMLAttribute, HTMLTokenParser} from './html-token-parser'
+import {HTMLTokenParser} from './html-token-parser'
 
 
 export enum HTMLNodeType {
@@ -7,6 +7,30 @@ export enum HTMLNodeType {
 	Text,
 	Comment,
 }
+
+/** Attribute names and values */
+export interface HTMLAttribute {
+
+	nameStart: number
+	nameEnd: number
+
+	/** Not include quote. */
+	valueStart: number
+
+	/** Not include quote. */
+	valueEnd: number
+
+	name: string
+
+	/** Quotes have been removed. */
+	value: string | null
+
+	/** Whether attribute value been quoted and value will be transformed to string. */
+	quoted: boolean
+
+	removed?: boolean
+}
+
 
 export class HTMLNode {
 
