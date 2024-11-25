@@ -2,6 +2,7 @@
 export interface HTMLToken {
 	type: HTMLTokenType
 	start: number
+	end: number
 	text?: string
 	tagName?: string
 	attrs?: HTMLAttribute[]
@@ -81,6 +82,7 @@ export namespace HTMLTokenParser {
 					tokens.push({
 						type: HTMLTokenType.Text,
 						start: lastIndex,
+						end: match.index,
 						text,
 					})
 				}
@@ -99,6 +101,7 @@ export namespace HTMLTokenParser {
 					tokens.push({
 						type: HTMLTokenType.EndTag,
 						start: match.index,
+						end: match.index + piece.length, 
 						tagName,
 					})
 				}
@@ -113,6 +116,7 @@ export namespace HTMLTokenParser {
 				tokens.push({
 					type: HTMLTokenType.StartTag,
 					start: match.index,
+					end: match.index + piece.length, 
 					tagName,
 					attrs,
 					selfClose,
@@ -123,6 +127,7 @@ export namespace HTMLTokenParser {
 					tokens.push({
 						type: HTMLTokenType.EndTag,
 						start: lastIndex - 2,
+						end: lastIndex, 
 						tagName,
 					})
 				}
@@ -135,6 +140,7 @@ export namespace HTMLTokenParser {
 				tokens.push({
 					type: HTMLTokenType.Text,
 					start: lastIndex,
+					end: string.length,
 					text,
 				})
 			}
