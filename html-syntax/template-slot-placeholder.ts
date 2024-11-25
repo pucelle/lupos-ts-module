@@ -18,8 +18,7 @@ export namespace TemplateSlotPlaceholder {
 	 * Will add `$LUPOS_START_\d$ to indicate start of each template part.
 	 * Template slots have been replaced to placeholder `$LUPOS_SLOT_INDEX_\d$`.
 	 */
-	export function toTemplateString(tem: TS.TaggedTemplateExpression): {string: string, mapper: PositionMapper} {
-		let template = tem.template
+	export function toTemplateString(template: TS.TemplateLiteral): {string: string, mapper: PositionMapper} {
 		let string = ''
 		let mapper = new PositionMapper()
 

@@ -12,6 +12,7 @@ export class HTMLNode {
 
 	type: HTMLNodeType
 	start: number
+	end: number
 	tagName: string | undefined
 	text: string | undefined
 	attrs: HTMLAttribute[] | undefined
@@ -22,9 +23,10 @@ export class HTMLNode {
 	children: HTMLNode[] = []
 	parent: HTMLNode | null = null
 
-	constructor(type: HTMLNodeType, start: number, tagName?: string, attrs?: HTMLAttribute[], text?: string) {
+	constructor(type: HTMLNodeType, start: number, end: number, tagName?: string, attrs?: HTMLAttribute[], text?: string) {
 		this.type = type
 		this.start = start
+		this.end = end
 		this.tagName = tagName
 		this.attrs = attrs
 		this.text = text
@@ -80,9 +82,9 @@ export class HTMLNode {
 
 	/** 
 	 * Visitor get a node each time, in `parent->child` order.
-	 * It returns a callback, call it after visited all descendants.
+	 * It map return a callback, call it after visited all descendants.
 	 */
-	visit(visitor: (node: HTMLNode) => () => void) {
+	visit(visitor: (node: HTMLNode) => (() => void) | void) {
 		let callback = visitor(this)
 
 		for (let child of [...this.children]) {
@@ -94,8 +96,8 @@ export class HTMLNode {
 
 			child.visit(visitor)
 		}
-
-		callback()
+		
+		callback?.()
 	}
 
 	/** Remove all child nodes. */
@@ -123,7 +125,7 @@ export class HTMLNode {
 	}
 
 	wrapWith(tagName: string, attrs: HTMLAttribute[] = []) {
-		let newNode = new HTMLNode(HTMLNodeType.Tag, -1, tagName, attrs)
+		let newNode = new HTMLNode(HTMLNodeType.Tag, -1, -1, tagName, attrs)
 		let index = this.siblingIndex
 
 		this.parent!.children[index] = newNode
@@ -133,7 +135,7 @@ export class HTMLNode {
 
 	/** Append all children to a new node, and append it to self. */
 	wrapChildrenWith(tagName: string, attrs: HTMLAttribute[] = []) {
-		let newNode = new HTMLNode(HTMLNodeType.Tag, -1, tagName, attrs)
+		let newNode = new HTMLNode(HTMLNodeType.Tag, -1, -1, tagName, attrs)
 		newNode.append(...this.children)
 
 		this.children = []

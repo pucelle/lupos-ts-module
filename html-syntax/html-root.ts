@@ -12,6 +12,7 @@ export class HTMLRoot extends HTMLNode {
 
 		for (let token of tokens) {
 			let start = mapper.mapInOrder(token.start)
+			let end = mapper.mapInOrder(token.end)
 
 			switch (token.type) {
 				case HTMLTokenType.StartTag:
@@ -22,7 +23,7 @@ export class HTMLRoot extends HTMLNode {
 						}
 					})
 
-					let node = new HTMLNode(HTMLNodeType.Tag, start, token.tagName, attrs)
+					let node = new HTMLNode(HTMLNodeType.Tag, start, end, token.tagName, attrs)
 					current.append(node)
 
 					if (!token.selfClose) {
@@ -48,11 +49,11 @@ export class HTMLRoot extends HTMLNode {
 					break
 
 				case HTMLTokenType.Text:
-					current.append(new HTMLNode(HTMLNodeType.Text, start, undefined, undefined, token.text))
+					current.append(new HTMLNode(HTMLNodeType.Text, start, end, undefined, undefined, token.text))
 					break
 
 				case HTMLTokenType.Comment:
-					current.append(new HTMLNode(HTMLNodeType.Comment, start))
+					current.append(new HTMLNode(HTMLNodeType.Comment, start, end))
 					break
 			}
 
@@ -84,7 +85,7 @@ export class HTMLRoot extends HTMLNode {
 	}
 
 	constructor() {
-		super(HTMLNodeType.Tag, -1, 'root', [])
+		super(HTMLNodeType.Tag, -1, -1, 'root', [])
 	}
 
 	getContentHTMLString() {
