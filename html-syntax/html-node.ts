@@ -213,7 +213,11 @@ export class HTMLNode {
 		return this.children.map(child => child.toString()).join('')
 	}
 
-	private toStringOfAttrs(includeRemoved: boolean): string {
+	/** 
+	 * Output attribute to string.
+	 * `includeRemoved` indicates whether should output removed attributes.
+	 */
+	toStringOfAttrs(includeRemoved: boolean): string {
 		let joined: string[] = []
 
 		for (let {name, value, removed, quoted} of this.attrs!) {
