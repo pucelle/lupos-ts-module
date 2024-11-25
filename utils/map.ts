@@ -313,7 +313,7 @@ export class WeakerPairKeysMap<K1 extends object, K2 extends object, V> {
 	}
 
 	/** Has secondary map existed for first key. */
-	hasSecondOf(k1: K1): boolean {
+	hasKey(k1: K1): boolean {
 		return this.map.has(k1)
 	}
 
