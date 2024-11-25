@@ -259,7 +259,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 	
 
 	/** Visit node and all descendant nodes, find a node match test fn. */
-	function findInward(node: TS.Node, test: (node: TS.Node) => boolean) : TS.Node | undefined {
+	function findInward<T extends TS.Node>(node: TS.Node, test: (node: TS.Node) => node is T) : T | undefined {
 		if (test(node)) {
 			return node
 		}
@@ -273,6 +273,39 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 
 		return found
 	}
+
+	/** Walking outward for ancestral nodes, and find a node match test fn. */
+	function findOutward<T extends TS.Node>(node: TS.Node, test: (node: TS.Node) => node is T): T | null {
+		if (test(node)) {
+			return node
+		}
+
+		if (node.parent) {
+			return findOutward(node.parent, test)
+		}
+
+		return null
+	}
+
+
+	/**
+	 * Find by walking down the descendants of the node.
+	 * Note that will also search children when parent match.
+	 */
+	function findAllInward<T extends TS.Node>(node: TS.Node, test: (node: TS.Node) => node is T): T[] {
+		let found: T[] = []
+
+		if (test(node)) {
+			found.push(node)
+		}
+
+		node.forEachChild(child => {
+			found.push(...findAllInward(child, test))
+		})
+
+		return found
+	}
+
 
 	/** Get innermost node at specified offset index. */
 	function getNodeAtOffset(node: TS.Node, offset: number): TS.Node | undefined {
@@ -1479,6 +1512,8 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		isInstantlyRunFunction,
 		isListStruct,
 		findInward,
+		findOutward,
+		findAllInward,
 		getNodeAtOffset,
 		deco,
 		class: cls,
