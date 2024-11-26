@@ -10,20 +10,24 @@ export interface HTMLToken {
 export enum HTMLTokenType {
 
 	/** Exclude `<`. */
-	StartTagName,
+	StartTagName = 0,
 
 	/** Exclude `</` and `>`. */
-	EndTagName,
+	EndTagName = 1,
 
-	TagEnd,
-	SelfCloseTagEnd,
+	TagEnd = 2,
+	SelfCloseTagEnd = 3,
 	
-	AttributeName,
-	AttributeValue,
-	Text,
+	AttributeName = 4,
+
+	/** Include quotes. */
+	AttributeValue = 5,
+
+	/** Original text, not been trimmed. */
+	Text = 6,
 
 	/** Exclude `<!--` and `-->`. */
-	CommentText,
+	CommentText = 7,
 }
 
 
@@ -61,7 +65,6 @@ export namespace HTMLTokenParser {
 		AfterAttributeEqual,
 		WithinAttributeValue,
 		WithinComment,
-		EOF,
 	}
 
 
@@ -71,124 +74,174 @@ export namespace HTMLTokenParser {
 	 */
 	export function parseToTokens(string: string): HTMLToken[] {
 		let start = 0
-		let index = 0
+		let offset = 0
 		let state: ScanState = ScanState.AnyContent
 		let tokens: HTMLToken[] = []
 
-		if (string.length === 0) {
-			state = ScanState.EOF
-		}
-
-		while (state !== ScanState.EOF) {
-			let char = string[index]
-
+		while (offset < string.length) {
 			if (state === ScanState.AnyContent) {
-				if (char === '<') {
-					if (peekChars(string, index + 1, 3) === '!--') {
-						endText(string, tokens, start, index)
-						state = ScanState.WithinComment
-						start = index
-					}
-					else if (peekChar(string, index + 1) === '/') {
-						endText(string, tokens, start, index)
-						state = ScanState.WithinEndTag
-						start = index
-					}
-					else if (isNameChar(peekChar(string, index + 1))) {
-						endText(string, tokens, start, index)
-						state = ScanState.WithinStartTag
-						start = index
-					}
+				offset = readUntilChars(string, offset, ['<'])
+				if (offset === string.length) {
+					break
+				}
+
+				// |<!--
+				if (peekChars(string, offset + 1, 3) === '!--') {
+					endText(string, tokens, start, offset)
+					state = ScanState.WithinComment
+					start = offset += 4
+				}
+
+				// |</
+				else if (peekChar(string, offset + 1) === '/') {
+					endText(string, tokens, start, offset)
+					state = ScanState.WithinEndTag
+					start = offset += 2
+				}
+
+				// |<a
+				else if (isNameChar(peekChar(string, offset + 1))) {
+					endText(string, tokens, start, offset)
+					state = ScanState.WithinStartTag
+					start = offset += 1
+				}
+				else {
+					offset += 1
 				}
 			}
 
 			else if (state === ScanState.WithinComment) {
-				if (char === '>') {
-					if (peekChars(string, index - 3, 2) === '!--') {
-						tokens.push(makeToken(string, HTMLTokenType.CommentText, start + 4, index - 2))
-						state = ScanState.AnyContent
-						start = index + 1
-					}
+				offset = readUntilChars(string, offset, ['>'])
+				if (offset === string.length) {
+					break
+				}
+
+				// --|>
+				if (peekChars(string, offset - 2, 2) === '--') {
+					tokens.push(makeToken(string, HTMLTokenType.CommentText, start, offset - 2))
+					state = ScanState.AnyContent
+					start = offset += 1
+				}
+				else {
+					offset += 1
 				}
 			}
 
 			else if (state === ScanState.WithinStartTag) {
-				let endIndex = readUntilNotMatch(string, start, isNameChar)
-				tokens.push(makeToken(string, HTMLTokenType.StartTagName, start + 1, endIndex))
+
+				// <abc| ..
+				offset = readUntilNotMatch(string, start, isNameChar)
+				if (offset === string.length) {
+					break
+				}
+
+				tokens.push(makeToken(string, HTMLTokenType.StartTagName, start, offset))
 				state = ScanState.AfterStartTag
-				start = endIndex
+				start = offset
 			}
 
 			else if (state === ScanState.WithinEndTag) {
-				let endIndex = readUntilNotMatch(string, start, isNameChar)
-				tokens.push(makeToken(string, HTMLTokenType.StartTagName, start + 2, endIndex))
 
-				endIndex = readUntilChars(string, endIndex, ['>'])
+				// </abc|>
+				offset = readUntilNotMatch(string, start, isNameChar)
+				if (offset === string.length) {
+					break
+				}
+
+				tokens.push(makeToken(string, HTMLTokenType.EndTagName, start, offset))
+
+				// </abc|>
+				offset = readUntilChars(string, offset, ['>'])
+				if (offset === string.length) {
+					break
+				}
+
 				state = ScanState.AnyContent
-				start = Math.max(endIndex + 1, string.length)
+				start = offset += 1
 			}
 
 			else if (state === ScanState.AfterStartTag) {
+				let char = string[offset]
 				if (char === '>') {
-					if (peekChar(string, index - 1) === '/') {
-						tokens.push(makeToken(string, HTMLTokenType.SelfCloseTagEnd, index - 1, index + 1))
+
+					// /|>
+					if (peekChar(string, offset - 1) === '/') {
+						tokens.push(makeToken(string, HTMLTokenType.SelfCloseTagEnd, offset - 1, offset + 1))
 					}
+
+					// |>
 					else {
-						tokens.push(makeToken(string, HTMLTokenType.TagEnd, index, index + 1))
+						tokens.push(makeToken(string, HTMLTokenType.TagEnd, offset, offset + 1))
 					}
 
 					state = ScanState.AnyContent
-					start = index + 1
+					start = offset += 1
 				}
 
+				// |name
 				else if (isAttrNameChar(char)) {
 					state = ScanState.WithinAttributeName
-					start = index
+					start = offset
+				}
+
+				else {
+					start = offset += 1
 				}
 			}
 
 			else if (state === ScanState.WithinAttributeName) {
-				let endIndex = readUntilNotMatch(string, start, isAttrNameChar)
-				tokens.push(makeToken(string, HTMLTokenType.AttributeName, start, endIndex))
+
+				// name|
+				offset = readUntilNotMatch(string, start, isAttrNameChar)
+				tokens.push(makeToken(string, HTMLTokenType.AttributeName, start, offset))
 				state = ScanState.AfterAttributeName
-				start = endIndex
+				start = offset
 			}
 
 			else if (state === ScanState.AfterAttributeName) {
-				let endIndex = readUntilNotMatch(string, start, isEmptyChar)
-				let endChar = string[endIndex]
+				offset = readUntilNotMatch(string, start, isEmptyChar)
+				let endChar = string[offset]
 
+				// name|=
 				if (endChar === '=') {
 					state = ScanState.WithinAttributeValue
-					start = readUntilNotMatch(string, start, isEmptyChar)
+					start = offset = readUntilNotMatch(string, offset + 1, isEmptyChar)
 				}
+
+				//name |?
 				else {
 					state = ScanState.AfterStartTag
-					start = endIndex
+					start = offset
 				}
 			}
 
 			else if (state === ScanState.WithinAttributeValue) {
+				let char = string[offset]
+
+				// =|"..."
 				if (char === '"' || char === '\'') {
+
+					// "..."|
+					offset = endStringAttributeValue(string, tokens, offset, char)
 					state = ScanState.AfterStartTag
-					start = endStringAttributeValue(string, tokens, start, char)
+					start = offset
 				}
 				else {
-					let endIndex = readUntilNotMatch(string, start, isNameChar)
-					tokens.push(makeToken(string, HTMLTokenType.AttributeValue, start, endIndex))
+
+					// name=value|
+					offset = readUntilNotMatch(string, start, isNameChar)
+					tokens.push(makeToken(string, HTMLTokenType.AttributeValue, start, offset))
 
 					state = ScanState.AfterStartTag
-					start = endIndex
+					start = offset
 				}
-			}
-
-			if (index === string.length) {
-				endText(string, tokens, start, index)
-				state = ScanState.EOF
-				start = index
 			}
 		}
 
+		if (state === ScanState.AnyContent) {
+			endText(string, tokens, start, offset)
+		}
+		
 		return tokens
 	}
 
@@ -204,11 +257,11 @@ export namespace HTMLTokenParser {
 	function isNameChar(char: string): boolean {
 
 		// Add `$` to match template interpolation.
-		return /[\w$]/.test(char)
+		return /[\w:$]/.test(char)
 	}
 
 	function isAttrNameChar(char: string): boolean {
-		return /[\w@:.?$]/.test(char)
+		return /[\w@:.?$-]/.test(char)
 	}
 
 	function isEmptyChar(char: string): boolean {
@@ -243,26 +296,32 @@ export namespace HTMLTokenParser {
 		}
 	}
 
+	/** Return after position of end quote: `"..."|` */
 	function endStringAttributeValue(string: string, tokens: HTMLToken[], start: number, quote: string): number {
-		let startIndex = start
-		let untilIndex
+		let from = start + 1
+		let until
 
 		do {
-			untilIndex = readUntilChars(string, startIndex, ['\\', quote])
+			// "...|"
+			until = readUntilChars(string, from, ['\\', quote])
+
+			if (until === string.length) {
+				break
+			}
 			
-			if (string[untilIndex] === quote) {
+			if (string[until] === quote) {
 				break
 			}
 
 			// `\\"`
-			startIndex = untilIndex + 1
+			from = until + 1
 		}
-		while (startIndex < string.length)
+		while (from < string.length)
 
-		let endIndex = Math.max(untilIndex + 1, string.length)
-		tokens.push(makeToken(string, HTMLTokenType.AttributeValue, start, endIndex))
+		let end = Math.min(until + 1, string.length)
+		tokens.push(makeToken(string, HTMLTokenType.AttributeValue, start, end))
 
-		return endIndex
+		return end
 	}
 
 	function makeToken(string: string, type: HTMLTokenType, start: number, end: number): HTMLToken {

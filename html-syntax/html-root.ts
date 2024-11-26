@@ -1,30 +1,6 @@
 import {PositionMapper} from '../utils'
-import {HTMLNode, HTMLNodeType} from './html-node'
+import {HTMLAttribute, HTMLNode, HTMLNodeType} from './html-node'
 import {HTMLTokenParser, HTMLTokenType} from './html-token-parser'
-
-
-/** Attribute names and values */
-export interface HTMLAttribute {
-
-	nameStart: number
-	nameEnd: number
-	valueStart: number
-	valueEnd: number
-
-	name: string
-
-	/** Original attribute value. */
-	rawValue: string | null
-
-	/** Quotes have been removed. */
-	value: string | null
-
-	/** Whether raw attribute value has been quoted. */
-	quoted: boolean
-
-	/** Whether has been removed. */
-	removed?: boolean
-}
 
 
 export class HTMLRoot extends HTMLNode {
@@ -43,6 +19,7 @@ export class HTMLRoot extends HTMLNode {
 				case HTMLTokenType.StartTagName:
 					let node = new HTMLNode(HTMLNodeType.Tag, start, end, token.text, [])
 					current.append(node)
+					current = node
 					break
 
 				case HTMLTokenType.EndTagName:
@@ -112,7 +89,7 @@ export class HTMLRoot extends HTMLNode {
 				case HTMLTokenType.Text:
 					let text = trimText(token.text)
 					if (text) {
-						current.append(new HTMLNode(HTMLNodeType.Text, start, end, undefined, undefined, token.text))
+						current.append(new HTMLNode(HTMLNodeType.Text, start, end, undefined, undefined, text))
 					}
 					break
 

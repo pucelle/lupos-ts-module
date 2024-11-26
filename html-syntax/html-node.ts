@@ -13,21 +13,21 @@ export interface HTMLAttribute {
 
 	nameStart: number
 	nameEnd: number
-
-	/** Not include quote. */
 	valueStart: number
-
-	/** Not include quote. */
 	valueEnd: number
 
 	name: string
 
+	/** Original attribute value. */
+	rawValue: string | null
+
 	/** Quotes have been removed. */
 	value: string | null
 
-	/** Whether attribute value been quoted and value will be transformed to string. */
+	/** Whether raw attribute value has been quoted. */
 	quoted: boolean
 
+	/** Whether has been removed. */
 	removed?: boolean
 }
 
