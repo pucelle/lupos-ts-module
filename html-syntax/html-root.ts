@@ -25,15 +25,18 @@ export class HTMLRoot extends HTMLNode {
 				case HTMLTokenType.EndTagName:
 					do {
 						if (current.tagName === token.text) {
+							current.end = end
 							current = current.parent
 							break
 						}
 
 						if (token.text === '') {
+							current.end = end
 							current = current.parent
 							break
 						}
 
+						current.end = end
 						current = current.parent
 					} while (current)
 					break
@@ -42,12 +45,14 @@ export class HTMLRoot extends HTMLNode {
 					if (current && current.type === HTMLNodeType.Tag
 						&& HTMLTokenParser.SelfClosingTags.includes(current.tagName!)
 					) {
+						current.end = end
 						current = current.parent
 					}
 					break
 
 				case HTMLTokenType.SelfCloseTagEnd:
 					if (current && current.type === HTMLNodeType.Tag) {
+						current.end = end
 						current = current.parent
 					}
 					break

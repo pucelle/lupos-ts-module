@@ -1,20 +1,24 @@
 export class PositionMapper {
 
-	private fromTo: {from: number, diff: number}[] = []
+	private fromTo: {from: number, to: number}[] = []
 	private indexCache: number = 0
 
+	/** Normally add a local and a global offset. */
 	add(from: number, to: number) {
-		this.fromTo.push({from, diff: to - from})
+		this.fromTo.push({from, to})
 	}
 
-	/** Map continuously when `from` increase each time. */
+	/** 
+	 * Normally map a local offset to a global offset.
+	 * Map continuously when `from` increase each time.
+	 */
 	mapInOrder(from: number): number {
 		if (this.fromTo.length === 0) {
 			return from
 		}
 
 		let index = this.findIndexInOrder(from)
-		let diff = this.fromTo[index].diff
+		let diff = this.fromTo[index].to - this.fromTo[index].from
 
 		return from + diff
 	}
@@ -43,23 +47,43 @@ export class PositionMapper {
 		return this.indexCache = this.findIndex(from)
 	}
 
-	/** Map normally. */
+	/** Normally map a local offset to a global offset. */
 	map(from: number): number {
 		if (this.fromTo.length === 0) {
 			return from
 		}
 
-		let index = this.findIndexInOrder(from)
-		let diff = this.fromTo[index].diff
+		let index = this.findIndex(from)
+		let diff = this.fromTo[index].to - this.fromTo[index].from
 
 		return from + diff
 	}
 
 	private findIndex(from: number) {
-
-		// Find from all.
 		for (let i = 0; i < this.fromTo.length - 1; i++) {
 			if (this.fromTo[i + 1].from > from) {
+				return i
+			}
+		}
+
+		return this.fromTo.length - 1
+	}
+
+	/** Normally map a global offset to a local offset. */
+	backMap(to: number): number {
+		if (this.fromTo.length === 0) {
+			return to
+		}
+
+		let index = this.backFindIndex(to)
+		let diff = this.fromTo[index].to - this.fromTo[index].from
+
+		return to - diff
+	}
+
+	private backFindIndex(to: number) {
+		for (let i = 0; i < this.fromTo.length - 1; i++) {
+			if (this.fromTo[i + 1].to > to) {
 				return i
 			}
 		}
