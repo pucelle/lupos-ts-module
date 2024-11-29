@@ -57,13 +57,13 @@ export type TemplateSlotCallback = (slot: TemplateSlot) => (() => void) | void
 export class TemplateSlotParser {
 
 	readonly root: HTMLRoot
-	readonly values: TS.Node[]
+	readonly nodeValues: TS.Node[]
 	readonly helper: Helper
 	readonly callback: TemplateSlotCallback
 
 	constructor(root: HTMLRoot, values: TS.Node[], callback: TemplateSlotCallback, helper: Helper) {
 		this.root = root
-		this.values = values
+		this.nodeValues = values
 		this.callback = callback
 		this.helper = helper
 	}
@@ -262,7 +262,7 @@ export class TemplateSlotParser {
 		else if (group.length === 1 && !group[0].beText) {
 			let {valueIndices} = group[0]
 
-			let comment = new HTMLNode(HTMLNodeType.Comment, -1, -1)
+			let comment = new HTMLNode(HTMLNodeType.Comment, node.start, node.end)
 			comment.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(null, valueIndices)
 			node.replaceWith(comment)
 
@@ -278,7 +278,7 @@ export class TemplateSlotParser {
 
 				// Text, with dynamic content.
 				if (beText && valueIndices) {
-					let textNode = new HTMLNode(HTMLNodeType.Text, -1, -1, undefined, undefined, ' ')
+					let textNode = new HTMLNode(HTMLNodeType.Text, node.start, node.end, undefined, undefined, ' ')
 					textNode.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(strings, valueIndices)
 					node.before(textNode)
 
@@ -287,14 +287,14 @@ export class TemplateSlotParser {
 
 				// Static text.
 				else if (beText) {
-					let textNode = new HTMLNode(HTMLNodeType.Text, -1, -1, undefined, undefined, strings![0])
+					let textNode = new HTMLNode(HTMLNodeType.Text, node.start, node.end, undefined, undefined, strings![0])
 					textNode.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(strings, valueIndices)
 					node.before(textNode)
 				}
 
 				// Dynamic content.
 				else {
-					let comment = new HTMLNode(HTMLNodeType.Comment, -1, -1)
+					let comment = new HTMLNode(HTMLNodeType.Comment, node.start, node.end)
 					comment.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(strings, valueIndices)
 					node.before(comment)
 	
@@ -356,7 +356,12 @@ export class TemplateSlotParser {
 				current.valueIndices!.push(index)
 			}
 			else {
-				group.push({strings: null, valueIndices: [index], beText: false})
+				group.push({
+					strings: null,
+					valueIndices: [index],
+					beText: false,
+				})
+
 				current = {strings: [], valueIndices: [], beText: true}
 				group.push(current)
 			}
@@ -387,7 +392,7 @@ export class TemplateSlotParser {
 
 	/** Check whether a value index represents a value type of node. */
 	private isValueAtIndexValueType(index: number): boolean {
-		let rawNode = this.values[index]
+		let rawNode = this.nodeValues[index]
 		let type = this.helper.types.typeOf(rawNode)
 
 		return this.helper.types.isValueType(type)
