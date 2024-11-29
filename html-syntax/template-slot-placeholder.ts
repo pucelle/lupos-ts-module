@@ -75,8 +75,7 @@ export namespace TemplateSlotPlaceholder {
 
 
 	/** Extract all expression interpolations from a template. */
-	export function extractTemplateValues(tem: TS.TaggedTemplateExpression): TS.Expression[] {
-		let template = tem.template
+	export function extractTemplateValues(template: TS.TemplateLiteral): TS.Expression[] {
 		let values: TS.Expression[] = []
 
 		if (!ts.isTemplateExpression(template)) {
