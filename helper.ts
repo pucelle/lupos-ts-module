@@ -258,6 +258,35 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 	}
 	
 
+	/** Walk node and all descendant nodes, test fn return a node to stop. */
+	function walkInward(node: TS.Node, test: (node: TS.Node) => TS.Node | void) : TS.Node | undefined {
+		if (test(node)) {
+			return node
+		}
+
+		let stop: TS.Node | undefined = undefined
+
+		ts.forEachChild(node, (n) => {
+			stop ||= walkInward(n, test)
+			return stop
+		})
+
+		return stop
+	}
+
+	/** Walk and all ancestral nodes, test fn return a node to stop. */
+	function walkOutward(node: TS.Node, test: (node: TS.Node) => TS.Node | void): TS.Node | null {
+		if (test(node)) {
+			return node
+		}
+
+		if (node.parent) {
+			return walkOutward(node.parent, test)
+		}
+
+		return null
+	}
+
 	/** Visit node and all descendant nodes, find a node match test fn. */
 	function findInward<T extends TS.Node>(node: TS.Node, test: (node: TS.Node) => node is T) : T | undefined {
 		if (test(node)) {
@@ -274,7 +303,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		return found
 	}
 
-	/** Walking outward for ancestral nodes, and find a node match test fn. */
+	/** Visit outward for ancestral nodes, and find a node match test fn. */
 	function findOutward<T extends TS.Node>(node: TS.Node, test: (node: TS.Node) => node is T): T | null {
 		if (test(node)) {
 			return node
@@ -318,6 +347,32 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		return undefined
 	}
 
+	/** Get the leading comment for given node. */
+	function getNodeLeadingComment(node: TS.Node): string | null {
+		let sourceFileText = node.getSourceFile().text
+		let leadingComments = ts.getLeadingCommentRanges(sourceFileText, node.pos)
+
+		if (leadingComments && leadingComments.length > 0) {
+			return sourceFileText.substring(leadingComments[0].pos, leadingComments[0].end)
+		}
+
+		return null
+	}
+
+	/** Get the description, normally leading comment of given node. */
+	function getNodeDescription(node: TS.Node): string | null {
+		let comment = getNodeLeadingComment(node)
+		if (!comment) {
+			return null
+		}
+
+		// //	^\s*\/\/ ?
+		// /**	^\/\*\*[^\n]*
+		// */	\s*\*\/\s*$
+		// *	^\s*\* ?
+		return comment.replace(/^\s*\/\/ ?|^\/\*\*[\s^\n]*|\s*\*\/\s*$|^\s*\* ?/gm, '')
+	}
+
 
 
 
@@ -326,21 +381,21 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 
 		/** Get all decorator from a class declaration, a property or method declaration. */
 		getDecorators(
-			node: TS.ClassDeclaration | TS.MethodDeclaration | TS.PropertyDeclaration | TS.GetAccessorDeclaration | TS.SetAccessorDeclaration
+			node: TS.ClassLikeDeclaration | TS.MethodDeclaration | TS.PropertyDeclaration | TS.GetAccessorDeclaration | TS.SetAccessorDeclaration
 		): TS.Decorator[] {
 			return (node.modifiers?.filter((m: TS.ModifierLike) => ts.isDecorator(m)) || []) as TS.Decorator[]
 		},
 
 		/** Get the first decorator from a class declaration, a property or method declaration. */
 		getFirst(
-			node: TS.ClassDeclaration | TS.MethodDeclaration | TS.PropertyDeclaration | TS.GetAccessorDeclaration | TS.SetAccessorDeclaration
+			node: TS.ClassLikeDeclaration | TS.MethodDeclaration | TS.PropertyDeclaration | TS.GetAccessorDeclaration | TS.SetAccessorDeclaration
 		): TS.Decorator | undefined {
 			return node.modifiers?.find((m: TS.ModifierLike) => ts.isDecorator(m)) as TS.Decorator | undefined
 		},
 
 		/** Get the first decorator from a class declaration, a property or method declaration. */
 		getFirstName(
-			node: TS.ClassDeclaration | TS.MethodDeclaration | TS.PropertyDeclaration | TS.GetAccessorDeclaration | TS.SetAccessorDeclaration
+			node: TS.ClassLikeDeclaration | TS.MethodDeclaration | TS.PropertyDeclaration | TS.GetAccessorDeclaration | TS.SetAccessorDeclaration
 		): string | undefined {
 			let decorator = deco.getFirst(node)
 			let decoName = decorator ? deco.getName(decorator) : undefined
@@ -386,7 +441,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		 * Get one class member declaration by it's name.
 		 * `resolveExtend` specifies whether will look at extended class.
 		 */
-		getMember(node: TS.ClassDeclaration, memberName: string, resolveExtend: boolean = false): TS.ClassElement | undefined {
+		getMember(node: TS.ClassLikeDeclaration, memberName: string, resolveExtend: boolean = false): TS.ClassElement | undefined {
 			if (resolveExtend) {
 				let prop = cls.getMember(node, memberName, false)
 				if (prop) {
@@ -411,7 +466,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		 * Get one class property declaration by it's name.
 		 * `resolveExtend` specifies whether will look at extended class.
 		 */
-		getProperty(node: TS.ClassDeclaration, propertyName: string, resolveExtend: boolean = false): TS.PropertyDeclaration | undefined {
+		getProperty(node: TS.ClassLikeDeclaration, propertyName: string, resolveExtend: boolean = false): TS.PropertyDeclaration | undefined {
 			if (resolveExtend) {
 				let prop = cls.getProperty(node, propertyName, false)
 				if (prop) {
@@ -437,7 +492,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		 * Get one class method declaration by it's name.
 		 * `resolveExtend` specifies whether will look at extended class.
 		 */
-		getMethod(node: TS.ClassDeclaration, methodName: string, resolveExtend: boolean = false): TS.MethodDeclaration | undefined {
+		getMethod(node: TS.ClassLikeDeclaration, methodName: string, resolveExtend: boolean = false): TS.MethodDeclaration | undefined {
 			if (resolveExtend) {
 				let prop = cls.getMethod(node, methodName, false)
 				if (prop) {
@@ -460,7 +515,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		},
 
 		/** Get extends expression. */
-		getExtends(node: TS.ClassDeclaration): TS.ExpressionWithTypeArguments | undefined {
+		getExtends(node: TS.ClassLikeDeclaration): TS.ExpressionWithTypeArguments | undefined {
 			let extendHeritageClause = node.heritageClauses?.find(hc => {
 				return hc.token === ts.SyntaxKind.ExtendsKeyword
 			})
@@ -478,7 +533,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		},
 
 		/** Get super class declaration. */
-		getSuper(node: TS.ClassDeclaration): TS.ClassDeclaration | undefined {
+		getSuper(node: TS.ClassLikeDeclaration): TS.ClassLikeDeclaration | undefined {
 			let extendsNode = cls.getExtends(node)
 			if (!extendsNode) {
 				return undefined
@@ -487,11 +542,20 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 			let exp = extendsNode.expression
 			let superClass = symbol.resolveDeclaration(exp, ts.isClassDeclaration)
 
-			return superClass as TS.ClassDeclaration | undefined
+			return superClass as TS.ClassLikeDeclaration | undefined
+		},
+
+		/** Walk super class declarations, not include current. */
+		*walkSuper(node: TS.ClassLikeDeclaration): Iterable<TS.ClassLikeDeclaration> {
+			let superClass = cls.getSuper(node)
+			if (superClass) {
+				yield superClass
+				yield *cls.walkSuper(superClass)
+			}
 		},
 
 		/** Test whether is derived class of a specified named class, and of specified module. */
-		isDerivedOf(node: TS.ClassDeclaration, declName: string, moduleName: string): boolean {
+		isDerivedOf(node: TS.ClassLikeDeclaration, declName: string, moduleName: string): boolean {
 			let extendHeritageClause = node.heritageClauses?.find(hc => {
 				return hc.token === ts.SyntaxKind.ExtendsKeyword
 			})
@@ -526,7 +590,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		 * Test whether class or super class implements a type with specified name and located at specified module.
 		 * If `outerModuleName` specified, and importing from a relative path, it implies import from this module.
 		 */
-		isImplemented(node: TS.ClassDeclaration, typeName: string, moduleName: string, outerModuleName?: string): boolean {
+		isImplemented(node: TS.ClassLikeDeclaration, typeName: string, moduleName: string, outerModuleName?: string): boolean {
 			let implementClauses = node.heritageClauses?.find(h => {
 				return h.token === ts.SyntaxKind.ImplementsKeyword
 			})
@@ -573,7 +637,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		},
 
 		/** Get constructor. */
-		getConstructor(node: TS.ClassDeclaration, resolveExtend: boolean = false): TS.ConstructorDeclaration | undefined {
+		getConstructor(node: TS.ClassLikeDeclaration, resolveExtend: boolean = false): TS.ConstructorDeclaration | undefined {
 			let cons = node.members.find(v => ts.isConstructorDeclaration(v)) as TS.ConstructorDeclaration | undefined
 			if (cons) {
 				return cons
@@ -590,7 +654,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		},
 
 		/** Get constructor parameter list, even from super class. */
-		getConstructorParameters(node: TS.ClassDeclaration): TS.ParameterDeclaration[] | undefined {
+		getConstructorParameters(node: TS.ClassLikeDeclaration): TS.ParameterDeclaration[] | undefined {
 			let constructor = cls.getConstructor(node, true)
 			if (constructor) {
 				return [...constructor.parameters]
@@ -600,7 +664,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		},
 
 		/** Whether property or method has specified modifier. */
-		hasModifier(node: TS.PropertyDeclaration | TS.MethodDeclaration, name: 'readonly' | 'static' | 'protected' | 'private'): boolean {
+		hasModifier(node: TS.PropertyDeclaration | TS.PropertySignature | TS.AccessorDeclaration | TS.MethodDeclaration, name: 'readonly' | 'static' | 'protected' | 'private' | 'public'): boolean {
 			for (let modifier of node.modifiers || []) {
 				if (modifier.kind === ts.SyntaxKind.ReadonlyKeyword && name === 'readonly') {
 					return true
@@ -614,9 +678,25 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 				else if (modifier.kind === ts.SyntaxKind.PrivateKeyword && name === 'private') {
 					return true
 				}
+				else if (modifier.kind === ts.SyntaxKind.PublicKeyword && name === 'public') {
+					return true
+				}
 			}
 
 			return false
+		},
+		
+		/** Returns the visibility of given node. */
+		getVisibility(node: TS.PropertyDeclaration | TS.PropertySignature | TS.AccessorDeclaration | TS.MethodDeclaration): 'public' | 'protected' | 'private' {
+			if (cls.hasModifier(node, 'private') || node.name.getText().startsWith('$')) {
+				return 'private'
+			}
+			else if (cls.hasModifier(node, 'protected')) {
+				return 'protected'
+			}
+			else {
+				return 'public'
+			}
 		}
 	}
 
@@ -1233,7 +1313,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		 * and all the interface like type literals: `type A = {...}`.
 		 */
 		*resolveChainedClassesAndInterfaces(node: TS.Node):
-			Iterable<TS.InterfaceDeclaration | TS.TypeLiteralNode | TS.ClassDeclaration | TS.ClassExpression>
+			Iterable<TS.InterfaceDeclaration | TS.TypeLiteralNode | TS.ClassLikeDeclaration | TS.ClassExpression>
 		{
 			
 			// `{...}`
@@ -1312,7 +1392,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		 * - `typeof Cls`
 		 * - `{new(): Cls}`
 		 */
-		*resolveInstanceDeclarations(typeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
+		*resolveInstanceDeclarations(typeNode: TS.TypeNode): Iterable<TS.ClassLikeDeclaration> {
 			let typeNodes = types.destructTypeNode(typeNode)
 			if (typeNodes.length === 0) {
 				return
@@ -1356,10 +1436,10 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		 * and are interface like or type literal like.
 		 */
 		resolveExtendedInterfaceLikeTypeParameters(
-			node: TS.ClassDeclaration, finalHeritageName: string, finalHeritageTypeParameterIndex: number
+			node: TS.ClassLikeDeclaration, finalHeritageName: string, finalHeritageTypeParameterIndex: number
 		): (TS.InterfaceDeclaration | TS.TypeLiteralNode)[] {
 
-			let classDecl: TS.ClassDeclaration | undefined = node
+			let classDecl: TS.ClassLikeDeclaration | undefined = node
 
 			// <A & B, C> -> [[A, B], [C]]
 			let refedTypeParameters: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][] = []
@@ -1411,7 +1491,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 
 	
 	/** Destruct type node, and resolve class declarations of each. */
-	function* resolveInstanceDeclarationsOfTypeNodeNormally(typeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
+	function* resolveInstanceDeclarationsOfTypeNodeNormally(typeNode: TS.TypeNode): Iterable<TS.ClassLikeDeclaration> {
 		let typeNodes = types.destructTypeNode(typeNode)
 		if (typeNodes.length === 0) {
 			return
@@ -1511,10 +1591,13 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		isArraySpreadElement,
 		isInstantlyRunFunction,
 		isListStruct,
+		walkInward,
+		walkOutward,
 		findInward,
 		findOutward,
 		findAllInward,
 		getNodeAtOffset,
+		getNodeDescription,
 		deco,
 		class: cls,
 		access,
