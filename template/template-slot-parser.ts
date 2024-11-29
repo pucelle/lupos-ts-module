@@ -44,6 +44,8 @@ export interface TemplateSlot {
 	readonly valueIndices: number[] | null
 	readonly node: HTMLNode
 	readonly attr: HTMLAttribute | null
+	readonly start: number
+	readonly end: number
 }
 
 /** 
@@ -57,13 +59,13 @@ export type TemplateSlotCallback = (slot: TemplateSlot) => (() => void) | void
 export class TemplateSlotParser {
 
 	readonly root: HTMLRoot
-	readonly valueNodes: TS.Node[]
+	readonly nodeValues: TS.Node[]
 	readonly helper: Helper
 	readonly callback: TemplateSlotCallback
 
-	constructor(root: HTMLRoot, valueNodes: TS.Node[], callback: TemplateSlotCallback, helper: Helper) {
+	constructor(root: HTMLRoot, values: TS.Node[], callback: TemplateSlotCallback, helper: Helper) {
 		this.root = root
-		this.valueNodes = valueNodes
+		this.nodeValues = values
 		this.callback = callback
 		this.helper = helper
 	}
@@ -110,7 +112,9 @@ export class TemplateSlotParser {
 		strings: string[] | null,
 		valueIndices: number[] | null,
 		node: HTMLNode,
-		attr: HTMLAttribute | null
+		attr: HTMLAttribute | null,
+		start: number,
+		end: number
 	) {
 		let slot: TemplateSlot = {
 			type,
@@ -118,7 +122,9 @@ export class TemplateSlotParser {
 			strings,
 			valueIndices,
 			node,
-			attr
+			attr,
+			start,
+			end,
 		}
 
 		return this.callback(slot) || (() => {})
@@ -128,20 +134,20 @@ export class TemplateSlotParser {
 		let nameAttr = node.attrs!.find(a => a.name === 'name')
 		let name = nameAttr?.value || null
 
-		return this.onSlot(TemplateSlotType.SlotTag, name, null, null, node, null)
+		return this.onSlot(TemplateSlotType.SlotTag, name, null, null, node, null, node.tagStart, node.tagEnd)
 	}
 
 	private parseComponentTag(node: HTMLNode) {
-		return this.onSlot(TemplateSlotType.Component, null, null, null, node, null)
+		return this.onSlot(TemplateSlotType.Component, null, null, null, node, null, node.tagStart, node.tagEnd)
 	}
 
 	private parseDynamicTag(node: HTMLNode) {
 		let valueIndices = TemplateSlotPlaceholder.getSlotIndices(node.tagName!)
-		return this.onSlot(TemplateSlotType.DynamicComponent, null, null, valueIndices, node, null)
+		return this.onSlot(TemplateSlotType.DynamicComponent, null, null, valueIndices, node, null, node.tagStart, node.tagEnd)
 	}
 
 	private parseFlowControlTag(node: HTMLNode) {
-		return this.onSlot(TemplateSlotType.FlowControl, null, null, null, node, null)
+		return this.onSlot(TemplateSlotType.FlowControl, null, null, null, node, null, node.tagStart, node.tagEnd)
 	}
 
 	private parseAttributes(node: HTMLNode) {
@@ -226,7 +232,7 @@ export class TemplateSlotParser {
 			}
 
 			node.removeAttr(attr)
-			callbacks.push(this.onSlot(type, name, strings, valueIndices, node, attr))
+			callbacks.push(this.onSlot(type, name, strings, valueIndices, node, attr, attr.nameStart, attr.valueEnd))
 		}
 
 		return () => {
@@ -255,7 +261,7 @@ export class TemplateSlotParser {
 
 			node.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(strings, valueIndices)
 			node.text = ' '
-			callbacks.push(this.onSlot(TemplateSlotType.Text, null, strings, valueIndices, node, null))
+			callbacks.push(this.onSlot(TemplateSlotType.Text, null, strings, valueIndices, node, null, node.start, node.end))
 		}
 
 		// `${html`...`}`
@@ -266,7 +272,7 @@ export class TemplateSlotParser {
 			comment.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(null, valueIndices)
 			node.replaceWith(comment)
 
-			callbacks.push(this.onSlot(TemplateSlotType.Content, null, null, valueIndices, comment, null))
+			callbacks.push(this.onSlot(TemplateSlotType.Content, null, null, valueIndices, comment, null, node.start, node.end))
 		}
 
 		// Mixture of Text, Comment, Text, Comment...
@@ -282,7 +288,7 @@ export class TemplateSlotParser {
 					textNode.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(strings, valueIndices)
 					node.before(textNode)
 
-					addSlotFn.push(() => this.onSlot(TemplateSlotType.Text, null, strings, valueIndices, textNode, null))
+					addSlotFn.push(() => this.onSlot(TemplateSlotType.Text, null, strings, valueIndices, textNode, null, node.start, node.end))
 				}
 
 				// Static text.
@@ -298,7 +304,7 @@ export class TemplateSlotParser {
 					comment.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(strings, valueIndices)
 					node.before(comment)
 	
-					addSlotFn.push(() => this.onSlot(TemplateSlotType.Content, null, null, valueIndices, comment, null))
+					addSlotFn.push(() => this.onSlot(TemplateSlotType.Content, null, null, valueIndices, comment, null, node.start, node.end))
 				}
 			}
 			
@@ -392,7 +398,7 @@ export class TemplateSlotParser {
 
 	/** Check whether a value index represents a value type of node. */
 	private isValueAtIndexValueType(index: number): boolean {
-		let rawNode = this.valueNodes[index]
+		let rawNode = this.nodeValues[index]
 		let type = this.helper.types.typeOf(rawNode)
 
 		return this.helper.types.isValueType(type)

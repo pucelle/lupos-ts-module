@@ -34,10 +34,26 @@ export interface HTMLAttribute {
 
 export class HTMLNode {
 
-	type: HTMLNodeType
-	start: number
-	end: number
-	tagName: string | undefined
+	readonly type: HTMLNodeType
+	readonly tagName: string | undefined
+
+	readonly start: number
+
+	/** For tag node, equals start. */
+	readonly tagStart: number = -1
+
+	/** For tag node, `start` is the start of tag name. */
+	readonly nameStart: number = -1
+
+	/** For tag node, `end` is the end start tag name. */
+	nameEnd: number = -1
+
+	/** For tag node, `end` is the end of tag. */
+	tagEnd: number = -1
+
+	/** For tag node, `end` is the end of mapped end tag. */
+	end: number = -1
+	
 	text: string | undefined
 	attrs: HTMLAttribute[] | undefined
 
@@ -51,6 +67,12 @@ export class HTMLNode {
 		this.type = type
 		this.start = start
 		this.end = end
+
+		if (type === HTMLNodeType.Tag) {
+			this.tagStart = start
+			this.nameStart = start + 1
+		}
+
 		this.tagName = tagName
 		this.attrs = attrs
 		this.text = text

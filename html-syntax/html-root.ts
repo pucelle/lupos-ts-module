@@ -16,7 +16,8 @@ export class HTMLRoot extends HTMLNode {
 
 			switch (token.type) {
 				case HTMLTokenType.StartTagName:
-					let node = new HTMLNode(HTMLNodeType.Tag, start, end, token.text, [])
+					let node = new HTMLNode(HTMLNodeType.Tag, start, -1, token.text, [])
+					node.nameEnd = end
 					current.append(node)
 					current = node
 					break
@@ -41,6 +42,8 @@ export class HTMLRoot extends HTMLNode {
 					break
 
 				case HTMLTokenType.TagEnd:
+					current.tagEnd = end
+
 					if (current && current.type === HTMLNodeType.Tag
 						&& HTMLTokenParser.SelfClosingTags.includes(current.tagName!)
 					) {
@@ -50,6 +53,8 @@ export class HTMLRoot extends HTMLNode {
 					break
 
 				case HTMLTokenType.SelfCloseTagEnd:
+					current.tagEnd = end
+					
 					if (current && current.type === HTMLNodeType.Tag) {
 						current.end = end
 						current = current.parent
