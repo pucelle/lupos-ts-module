@@ -1,19 +1,18 @@
-import {PositionMapper} from '../utils'
 import {HTMLAttribute, HTMLNode, HTMLNodeType} from './html-node'
 import {HTMLTokenParser, HTMLTokenType} from './html-token-parser'
 
 
 export class HTMLRoot extends HTMLNode {
 
-	static fromString(string: string, mapper: PositionMapper): HTMLRoot {
+	static fromString(string: string): HTMLRoot {
 		let tokens = HTMLTokenParser.parseToTokens(string)
 		let tree = new HTMLRoot()
 		let current: HTMLNode | null = tree
 		let currentAttr: HTMLAttribute | null = null
 
 		for (let token of tokens) {
-			let start = mapper.mapInOrder(token.start)
-			let end = mapper.mapInOrder(token.end)
+			let start = token.start
+			let end = token.end
 
 			switch (token.type) {
 				case HTMLTokenType.StartTagName:

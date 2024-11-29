@@ -57,13 +57,13 @@ export type TemplateSlotCallback = (slot: TemplateSlot) => (() => void) | void
 export class TemplateSlotParser {
 
 	readonly root: HTMLRoot
-	readonly values: TS.Node[]
+	readonly valueNodes: TS.Node[]
 	readonly helper: Helper
 	readonly callback: TemplateSlotCallback
 
-	constructor(root: HTMLRoot, values: TS.Node[], callback: TemplateSlotCallback, helper: Helper) {
+	constructor(root: HTMLRoot, valueNodes: TS.Node[], callback: TemplateSlotCallback, helper: Helper) {
 		this.root = root
-		this.values = values
+		this.valueNodes = valueNodes
 		this.callback = callback
 		this.helper = helper
 	}
@@ -387,7 +387,7 @@ export class TemplateSlotParser {
 
 	/** Check whether a value index represents a value type of node. */
 	private isValueAtIndexValueType(index: number): boolean {
-		let rawNode = this.values[index]
+		let rawNode = this.valueNodes[index]
 		let type = this.helper.types.typeOf(rawNode)
 
 		return this.helper.types.isValueType(type)
