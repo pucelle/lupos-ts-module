@@ -44,7 +44,8 @@ export interface TemplateSlot {
 	readonly name: string | null
 
 	readonly namePrefix: string | null
-	readonly nameUnPrefixed: string | null
+	readonly nameUnPrefixedModified: string | null
+	readonly modifiers: string[] | null
 	readonly strings: string[] | null
 	readonly valueIndices: number[] | null
 	readonly node: HTMLNode
@@ -64,14 +65,14 @@ export type TemplateSlotCallback = (slot: TemplateSlot) => (() => void) | void
 export class TemplateSlotParser {
 
 	readonly root: HTMLRoot
-	readonly nodeValues: TS.Node[]
+	readonly valueNodes: TS.Node[]
 	readonly callback: TemplateSlotCallback
 	readonly canModify: boolean
 	readonly helper: Helper
 
 	constructor(root: HTMLRoot, values: TS.Node[], callback: TemplateSlotCallback, canModify: boolean, helper: Helper) {
 		this.root = root
-		this.nodeValues = values
+		this.valueNodes = values
 		this.callback = callback
 		this.canModify = canModify
 		this.helper = helper
@@ -107,6 +108,12 @@ export class TemplateSlotParser {
 				callbacks.push(this.parseText(node))
 				break
 		}
+
+		return () => {
+			for (let callback of callbacks) {
+				callback()
+			}
+		}
 	}
 
 	/** 
@@ -125,7 +132,8 @@ export class TemplateSlotParser {
 			type: TemplateSlotType.SlotTag,
 			name: name,
 			namePrefix: null,
-			nameUnPrefixed: name,
+			nameUnPrefixedModified: name,
+			modifiers: null,
 			strings: null,
 			valueIndices: null,
 			node,
@@ -140,7 +148,8 @@ export class TemplateSlotParser {
 			type: TemplateSlotType.Component,
 			name: null,
 			namePrefix: null,
-			nameUnPrefixed: null,
+			nameUnPrefixedModified: null,
+			modifiers: null,
 			strings: null,
 			valueIndices: null,
 			node,
@@ -157,7 +166,8 @@ export class TemplateSlotParser {
 			type: TemplateSlotType.DynamicComponent,
 			name: null,
 			namePrefix: null,
-			nameUnPrefixed: null,
+			nameUnPrefixedModified: null,
+			modifiers: null,
 			strings: null,
 			valueIndices,
 			node,
@@ -172,7 +182,8 @@ export class TemplateSlotParser {
 			type: TemplateSlotType.FlowControl,
 			name: null,
 			namePrefix: null,
-			nameUnPrefixed: null,
+			nameUnPrefixedModified: null,
+			modifiers: null,
 			strings: null,
 			valueIndices: null,
 			node,
@@ -189,8 +200,9 @@ export class TemplateSlotParser {
 		for (let attr of attrs) {
 			let {name, value, quoted} = attr
 			let type: TemplateSlotType | null = null
-			let prefix = name.match(/^[.:?@]{1,2}/)?.[0] ?? ''
-			let nameUnPrefixed = prefix ? name.slice(prefix.length) : name
+			let namePrefix = name.match(/^[.:?@]{1,2}/)?.[0] ?? ''
+			let nameAfterPrefix = namePrefix ? name.slice(namePrefix.length) : name
+			let [nameUnPrefixedModified, ...modifiers] = nameAfterPrefix.split('.')
 
 			if (name === 'tagName') {
 				continue
@@ -200,37 +212,36 @@ export class TemplateSlotParser {
 			// `<tag ...="...${...}...">
 			let strings = value !== null ? TemplateSlotPlaceholder.parseTemplateStrings(value, quoted) : null
 			let valueIndices = value !== null ? TemplateSlotPlaceholder.getSlotIndices(value) : null
+			let prefixFirstChar = namePrefix ? namePrefix[0] : ''
+			
+			switch (prefixFirstChar) {
+				case '.':
+					type = TemplateSlotType.Property
+					break
 
-			if (prefix) {
-				switch (prefix[0]) {
-					case '.':
-						type = TemplateSlotType.Property
-						break
+				case ':':
+					type = TemplateSlotType.Binding
+					break
 
-					case ':':
+				case '?':
+
+					// `?:` binding
+					if (namePrefix.length > 1 && namePrefix[1] === ':') {
 						type = TemplateSlotType.Binding
-						break
+					}
+					else {
+						type = TemplateSlotType.Attribute
+					}
+					break
+	
+				case '@':
+					type = TemplateSlotType.Event
+					break
 
-					case '?':
-
-						// `?:` binding
-						if (prefix.length > 1 && prefix[1] === ':') {
-							type = TemplateSlotType.Binding
-						}
-						else {
-							type = TemplateSlotType.Attribute
-						}
-						break
-		
-					case '@':
-						type = TemplateSlotType.Event
-						break
-
-					default:
-						if (valueIndices) {
-							type = TemplateSlotType.Attribute
-						}
-				}
+				default:
+					if (valueIndices) {
+						type = TemplateSlotType.Attribute
+					}
 			}
 
 			// On component or template, component inner may bind more.
@@ -264,8 +275,9 @@ export class TemplateSlotParser {
 			let callback = this.onSlot({
 				type,
 				name,
-				namePrefix: prefix,
-				nameUnPrefixed,
+				namePrefix,
+				nameUnPrefixedModified,
+				modifiers,
 				strings,
 				valueIndices,
 				node,
@@ -308,7 +320,8 @@ export class TemplateSlotParser {
 				type: TemplateSlotType.Text,
 				name: null,
 				namePrefix: null,
-				nameUnPrefixed: null,
+				nameUnPrefixedModified: null,
+				modifiers: null,
 				strings,
 				valueIndices,
 				node,
@@ -332,7 +345,8 @@ export class TemplateSlotParser {
 				type: TemplateSlotType.Content,
 				name: null,
 				namePrefix: null,
-				nameUnPrefixed: null,
+				nameUnPrefixedModified: null,
+				modifiers: null,
 				strings: null,
 				valueIndices,
 				node: comment,
@@ -361,8 +375,9 @@ export class TemplateSlotParser {
 						type: TemplateSlotType.Text,
 						name: null,
 						namePrefix: null,
-						nameUnPrefixed: null,
-						strings: null,
+						nameUnPrefixedModified: null,
+						modifiers: null,
+						strings,
 						valueIndices,
 						node: textNode,
 						attr: null,
@@ -390,8 +405,9 @@ export class TemplateSlotParser {
 						type: TemplateSlotType.Content,
 						name: null,
 						namePrefix: null,
-						nameUnPrefixed: null,
-						strings: null,
+						nameUnPrefixedModified: null,
+						modifiers: null,
+						strings,
 						valueIndices,
 						node: comment,
 						attr: null,
@@ -493,7 +509,7 @@ export class TemplateSlotParser {
 
 	/** Check whether a value index represents a value type of node. */
 	private isValueAtIndexValueType(index: number): boolean {
-		let rawNode = this.nodeValues[index]
+		let rawNode = this.valueNodes[index]
 		let type = this.helper.types.typeOf(rawNode)
 
 		return this.helper.types.isValueType(type)
