@@ -142,7 +142,7 @@ export namespace HTMLTokenParser {
 
 			else if (state === ScanState.WithinEndTag) {
 
-				// </abc|>
+				// </abc|> or </|>
 				offset = readUntilNotMatch(string, start, isNameChar)
 				if (offset === string.length) {
 					break

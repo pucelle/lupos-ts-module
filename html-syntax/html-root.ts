@@ -24,12 +24,15 @@ export class HTMLRoot extends HTMLNode {
 
 				case HTMLTokenType.EndTagName:
 					do {
+
+						// </name>
 						if (current.tagName === token.text) {
 							current.end = end
 							current = current.parent
 							break
 						}
 
+						// </>
 						if (token.text === '') {
 							current.end = end
 							current = current.parent
