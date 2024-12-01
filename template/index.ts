@@ -1,1 +1,1 @@
-export * from './template-slot-parser'
+export * from './template-parts-parser'

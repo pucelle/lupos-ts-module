@@ -3,23 +3,14 @@ import {HTMLAttribute, HTMLNode, HTMLNodeType, HTMLRoot, TemplateSlotPlaceholder
 import {Helper} from '../helper'
 
 
-/** Type of each template slot. */
-export enum TemplateSlotType {
+/** Type of each template part. */
+export enum TemplatePartType {
 
 	/** `<` only. */
 	StartTagOpen,
 
 	/** `<lu:...>`, `<slot>`, or any of `<[a-z]+`. */
 	NormalStartTag,
-
-	/** `<tag attr=...>`, without any slot expressions `${...}`. */
-	NormalAttribute,
-
-	/** `>${...}<`, content, normally a template result, or a list of template result, or null. */
-	Content,
-
-	/** Pure text node. */
-	Text,
 
 	/** `<slot>` */
 	SlotTag,
@@ -33,8 +24,20 @@ export enum TemplateSlotType {
 	/** `<lu:if>`, ... */
 	FlowControl,
 
-	/** `<tag attr=...>` */
-	Attribute,
+	/** `>${...}<`, content, normally a template result, or a list of template result, or null. */
+	Content,
+
+	/** Text node, with slot inside. */
+	SlottedText,
+
+	/** Text node, without any slot inside. */
+	UnSlottedText,
+
+	/** `<tag attr=${...}>` */
+	SlottedAttribute,
+
+	/** `<tag attr=...>`, without any slot expressions `${...}`. */
+	UnSlottedAttribute,
 
 	/** `<tag :class=...>` */
 	Binding,
@@ -46,8 +49,8 @@ export enum TemplateSlotType {
 	Event,
 }
 
-export interface TemplateSlot {
-	readonly type: TemplateSlotType
+export interface TemplatePart {
+	readonly type: TemplatePartType
 
 	/** Raw name string. */
 	readonly rawName: string | null
@@ -68,26 +71,24 @@ export interface TemplateSlot {
 }
 
 /** 
- * It accepts each slot, and return a callback,
+ * It accepts each part, and return a callback,
  * which will be called after visited all descendant
  */
-export type TemplateSlotCallback = (slot: TemplateSlot) => (() => void) | void
+export type TemplatePartCallback = (part: TemplatePart) => (() => void) | void
 
 
-/** Parse template node to get all slots. */
-export class TemplateSlotParser {
+/** Parse template node to get all parts. */
+export class TemplatePartParser {
 
 	readonly root: HTMLRoot
 	readonly valueNodes: TS.Node[]
-	readonly callback: TemplateSlotCallback
-	readonly canModify: boolean
+	readonly callback: TemplatePartCallback
 	readonly helper: Helper
 
-	constructor(root: HTMLRoot, values: TS.Node[], callback: TemplateSlotCallback, canModify: boolean, helper: Helper) {
+	constructor(root: HTMLRoot, values: TS.Node[], callback: TemplatePartCallback, helper: Helper) {
 		this.root = root
 		this.valueNodes = values
 		this.callback = callback
-		this.canModify = canModify
 		this.helper = helper
 	}
 
@@ -126,7 +127,7 @@ export class TemplateSlotParser {
 					}
 				}
 				else {
-					let callback = this.onNormalTag(node)
+					let callback = this.onNormalStartTag(node)
 					if (callback) {
 						callbacks.push(callback)
 					}
@@ -147,9 +148,9 @@ export class TemplateSlotParser {
 		}
 	}
 
-	private onNormalTag(node: HTMLNode) {
-		return this.onSlot({
-			type: TemplateSlotType.SlotTag,
+	private onNormalStartTag(node: HTMLNode) {
+		return this.onPart({
+			type: TemplatePartType.NormalStartTag,
 			rawName: node.tagName!,
 			namePrefix: null,
 			mainName: node.tagName!,
@@ -164,19 +165,19 @@ export class TemplateSlotParser {
 	}
 
 	/** 
-	 * Note `node` may not in tree when adding the slot.
+	 * Note `node` may not in tree when accepting the part.
 	 * It returns a callback to do more init after all children initialized.
 	 */
-	private onSlot(slot: TemplateSlot) {
-		return this.callback(slot)
+	private onPart(part: TemplatePart) {
+		return this.callback(part)
 	}
 
 	private parseSlotTag(node: HTMLNode) {
 		let nameAttr = node.attrs!.find(a => a.name === 'name')
 		let name = nameAttr?.value || null
 
-		return this.onSlot({
-			type: TemplateSlotType.SlotTag,
+		return this.onPart({
+			type: TemplatePartType.SlotTag,
 			rawName: name,
 			namePrefix: null,
 			mainName: name,
@@ -191,8 +192,8 @@ export class TemplateSlotParser {
 	}
 
 	private parseComponentTag(node: HTMLNode) {
-		return this.onSlot({
-			type: TemplateSlotType.Component,
+		return this.onPart({
+			type: TemplatePartType.Component,
 			rawName: null,
 			namePrefix: null,
 			mainName: null,
@@ -209,8 +210,8 @@ export class TemplateSlotParser {
 	private parseDynamicTag(node: HTMLNode) {
 		let valueIndices = TemplateSlotPlaceholder.getSlotIndices(node.tagName!)
 
-		return this.onSlot({
-			type: TemplateSlotType.DynamicComponent,
+		return this.onPart({
+			type: TemplatePartType.DynamicComponent,
 			rawName: null,
 			namePrefix: null,
 			mainName: null,
@@ -225,8 +226,8 @@ export class TemplateSlotParser {
 	}
 
 	private parseFlowControlTag(node: HTMLNode) {
-		return this.onSlot({
-			type: TemplateSlotType.FlowControl,
+		return this.onPart({
+			type: TemplatePartType.FlowControl,
 			rawName: null,
 			namePrefix: null,
 			mainName: null,
@@ -246,11 +247,12 @@ export class TemplateSlotParser {
 
 		for (let attr of attrs) {
 			let {name, value, quoted} = attr
-			let type: TemplateSlotType | null = null
+			let type: TemplatePartType | null = null
 			let namePrefix = name.match(/^[.:?@]{1,2}/)?.[0] ?? ''
 			let nameAfterPrefix = namePrefix ? name.slice(namePrefix.length) : name
 			let [nameUnPrefixedModified, ...modifiers] = nameAfterPrefix.split('.')
 
+			// Specifies custom tagName for component.
 			if (name === 'tagName') {
 				continue
 			}
@@ -263,31 +265,31 @@ export class TemplateSlotParser {
 			
 			switch (prefixFirstChar) {
 				case '.':
-					type = TemplateSlotType.Property
+					type = TemplatePartType.Property
 					break
 
 				case ':':
-					type = TemplateSlotType.Binding
+					type = TemplatePartType.Binding
 					break
 
 				case '?':
 
 					// `?:` binding
 					if (namePrefix.length > 1 && namePrefix[1] === ':') {
-						type = TemplateSlotType.Binding
+						type = TemplatePartType.Binding
 					}
 					else {
-						type = TemplateSlotType.Attribute
+						type = TemplatePartType.SlottedAttribute
 					}
 					break
-	
+
 				case '@':
-					type = TemplateSlotType.Event
+					type = TemplatePartType.Event
 					break
 
 				default:
 					if (valueIndices) {
-						type = TemplateSlotType.Attribute
+						type = TemplatePartType.SlottedAttribute
 					}
 			}
 
@@ -297,29 +299,33 @@ export class TemplateSlotParser {
 
 			// Append attribute, but not set, to $context.el, or component.
 			if (type === null && isSharedModificationNode) {
-				type = TemplateSlotType.Attribute
+				type = TemplatePartType.SlottedAttribute
 			}
 
 			// `<Com class=...>` use `:class` to do binding, to avoid conflict with component inner class attribute.
 			// Or `<div class=... :class=...>`, should upgrade `class` to `:class` to avoid it overwrites.
-			if (type === TemplateSlotType.Attribute
+			if (type === TemplatePartType.SlottedAttribute
 				&& (name === 'class' || name === 'style')
 			) {
 				let upgradeToBinding = isSharedModificationNode && valueIndices
 					|| attrs.find(attr => attr.name.startsWith(':' + name))
 
 				if (upgradeToBinding) {
-					type = TemplateSlotType.Binding
+					type = TemplatePartType.Binding
 				}
 			}
 
 			if (type === null) {
+				let callback = this.onUnSlottedAttribute(attr, node)
+				if (callback) {
+					callbacks.push(callback)
+				}
 				continue
 			}
 
 			node.removeAttr(attr)
 
-			let callback = this.onSlot({
+			let callback = this.onPart({
 				type,
 				rawName: name,
 				namePrefix,
@@ -345,7 +351,21 @@ export class TemplateSlotParser {
 		}
 	}
 
-	private parseNormalAttribute(_attr: HTMLAttribute, _node: HTMLNode) {}
+	private onUnSlottedAttribute(attr: HTMLAttribute, node: HTMLNode) {
+		return this.onPart({
+			type: TemplatePartType.UnSlottedAttribute,
+			rawName: attr.name,
+			namePrefix: null,
+			mainName: attr.name,
+			modifiers: null,
+			strings: null,
+			valueIndices: null,
+			node,
+			attr,
+			start: attr.nameStart,
+			end: attr.nameEnd,
+		})
+	}
 
 	/** Parse `<tag>${...}</tag>`. */
 	private parseText(node: HTMLNode) {
@@ -353,22 +373,23 @@ export class TemplateSlotParser {
 
 		// Note `text` has been trimmed when parsing tokens.
 		let text = node.text!
-		if (!TemplateSlotPlaceholder.hasSlotIndex(text)) {
-			return () => {}
-		}
 
 		// Joins all string parts.
 		let group = this.groupTextContent(text)
 
 		// Whole text of `...${...}...`
-		if (group.length === 1 && group[0].beText || !this.canModify) {
+		if (group.length === 1 && group[0].beText) {
 			let {strings, valueIndices} = group[0]
 
 			node.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(strings, valueIndices)
-			node.text = ' '
 
-			let callback = this.onSlot({
-				type: TemplateSlotType.Text,
+			// Text will be generated by bound slot.
+			if (valueIndices) {
+				node.text = ' '
+			}
+
+			let callback = this.onPart({
+				type: valueIndices ? TemplatePartType.SlottedText : TemplatePartType.UnSlottedText,
 				rawName: null,
 				namePrefix: null,
 				mainName: null,
@@ -394,8 +415,8 @@ export class TemplateSlotParser {
 			comment.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(null, valueIndices)
 			node.replaceWith(comment)
 
-			let callback = this.onSlot({
-				type: TemplateSlotType.Content,
+			let callback = this.onPart({
+				type: TemplatePartType.Content,
 				rawName: null,
 				namePrefix: null,
 				mainName: null,
@@ -426,8 +447,8 @@ export class TemplateSlotParser {
 					textNode.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(strings, valueIndices)
 					node.before(textNode)
 
-					let callback = this.onSlot({
-						type: TemplateSlotType.Text,
+					let callback = this.onPart({
+						type: TemplatePartType.SlottedText,
 						rawName: null,
 						namePrefix: null,
 						mainName: null,
@@ -456,8 +477,8 @@ export class TemplateSlotParser {
 					comment.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(strings, valueIndices)
 					node.before(comment)
 
-					let callback = this.onSlot({
-						type: TemplateSlotType.Content,
+					let callback = this.onPart({
+						type: TemplatePartType.Content,
 						rawName: null,
 						namePrefix: null,
 						mainName: null,
@@ -502,12 +523,22 @@ export class TemplateSlotParser {
 		}
 
 		let strings = TemplateSlotPlaceholder.parseTemplateStrings(text)
-		let valueIndices = TemplateSlotPlaceholder.getSlotIndices(text)!
+		let valueIndices = TemplateSlotPlaceholder.getSlotIndices(text)
 
 		// If a value index represents a value type of node, it attracts all neighbor strings.
 		let current: TextContentGroupedItem = {strings: [], valueIndices: [], beText: true}
 		let group: TextContentGroupedItem[] = [current]
 
+		// Has no index.
+		if (!valueIndices) {
+			current.strings = strings
+			current.valueIndices = null
+			current.beText = true
+
+			return group
+		}
+
+		// Has only index.
 		if (!strings) {
 			current.strings = null
 			current.valueIndices = valueIndices
