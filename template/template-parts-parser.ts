@@ -66,6 +66,8 @@ export interface TemplatePart {
 	readonly valueIndices: number[] | null
 	readonly node: HTMLNode
 	readonly attr: HTMLAttribute | null
+
+	/** For `<tag>`, is the range tag name. */
 	readonly start: number
 	readonly end: number
 }
