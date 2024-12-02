@@ -6,9 +6,6 @@ import {Helper} from '../helper'
 /** Type of each template part. */
 export enum TemplatePartType {
 
-	/** `<` only. */
-	StartTagOpen,
-
 	/** `<lu:...>`, `<slot>`, or any of `<[a-z]+`. */
 	NormalStartTag,
 
@@ -33,7 +30,10 @@ export enum TemplatePartType {
 	/** Text node, without any slot inside. */
 	UnSlottedText,
 
-	/** `<tag attr=${...}>` */
+	/** 
+	 * `<tag attr=${...}>`
+	 * Some static attribute also use this type, like `<template class="...">`.
+	 */
 	SlottedAttribute,
 
 	/** `<tag attr=...>`, without any slot expressions `${...}`. */
@@ -376,7 +376,7 @@ export class TemplatePartParser {
 		// Note `text` has been trimmed when parsing tokens.
 		let text = node.text!
 
-		// Joins all string parts.
+		// Try to join all neighbor string sections.
 		let group = this.groupTextContent(text)
 
 		// Whole text of `...${...}...`
