@@ -9,7 +9,7 @@ type ScopeConstructor<S extends Scope> = {
 
 
 /** Build a tree of scopes. */
-export class ScopeTree<S extends Scope> {
+export class ScopeTree<S extends Scope = Scope> {
 
 	readonly Scope: ScopeConstructor<S>
 	readonly helper: Helper
