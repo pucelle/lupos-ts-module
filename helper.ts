@@ -25,6 +25,11 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 	
 	//// Global
 
+	/** Test whether a node is raw node. */
+	function isRaw(node: TS.Node): boolean {
+		return node.pos >= 0
+	}
+
 	/** Get node full text, can output from a newly created node. */
 	function getFullText(node: TS.Node) {
 		if (node.pos >= 0) {
@@ -259,14 +264,14 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 	
 
 	/** Walk node and all descendant nodes, test fn return a node to stop. */
-	function walkInward(node: TS.Node, test: (node: TS.Node) => TS.Node | void) : TS.Node | undefined {
-		if (test(node)) {
-			return node
+	function walkInward(fromNode: TS.Node, test: (node: TS.Node) => TS.Node | void) : TS.Node | undefined {
+		if (test(fromNode)) {
+			return fromNode
 		}
 
 		let stop: TS.Node | undefined = undefined
 
-		ts.forEachChild(node, (n) => {
+		ts.forEachChild(fromNode, (n) => {
 			stop ||= walkInward(n, test)
 			return stop
 		})
@@ -275,27 +280,27 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 	}
 
 	/** Walk and all ancestral nodes, test fn return a node to stop. */
-	function walkOutward(node: TS.Node, test: (node: TS.Node) => TS.Node | void): TS.Node | null {
-		if (test(node)) {
-			return node
+	function walkOutward(fromNode: TS.Node, test: (node: TS.Node) => TS.Node | void): TS.Node | null {
+		if (test(fromNode)) {
+			return fromNode
 		}
 
-		if (node.parent) {
-			return walkOutward(node.parent, test)
+		if (fromNode.parent) {
+			return walkOutward(fromNode.parent, test)
 		}
 
 		return null
 	}
 
 	/** Visit node and all descendant nodes, find a node match test fn. */
-	function findInward<T extends TS.Node>(node: TS.Node, test: (node: TS.Node) => node is T) : T | undefined {
-		if (test(node)) {
-			return node
+	function findInward<T extends TS.Node>(fromNode: TS.Node, test: (node: TS.Node) => node is T) : T | undefined {
+		if (test(fromNode)) {
+			return fromNode
 		}
 
 		let found: TS.Node | undefined = undefined
 
-		ts.forEachChild(node, (n) => {
+		ts.forEachChild(fromNode, (n) => {
 			found ||= findInward(n, test)
 			return found
 		})
@@ -303,17 +308,38 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		return found
 	}
 
-	/** Visit outward for ancestral nodes, and find a node match test fn. */
-	function findOutward<T extends TS.Node>(node: TS.Node, test: (node: TS.Node) => node is T): T | null {
-		if (test(node)) {
-			return node
+	/** Visit self and ancestral nodes, and find a node match test fn. */
+	function findOutward<T extends TS.Node>(fromNode: TS.Node, test: (node: TS.Node) => node is T): T | undefined {
+		if (test(fromNode)) {
+			return fromNode
 		}
 
-		if (node.parent) {
-			return findOutward(node.parent, test)
+		if (fromNode.parent) {
+			return findOutward(fromNode.parent, test)
 		}
 
-		return null
+		return undefined
+	}
+
+
+	/** 
+	 * Visit self and ancestral nodes, and find a node match test fn.
+	 * If meed `untilNode`, and it doesn't passed test, stop finding.
+	 */
+	function findOutwardUntil<T extends TS.Node>(fromNode: TS.Node, untilNode: TS.Node | undefined, test: (node: TS.Node) => node is T) : T | undefined {
+		if (test(fromNode)) {
+			return fromNode
+		}
+
+		if (fromNode === untilNode) {
+			return undefined
+		}
+
+		if (fromNode.parent) {
+			return findOutward(fromNode.parent, test)
+		}
+
+		return undefined
 	}
 
 
@@ -1575,6 +1601,8 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 
 
 	return {
+		ts,
+		isRaw,
 		getFullText,
 		getText,
 		getIdentifier,
@@ -1595,6 +1623,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		walkOutward,
 		findInward,
 		findOutward,
+		findOutwardUntil,
 		findAllInward,
 		getNodeAtOffset,
 		getNodeDescription,

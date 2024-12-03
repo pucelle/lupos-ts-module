@@ -1,2 +1,2 @@
 export * from './internal-bindings'
-export * from './template-parts-parser'
+export * from './parts-parser'
