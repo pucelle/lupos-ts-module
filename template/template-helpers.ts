@@ -8,8 +8,8 @@ export namespace TemplateHelpers {
 
 	/** Try resolve component declarations. */
 	export function *resolveComponentDeclarations(
-		node: TS.Node,
 		tagName: string,
+		node: TS.Node,
 		valueNodes: TS.Node[],
 		scopeTree: ScopeTree,
 		helper: Helper
