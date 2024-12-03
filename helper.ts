@@ -559,7 +559,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		},
 
 		/** Get super class declaration. */
-		getSuper(node: TS.ClassLikeDeclaration): TS.ClassLikeDeclaration | undefined {
+		getSuper(node: TS.ClassLikeDeclaration): TS.ClassDeclaration | undefined {
 			let extendsNode = cls.getExtends(node)
 			if (!extendsNode) {
 				return undefined
@@ -568,11 +568,11 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 			let exp = extendsNode.expression
 			let superClass = symbol.resolveDeclaration(exp, ts.isClassDeclaration)
 
-			return superClass as TS.ClassLikeDeclaration | undefined
+			return superClass as TS.ClassDeclaration | undefined
 		},
 
 		/** Walk super class declarations, not include current. */
-		*walkSuper(node: TS.ClassLikeDeclaration): Iterable<TS.ClassLikeDeclaration> {
+		*walkSuper(node: TS.ClassLikeDeclaration): Iterable<TS.ClassDeclaration> {
 			let superClass = cls.getSuper(node)
 			if (superClass) {
 				yield superClass
