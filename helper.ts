@@ -1080,7 +1080,6 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 			return typeChecker.isArrayType(type)
 		},
 
-
 		/** Analysis whether the property declaration resolve from a node is readonly. */
 		isReadonly(node: TS.Node): boolean {
 
@@ -1121,7 +1120,19 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 			return false
 		},
 		
-		
+		/** `'A' | 'B'` -> `['A', 'B']` */
+		splitUnionTypeToStringList(type: TS.Type): string[] {
+			if (type.isUnion()) {
+				return type.types.map(t => types.splitUnionTypeToStringList(t)).flat()
+			}
+			else if (type.isStringLiteral()) {
+				return [types.getTypeFullText(type).replace(/['"]/g, '')]
+			}
+			else {
+				return []
+			}
+		},
+
 		/** 
 		 * `A & B` -> `[A, B]`
 		 * `Omit<A, B>` -> `[A, B]`
@@ -1134,7 +1145,6 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 
 			return list
 		},
-
 	}
 
 	function destructTypeNodeRecursively(node: TS.Node, list: TS.TypeNode[]) {
