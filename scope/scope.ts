@@ -90,13 +90,13 @@ export class Scope {
 	}
 
 	/** Try get raw declaration by it's variable name. */
-	getVariableDeclaration(name: string): TS.Node | undefined {
+	getVariableDeclaredOrReferenced(name: string): TS.Node | undefined {
 		if (this.variables.has(name)) {
 			return this.variables.get(name) ?? undefined
 		}
 
 		if (this.parent) {
-			return this.parent.getVariableDeclaration(name)
+			return this.parent.getVariableDeclaredOrReferenced(name)
 		}
 
 		return undefined

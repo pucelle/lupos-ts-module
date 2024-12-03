@@ -118,12 +118,12 @@ export class ScopeTree<S extends Scope = Scope> {
 	 * Try get declaration by variable name.
 	 * `fromRawNode` specifies where to query the variable from.
 	 */
-	getDeclarationByName(name: string, fromRawNode: TS.Node): TS.Node | undefined {
+	getDeclarationOrReferenceByName(name: string, fromRawNode: TS.Node): TS.Node | undefined {
 		let scope = this.findClosest(fromRawNode)
 		if (!scope) {
 			return undefined
 		}
 
-		return scope.getVariableDeclaration(name)
+		return scope.getVariableDeclaredOrReferenced(name)
 	}	
 }
