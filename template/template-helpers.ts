@@ -13,7 +13,7 @@ export namespace TemplateHelpers {
 		valueNodes: TS.Node[],
 		scopeTree: ScopeTree,
 		helper: Helper
-	): Iterable<TS.ClassLikeDeclaration> {
+	): Iterable<TS.ClassDeclaration> {
 		let isNamedComponent = TemplateSlotPlaceholder.isNamedComponent(tagName)
 		let isDynamicComponent = TemplateSlotPlaceholder.isDynamicComponent(tagName)
 

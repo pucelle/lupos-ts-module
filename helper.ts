@@ -1428,7 +1428,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		 * - `typeof Cls`
 		 * - `{new(): Cls}`
 		 */
-		*resolveInstanceDeclarations(typeNode: TS.TypeNode): Iterable<TS.ClassLikeDeclaration> {
+		*resolveInstanceDeclarations(typeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
 			let typeNodes = types.destructTypeNode(typeNode)
 			if (typeNodes.length === 0) {
 				return
@@ -1527,7 +1527,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 
 	
 	/** Destruct type node, and resolve class declarations of each. */
-	function* resolveInstanceDeclarationsOfTypeNodeNormally(typeNode: TS.TypeNode): Iterable<TS.ClassLikeDeclaration> {
+	function* resolveInstanceDeclarationsOfTypeNodeNormally(typeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
 		let typeNodes = types.destructTypeNode(typeNode)
 		if (typeNodes.length === 0) {
 			return

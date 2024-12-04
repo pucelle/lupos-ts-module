@@ -31,6 +31,12 @@ export enum TemplatePartType {
 	UnSlottedText,
 
 	/** 
+	 * `<tag ?attr=${...}>`
+	 * Query attribute.
+	 */
+	QueryAttribute,
+
+	/** 
 	 * `<tag attr=${...}>`
 	 * Some static attribute also use this type, like `<template class="...">`.
 	 */
@@ -283,7 +289,7 @@ export class TemplatePartParser {
 						type = TemplatePartType.Binding
 					}
 					else {
-						type = TemplatePartType.SlottedAttribute
+						type = TemplatePartType.QueryAttribute
 					}
 					break
 
