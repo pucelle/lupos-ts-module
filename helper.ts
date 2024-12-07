@@ -616,7 +616,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * Test whether class or super class implements a type with specified name and located at specified module.
 		 * If `outerModuleName` specified, and importing from a relative path, it implies import from this module.
 		 */
-		isImplemented(node: TS.ClassLikeDeclaration, typeName: string, moduleName: string, outerModuleName?: string): boolean {
+		isImplemented(node: TS.ClassLikeDeclaration, typeName: string, moduleName: string): boolean {
 			let implementClauses = node.heritageClauses?.find(h => {
 				return h.token === ts.SyntaxKind.ImplementsKeyword
 			})
@@ -637,13 +637,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 						return true
 					}
 
-					// Import relative module, try match outer module name/
-					if (outerModuleName
-						&& resolved.moduleName.startsWith('.')
+					// Import relative module, try match file path.
+					if (resolved.moduleName.startsWith('.')
+						&& node.getSourceFile().fileName.includes('/' + moduleName + '/')
 					) {
-						if (moduleName === outerModuleName) {
-							return true
-						}
+						return true
 					}
 					
 					return false
