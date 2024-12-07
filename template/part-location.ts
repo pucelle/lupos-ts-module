@@ -1,4 +1,4 @@
-import {TemplatePart} from './parts-parser'
+import {TemplatePart, TemplatePartType} from './parts-parser'
 
 
 export interface TemplatePartLocation {
@@ -10,10 +10,12 @@ export interface TemplatePartLocation {
 	/** End offset in template region. */
 	end: number
 
+	/** Only exist when in modifier type. */
 	modifierIndex?: number
 }
 
 export enum TemplatePartLocationType {
+	TagName,
 	Prefix,
 	Name,
 	Modifier,
@@ -29,6 +31,22 @@ export function getTemplatePartLocation(part: TemplatePart, temOffset: number): 
 	let offset = temOffset
 	let start = part.start
 	let end = start
+
+
+	// `<|Com|`
+	if (part.type === TemplatePartType.Component
+		|| part.type === TemplatePartType.DynamicComponent
+		|| part.type === TemplatePartType.FlowControl
+		|| part.type === TemplatePartType.SlotTag
+		|| part.type === TemplatePartType.NormalStartTag
+	) {
+		return {
+			type: TemplatePartLocationType.TagName,
+			start,
+			end,
+		}
+	}
+
 
 	end += (part.namePrefix?.length || 0)
 

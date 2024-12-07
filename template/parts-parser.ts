@@ -58,13 +58,19 @@ export enum TemplatePartType {
 export interface TemplatePart {
 	readonly type: TemplatePartType
 
-	/** Raw name string. */
+	/** 
+	 * Raw name string, can be property or attribute name, or tag name.
+	 * Note it doesn't include tag name.
+	 */
 	readonly rawName: string | null
 
 	/** Like `.`, `@`, `:`. */
 	readonly namePrefix: string | null
 
-	/** Name after excluding prefix and modifiers. */
+	/** 
+	 * Name after excluding prefix and modifiers.
+	 * Note it doesn't include tag name.
+	 */
 	readonly mainName: string | null
 
 	readonly modifiers: string[] | null
@@ -73,8 +79,10 @@ export interface TemplatePart {
 	readonly node: HTMLNode
 	readonly attr: HTMLAttribute | null
 
-	/** For `<tag>`, is the range tag name. */
+	/** For `<tag>`, is the start of tag name. */
 	readonly start: number
+
+	/** For `<tag>`, is the end of tag name. */
 	readonly end: number
 }
 
@@ -169,8 +177,8 @@ export class TemplatePartParser {
 			valueIndices: null,
 			node,
 			attr: null,
-			start: node.tagStart,
-			end: node.tagEnd,
+			start: node.nameStart,
+			end: node.nameEnd,
 		})
 	}
 
@@ -196,8 +204,8 @@ export class TemplatePartParser {
 			valueIndices: null,
 			node,
 			attr: null,
-			start: node.tagStart,
-			end: node.tagEnd,
+			start: node.nameStart,
+			end: node.nameEnd,
 		})
 	}
 
@@ -212,8 +220,8 @@ export class TemplatePartParser {
 			valueIndices: null,
 			node,
 			attr: null,
-			start: node.tagStart,
-			end: node.tagEnd,
+			start: node.nameStart,
+			end: node.nameEnd,
 		})
 	}
 
@@ -230,8 +238,8 @@ export class TemplatePartParser {
 			valueIndices,
 			node,
 			attr: null,
-			start: node.tagStart,
-			end: node.tagEnd,
+			start: node.nameStart,
+			end: node.nameEnd,
 		})
 	}
 
@@ -246,8 +254,8 @@ export class TemplatePartParser {
 			valueIndices: null,
 			node,
 			attr: null,
-			start: node.tagStart,
-			end: node.tagEnd,
+			start: node.nameStart,
+			end: node.nameEnd,
 		})
 	}
 

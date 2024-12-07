@@ -37,23 +37,23 @@ export class HTMLNode {
 	readonly type: HTMLNodeType
 	readonly tagName: string | undefined
 
-	readonly start: number
-
-	/** For tag node, equals start. */
-	readonly tagStart: number = -1
-
-	/** For tag node, `start` is the start of tag name. */
-	readonly nameStart: number = -1
-
-	/** For tag node, `end` is the end start tag name. */
-	nameEnd: number = -1
-
-	/** For tag node, `end` is the end of tag. */
-	tagEnd: number = -1
+	start: number
 
 	/** For tag node, `end` is the end of mapped end tag. */
 	end: number = -1
 	
+	/** For tag node, equals start. */
+	tagStart: number = -1
+
+	/** For tag node, `end` is the end of tag. */
+	tagEnd: number = -1
+
+	/** For tag node, `start` is the start of tag name. */
+	nameStart: number = -1
+
+	/** For tag node, `end` is the end of tag name. */
+	nameEnd: number = -1
+
 	text: string | undefined
 	attrs: HTMLAttribute[] | undefined
 

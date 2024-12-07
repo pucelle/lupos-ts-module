@@ -18,7 +18,7 @@ export type Helper = ReturnType<typeof helperOfContext>
 
 
 /** Help to get and check. */
-export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
+export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeChecker) {
 	let printer = ts.createPrinter()
 
 
@@ -963,7 +963,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 
 		/** Get type of a node. */
 		typeOf(node: TS.Node): TS.Type {
-			return typeChecker.getTypeAtLocation(node)
+			return typeCheckerGetter().getTypeAtLocation(node)
 		},
 
 		/** 
@@ -971,17 +971,17 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		 * Note the returned type node is not in source file, so can't be resolved.
 		 */
 		typeToTypeNode(type: TS.Type): TS.TypeNode | undefined {
-			return typeChecker.typeToTypeNode(type, undefined, undefined)
+			return typeCheckerGetter().typeToTypeNode(type, undefined, undefined)
 		},
 
 		/** Get type of a type node. */
 		typeOfTypeNode(typeNode: TS.TypeNode): TS.Type | undefined {
-			return typeChecker.getTypeFromTypeNode(typeNode)
+			return typeCheckerGetter().getTypeFromTypeNode(typeNode)
 		},
 
 		/** Get full text of a type, all type parameters are included. */
 		getTypeFullText(type: TS.Type): string {
-			return typeChecker.typeToString(type)
+			return typeCheckerGetter().typeToString(type)
 		},
 
 		/** Get the reference name of a type node, all type parameters are excluded. */
@@ -1000,7 +1000,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 
 		/** Get the returned type of a method / function declaration. */
 		getReturnType(node: TS.SignatureDeclaration): TS.Type | undefined {
-			let signature = typeChecker.getSignatureFromDeclaration(node)
+			let signature = typeCheckerGetter().getSignatureFromDeclaration(node)
 			if (!signature) {
 				return undefined
 			}
@@ -1077,7 +1077,7 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		 * Note array tuple like `[number, number]` is not included.
 		 */
 		isArrayType(type: TS.Type): boolean {
-			return typeChecker.isArrayType(type)
+			return typeCheckerGetter().isArrayType(type)
 		},
 
 		/** Analysis whether the property declaration resolve from a node is readonly. */
@@ -1226,17 +1226,17 @@ export function helperOfContext(ts: typeof TS, typeChecker: TS.TypeChecker) {
 		 * Default value is `false`.
 		 */
 		resolveSymbol(node: TS.Node, resolveAlias: boolean): TS.Symbol | undefined {
-			let symbol = typeChecker.getSymbolAtLocation(node)
+			let symbol = typeCheckerGetter().getSymbolAtLocation(node)
 
 			// Get symbol from identifier.
 			if (!symbol && !ts.isIdentifier(node)) {
 				let identifier = getIdentifier(node)
-				symbol = identifier ? typeChecker.getSymbolAtLocation(identifier) : undefined
+				symbol = identifier ? typeCheckerGetter().getSymbolAtLocation(identifier) : undefined
 			}
 
 			// Resolve aliased symbols to it's original declared place.
 			if (resolveAlias && symbol && (symbol.flags & ts.SymbolFlags.Alias) > 0) {
-				symbol = typeChecker.getAliasedSymbol(symbol)
+				symbol = typeCheckerGetter().getAliasedSymbol(symbol)
 			}
 
 			return symbol
