@@ -7,3 +7,6 @@ export const KnownInternalBindings: Record<string, {name: string, parameterCount
 	style: {name: 'StyleBinding', parameterCount: 1, implementsPart: false},
 	transition: {name: 'TransitionBinding', parameterCount: 3, implementsPart: true},
 }
+
+
+export const KnownInternalBindingClassNames = Object.values(KnownInternalBindings).map(v => v.name)

@@ -602,6 +602,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				if (resolved.moduleName === moduleName && resolved.memberName === declName) {
 					return true
 				}
+
+				// Import relative module, try match file path.
+				if (resolved.moduleName.startsWith('.')
+					&& node.getSourceFile().fileName.includes('/' + moduleName + '/')
+				) {
+					return true
+				}
 			}
 
 			let superClass = symbol.resolveDeclaration(exp, ts.isClassDeclaration)

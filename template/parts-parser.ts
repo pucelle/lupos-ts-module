@@ -144,7 +144,7 @@ export class TemplatePartParser {
 						callbacks.push(callback)
 					}
 				}
-				else {
+				else if (node !== this.root) {
 					let callback = this.onNormalStartTag(node)
 					if (callback) {
 						callbacks.push(callback)
@@ -272,6 +272,11 @@ export class TemplatePartParser {
 
 			// Specifies custom tagName for component.
 			if (name === 'tagName') {
+				node.removeAttr(attr)
+				let callback = this.onUnSlottedAttribute(attr, node)
+				if (callback) {
+					callbacks.push(callback)
+				}
 				continue
 			}
 
@@ -341,24 +346,26 @@ export class TemplatePartParser {
 				continue
 			}
 
-			node.removeAttr(attr)
+			else {
+				node.removeAttr(attr)
 
-			let callback = this.onPart({
-				type,
-				rawName: name,
-				namePrefix,
-				mainName: nameUnPrefixedModified,
-				modifiers,
-				strings,
-				valueIndices,
-				node,
-				attr,
-				start: attr.nameStart,
-				end: attr.valueEnd,
-			})
+				let callback = this.onPart({
+					type,
+					rawName: name,
+					namePrefix,
+					mainName: nameUnPrefixedModified,
+					modifiers,
+					strings,
+					valueIndices,
+					node,
+					attr,
+					start: attr.nameStart,
+					end: attr.valueEnd,
+				})
 
-			if (callback) {
-				callbacks.push(callback)
+				if (callback) {
+					callbacks.push(callback)
+				}
 			}
 		}
 
