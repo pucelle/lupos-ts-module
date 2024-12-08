@@ -54,7 +54,9 @@ export class HTMLNode {
 	/** For tag node, `end` is the end of tag name. */
 	nameEnd: number = -1
 
+	/** Note this text has been trimmed. */
 	text: string | undefined
+	
 	attrs: HTMLAttribute[] | undefined
 
 	/** Description for text and comment node. */
