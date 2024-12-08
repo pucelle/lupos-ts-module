@@ -92,8 +92,8 @@ export function getTemplatePartLocation(part: TemplatePart, temOffset: number): 
 
 
 	if (part.attr && part.attr.value !== null) {
-		let valueStart = part.attr.valueStart - part.start
-		let valueEnd = part.attr.valueEnd - part.end
+		let valueStart = part.attr.valueStart
+		let valueEnd = part.attr.valueEnd
 
 		if (part.attr.quoted) {
 			valueStart += 1

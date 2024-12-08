@@ -42,6 +42,7 @@ export namespace TemplateSlotPlaceholder {
 		return {string, mapper}
 	}
 
+	
 	/** Join strings and value indices to template string. */
 	export function joinStringsAndValueIndices(strings: string[] | null, valueIndices: number[] | null): string {
 		let joined = ''
