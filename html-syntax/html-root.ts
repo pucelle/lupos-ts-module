@@ -101,14 +101,23 @@ export class HTMLRoot extends HTMLNode {
 					break
 
 				case HTMLTokenType.Text:
-					let text = trimText(token.text)
-					if (text) {
-						current.append(new HTMLNode(HTMLNodeType.Text, start, end, undefined, undefined, text))
+					let nodeText = trimText(token.text)
+					if (nodeText) {
+						let trimOffset = token.text.match(/^[\r\n\t ]+/)?.[0].length || 0
+						let textStart = start + trimOffset
+						let textEnd = textStart + nodeText.length
+
+						current.append(new HTMLNode(HTMLNodeType.Text, textStart, textEnd, undefined, undefined, nodeText))
 					}
 					break
 
 				case HTMLTokenType.CommentText:
-					current.append(new HTMLNode(HTMLNodeType.Comment, start, end, undefined, undefined, token.text.trim()))
+					let commentText = token.text.trim()
+					let trimOffset = token.text.indexOf(commentText)
+					let commentStart = start + trimOffset
+					let commentEnd = commentStart + commentText.length
+
+					current.append(new HTMLNode(HTMLNodeType.Comment, commentStart, commentEnd, undefined, undefined, commentText))
 					break
 			}
 

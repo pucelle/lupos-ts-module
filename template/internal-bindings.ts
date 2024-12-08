@@ -9,4 +9,5 @@ export const KnownInternalBindings: Record<string, {name: string, parameterCount
 }
 
 
-export const KnownInternalBindingClassNames = Object.values(KnownInternalBindings).map(v => v.name)
+/** `ClassBinding`-> `class` */
+export const KnownInternalBindingNamesMap = new Map(Object.entries(KnownInternalBindings).map(v => [v[1].name, v[0]]))

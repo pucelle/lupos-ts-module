@@ -360,7 +360,7 @@ export class TemplatePartParser {
 					node,
 					attr,
 					start: attr.nameStart,
-					end: attr.valueEnd,
+					end: attr.nameEnd,
 				})
 
 				if (callback) {
