@@ -11,11 +11,6 @@ export enum HTMLNodeType {
 /** Attribute names and values */
 export interface HTMLAttribute {
 
-	nameStart: number
-	nameEnd: number
-	valueStart: number
-	valueEnd: number
-
 	name: string
 
 	/** Original attribute value. */
@@ -29,6 +24,15 @@ export interface HTMLAttribute {
 
 	/** Whether has been removed. */
 	removed?: boolean
+
+	nameStart: number
+	nameEnd: number
+
+	/** Value start, includes quotes, be `-1` if has no value. */
+	valueStart: number
+
+	/** Value end, includes quotes, be `-1` if has no value. */
+	valueEnd: number
 }
 
 
