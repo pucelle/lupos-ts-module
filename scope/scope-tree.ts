@@ -22,14 +22,17 @@ export class ScopeTree<S extends Scope = Scope> {
 	/** Scope node -> scope. */
 	protected scopeMap: Map<TS.Node, S> = new Map()
 
-	constructor(helper: Helper, ScopeConstructor: ScopeConstructor<S> = Scope as ScopeConstructor<S>) {
+	constructor(sourceFile: TS.SourceFile, helper: Helper, ScopeConstructor: ScopeConstructor<S> = Scope as ScopeConstructor<S>) {
+		this.sourceFile = sourceFile
 		this.Scope = ScopeConstructor
 		this.helper = helper
 		this.ts = helper.ts
+		
+		this.visitSourceFile(sourceFile)
 	}
 
 	/** Visit a source file and build scope tree. */
-	visitSourceFile(sourceFile: TS.SourceFile) {
+	protected visitSourceFile(sourceFile: TS.SourceFile) {
 		this.initialize()
 		this.sourceFile = sourceFile
 
