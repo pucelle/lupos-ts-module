@@ -1,6 +1,6 @@
 import type * as TS from 'typescript'
-import {ts} from '../../core'
 import {Helper} from '../helper'
+import {PairKeysMap} from '../utils'
 
 
 // Where to find diagnostic codes:
@@ -8,16 +8,15 @@ import {Helper} from '../helper'
 
 
 /** It helps to modify all the diagnostics of a source file. */
-export class SourceFileDiagnosticModifier {
+export class DiagnosticModifier {
 
 	readonly startDiagnostics: TS.Diagnostic[]
 	readonly sourceFile: TS.SourceFile
 	readonly helper: Helper
 
-	protected diagnosticByStart: Map<number, TS.Diagnostic> = new Map()
-	protected addedDiagnostics: TS.Diagnostic[] = []
-	protected addedStartIndices: Set<number> = new Set()
-	protected removedStartIndices: Set<number> = new Set()
+	protected diagnosticsByStartAndCode: PairKeysMap<number, number, TS.Diagnostic> = new PairKeysMap()
+	protected added: TS.Diagnostic[] = []
+	protected deleted: TS.Diagnostic[] = []
 
 	constructor(startDiagnostics: TS.Diagnostic[], sourceFile: TS.SourceFile, helper: Helper) {
 		this.startDiagnostics = startDiagnostics
@@ -30,7 +29,7 @@ export class SourceFileDiagnosticModifier {
 	protected initialize() {
 		for (let diag of this.startDiagnostics) {
 			if (diag.start !== undefined) {
-				this.diagnosticByStart.set(diag.start, diag)
+				this.diagnosticsByStartAndCode.set(diag.start, diag.code, diag)
 			}
 		}
 	}
@@ -52,12 +51,12 @@ export class SourceFileDiagnosticModifier {
 
 	/** Add a missing import diagnostic. */
 	protected add(start: number, length: number, code: number, message: string) {
-		if (this.addedStartIndices.has(start)) {
+		if (this.diagnosticsByStartAndCode.has(start, code)) {
 			return
 		}
 
 		let diag: TS.Diagnostic = {
-			category: ts.DiagnosticCategory.Error,
+			category: this.helper.ts.DiagnosticCategory.Error,
 			code,
 			messageText: message,
 			file: this.sourceFile,
@@ -65,26 +64,24 @@ export class SourceFileDiagnosticModifier {
 			length,
 		}
 
-		this.addedDiagnostics.push(diag)
-		this.addedStartIndices.add(start)
-		this.diagnosticByStart.set(start, diag)
+		this.added.push(diag)
+		this.diagnosticsByStartAndCode.set(start, code, diag)
 	}
 
 
-	/** Add usage of a import specifier node, remove it's diagnostic. */
-	removeNeverRead(node: TS.Node) {
+	/** Add usage of a import specifier node, delete it's diagnostic. */
+	deleteNeverRead(node: TS.Node) {
 
 		// If all imported members are not read,
 		// diagnostic located at import declaration.
-		if (ts.isImportSpecifier(node)) {
+		if (this.helper.ts.isImportSpecifier(node)) {
 			let importDecl = node.parent.parent.parent
 
-			if (ts.isImportDeclaration(importDecl)) {
+			if (this.helper.ts.isImportDeclaration(importDecl)) {
 				let start = importDecl.getStart()
-				let diag = this.diagnosticByStart.get(start)
-
-				if (diag && diag.code === 6133) {
-					this.remove(importDecl, [6133])
+				let diag = this.diagnosticsByStartAndCode.get(start, 6133)
+				if (diag) {
+					this.delete(importDecl, [6133])
 
 					// Note not return here, all imports, and specified
 					// import diagnostics exist at the same time.
@@ -95,26 +92,24 @@ export class SourceFileDiagnosticModifier {
 		// Diagnostic normally locate at declaration identifier.
 		node = this.helper.getIdentifier(node) ?? node
 
-		this.remove(node, [6133, 6196])
+		this.delete(node, [6133, 6196])
 	}
 
 	/** For binding multiple parameters `:bind=${a, b}`. */
-	removeUnusedComma(node: TS.Expression) {
-		this.remove(node, [2695])
+	deleteUnusedComma(node: TS.Expression) {
+		this.delete(node, [2695])
 	}
 
-	/** Remove diagnostic at specified node and code in limited codes. */
-	protected remove(node: TS.Node, codes: number[]) {
+	/** Delete diagnostic at specified node and code in limited codes. */
+	protected delete(node: TS.Node, codes: number[]) {
 		let start = node.getStart()
 
-		if (this.removedStartIndices.has(start)) {
-			return
-		}
-
-		let diag = this.diagnosticByStart.get(start)
-
-		if (diag && diag.start === start && codes.includes(diag.code)) {
-			this.removedStartIndices.add(start)
+		for (let code of codes) {
+			let diag = this.diagnosticsByStartAndCode.get(start, code)
+			if (diag) {
+				this.diagnosticsByStartAndCode.delete(start, code)
+				this.deleted.push(diag)
+			}
 		}
 	}
 }

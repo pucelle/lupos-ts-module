@@ -41,7 +41,7 @@ export class ListMap<K, V> {
 	}
 
 	/** Has specified key existed. */
-	hasOf(k: K): boolean {
+	hasKey(k: K): boolean {
 		return this.map.has(k)
 	}
 
