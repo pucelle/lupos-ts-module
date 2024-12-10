@@ -34,29 +34,35 @@ export class DiagnosticModifier {
 		}
 	}
 
+
 	/** Add a never read diagnostic. */
 	addNeverRead(node: TS.Node, message: string) {
-		this.add(node.getStart(), node.getText().length, 6133, message)
+		this.addByParameters(node.getStart(), node.getText().length, 6133, message, this.helper.ts.DiagnosticCategory.Error)
 	}
 
 	/** Add a missing import diagnostic. */
 	addMissingImport(start: number, length: number, message: string) {
-		this.add(start, length, 2304, message)
-	}
-
-	/** Add a custom diagnostic. */
-	addCustom(start: number, length: number, message: string) {
-		this.add(start, length, 0, message)
+		this.addByParameters(start, length, 2304, message, this.helper.ts.DiagnosticCategory.Error)
 	}
 
 	/** Add a missing import diagnostic. */
-	protected add(start: number, length: number, code: number, message: string) {
+	addMustBeComponent(start: number, length: number, message: string) {
+		this.addByParameters(start, length, 2322, message, this.helper.ts.DiagnosticCategory.Error)
+	}
+
+	/** Add a custom diagnostic with code `0`. */
+	addCustom(start: number, length: number, message: string, category: TS.DiagnosticCategory.Error = this.helper.ts.DiagnosticCategory.Error) {
+		this.addByParameters(start, length, 0, message, category)
+	}
+
+	/** Add a diagnostic by parameters. */
+	protected addByParameters(start: number, length: number, code: number, message: string, category: TS.DiagnosticCategory.Error) {
 		if (this.diagnosticsByStartAndCode.has(start, code)) {
 			return
 		}
 
 		let diag: TS.Diagnostic = {
-			category: this.helper.ts.DiagnosticCategory.Error,
+			category,
 			code,
 			messageText: message,
 			file: this.sourceFile,
@@ -66,6 +72,20 @@ export class DiagnosticModifier {
 
 		this.added.push(diag)
 		this.diagnosticsByStartAndCode.set(start, code, diag)
+	}
+
+	/** Add a missing import diagnostic. */
+	add(diag: TS.Diagnostic) {
+		if (diag.start === undefined) {
+			return
+		}
+
+		if (this.diagnosticsByStartAndCode.has(diag.start, diag.code)) {
+			return
+		}
+
+		this.added.push(diag)
+		this.diagnosticsByStartAndCode.set(diag.start, diag.code, diag)
 	}
 
 
@@ -111,5 +131,11 @@ export class DiagnosticModifier {
 				this.deleted.push(diag)
 			}
 		}
+	}
+
+	/** Get all diagnostics after modified. */
+	getModified() {
+		let diags = this.startDiagnostics.filter(diag => !this.deleted.includes(diag))
+		return [...diags, ...this.added]
 	}
 }

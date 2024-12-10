@@ -1,0 +1,128 @@
+import type * as TS from 'typescript'
+import {ScopeTree} from '../scope'
+import {HTMLRoot, TemplateSlotPlaceholder} from '../html-syntax'
+import {PositionMapper} from '../utils'
+import {Helper} from '../helper'
+
+
+// This is no shared way to generate templates from a single source file,
+// because in server, it generates all template directly,
+// but in transformer, a template may be splitted to several html trees.
+
+
+/** 
+ * Handle a template of a source file.
+ * You should extend it to generate part.
+ */
+export abstract class TemplateBasis {
+
+	readonly tagName: 'html' | 'svg' | 'css'
+	readonly node: TS.TemplateLiteral
+	readonly scopeTree: ScopeTree
+	readonly helper: Helper
+	readonly globalStart: number
+	readonly globalEnd: number
+
+	readonly sourceFile: TS.SourceFile
+	readonly component: TS.ClassDeclaration | undefined
+	readonly fileName: string
+	readonly root: HTMLRoot
+	readonly valueNodes: TS.Node[]
+
+	/** Contents of the template string, Has substitutions replaced to `$LUPOS_SLOT_INDEX_\D$`. */
+	readonly content: string
+
+	/** Map virtual document offset to original offset in whole ts document. */
+	readonly positionMapper: PositionMapper
+
+	constructor(tagName: 'html' | 'svg' | 'css', node: TS.TemplateLiteral, scopeTree: ScopeTree, helper: Helper) {
+		this.tagName = tagName
+		this.node = node
+		this.scopeTree = scopeTree
+		this.helper = helper
+
+		this.component = helper.findOutward(node, helper.ts.isClassDeclaration)!
+		this.sourceFile = node.getSourceFile()
+		this.fileName = node.getSourceFile().fileName
+		this.globalStart = node.getStart() + 1
+		this.globalEnd = node.getEnd() - 1
+
+		let {string, mapper} = TemplateSlotPlaceholder.toTemplateString(node)
+		let valueNodes = TemplateSlotPlaceholder.extractTemplateValues(node)
+		let root = HTMLRoot.fromString(string)
+
+		this.valueNodes = valueNodes
+		this.content = string
+		this.positionMapper = mapper
+		this.root = root
+	}
+
+	/** Get imported or declared within current source file by name. */
+	getReferenceByName(name: string): TS.Node | undefined {
+		let importedOrDeclared = this.scopeTree.getReferenceByName(name, this.node)
+		return importedOrDeclared
+	}
+
+	/** 
+	 * Try resolve component declarations by part.
+	 * `tagName` can be dynamic component interpolation.
+	 */
+	*resolveComponentDeclarations(tagName: string): Iterable<TS.ClassDeclaration> {
+		let isNamedComponent = TemplateSlotPlaceholder.isNamedComponent(tagName)
+		let isDynamicComponent = TemplateSlotPlaceholder.isDynamicComponent(tagName)
+
+		if (!isNamedComponent && !isDynamicComponent) {
+			return
+		}
+
+		// Resolve class declarations directly.
+		if (isNamedComponent) {
+			let ref = this.scopeTree.getReferenceByName(tagName, this.node)
+			if (!ref) {
+				return
+			}
+
+			let decls = this.helper.symbol.resolveDeclarations(ref, this.helper.ts.isClassDeclaration)
+			if (decls) {
+				yield* decls
+			}
+		}
+
+		// Resolve instance type of constructor interface.
+		else {
+			let ref = this.valueNodes[TemplateSlotPlaceholder.getUniqueSlotIndex(tagName)!]
+			let decls = this.helper.symbol.resolveDeclarations(ref, this.helper.ts.isClassDeclaration)
+			if (decls && decls.length > 0) {
+				yield* decls
+				return
+			}
+
+			// Note made type node can't be resolved.
+			let typeNode = this.helper.types.getOrMakeTypeNode(ref)
+			if (typeNode) {
+				yield* this.helper.symbol.resolveInstanceDeclarations(typeNode)
+				return
+			}
+		}
+	}
+
+	/** Convert template offset to local offset. */
+	templateOffsetToLocal(templateOffset: number): number {
+		return templateOffset
+	}
+
+	/** Convert local offset to template offset. */
+	localOffsetToTemplate(localOffset: number): number {
+		return localOffset
+	}
+
+	/** Convert global offset to local offset. */
+	globalOffsetToLocal(globalOffset: number): number {
+		return this.positionMapper.backMap(globalOffset)
+	}
+
+	/** Convert local offset to global offset. */
+	localOffsetToGlobal(localOffset: number): number {
+		return this.positionMapper.map(localOffset)
+	}
+}

@@ -23,12 +23,28 @@ export enum TemplatePartLocationType {
 }
 
 
-export function getTemplatePartLocation(part: TemplatePart, temOffset: number): TemplatePartLocation | null {
-	if (temOffset < part.start) {
-		return null
+export function getTemplatePartLocationAt(part: TemplatePart, temOffset: number): TemplatePartLocation | null {
+	let locations = parseAllTemplatePartLocations(part)
+
+	for (let location of locations) {
+		if (temOffset < location.start || temOffset > location.end) {
+			continue
+		}
+
+		// `|@name`, not `@|name`.
+		if (location.type === TemplatePartLocationType.Prefix && temOffset === location.end) {
+			continue
+		}
+
+		return location
 	}
 
-	let offset = temOffset
+	return null
+}
+
+
+export function parseAllTemplatePartLocations(part: TemplatePart): TemplatePartLocation[] {
+	let locations: TemplatePartLocation[] = []
 	let start = part.start
 	let end = start
 
@@ -40,36 +56,36 @@ export function getTemplatePartLocation(part: TemplatePart, temOffset: number): 
 		|| part.type === TemplatePartType.SlotTag
 		|| part.type === TemplatePartType.NormalStartTag
 	) {
-		return {
+		locations.push({
 			type: TemplatePartLocationType.TagName,
 			start,
 			end,
-		}
+		})
 	}
 
 
-	end += (part.namePrefix?.length || 0)
+	if (part.namePrefix) {
+		end += part.namePrefix.length
 
-	// `|@name`, not `@|name`.
-	if (offset < end) {
-		return {
+		// `|@name`, `@|name` should match name.
+		locations.push({
 			type: TemplatePartLocationType.Prefix,
 			start,
 			end,
-		}
+		})
 	}
 
 
-	start = end
-	end += (part.mainName?.length || 0)
+	if (part.mainName) {
+		start = end
+		end += part.mainName.length
 
-	// `@|name|`
-	if (offset <= end) {
-		return {
+		// `@|name|`
+		locations.push({
 			type: TemplatePartLocationType.Name,
 			start,
 			end
-		}
+		})
 	}
 
 
@@ -79,14 +95,12 @@ export function getTemplatePartLocation(part: TemplatePart, temOffset: number): 
 			end += part.modifiers[i].length + 1
 
 			// `.|modifier|`
-			if (offset <= start) {
-				return {
-					type: TemplatePartLocationType.Modifier,
-					start,
-					end,
-					modifierIndex: i,
-				}
-			}
+			locations.push({
+				type: TemplatePartLocationType.Modifier,
+				start,
+				end,
+				modifierIndex: i,
+			})
 		}
 	}
 
@@ -101,14 +115,12 @@ export function getTemplatePartLocation(part: TemplatePart, temOffset: number): 
 		}
 
 		// a="|b|"
-		if (offset >= valueStart && offset <= valueEnd) {
-			return {
-				type: TemplatePartLocationType.AttrValue,
-				start: valueStart,
-				end: valueEnd,
-			}
-		}
+		locations.push({
+			type: TemplatePartLocationType.AttrValue,
+			start: valueStart,
+			end: valueEnd,
+		})
 	}
 
-	return null
+	return locations
 }
