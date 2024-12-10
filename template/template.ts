@@ -27,7 +27,7 @@ export abstract class TemplateBasis {
 	readonly component: TS.ClassDeclaration | undefined
 	readonly fileName: string
 	readonly root: HTMLRoot
-	readonly valueNodes: TS.Node[]
+	readonly valueNodes: TS.Expression[]
 
 	/** Contents of the template string, Has substitutions replaced to `$LUPOS_SLOT_INDEX_\D$`. */
 	readonly content: string
@@ -35,7 +35,16 @@ export abstract class TemplateBasis {
 	/** Map virtual document offset to original offset in whole ts document. */
 	readonly positionMapper: PositionMapper
 
-	constructor(tagName: 'html' | 'svg' | 'css', node: TS.TemplateLiteral, scopeTree: ScopeTree, helper: Helper) {
+	constructor(
+		tagName: 'html' | 'svg' | 'css',
+		node: TS.TemplateLiteral,
+		content: string,
+		root: HTMLRoot,
+		valueNodes: TS.Expression[],
+		positionMapper: PositionMapper,
+		scopeTree: ScopeTree,
+		helper: Helper
+	) {
 		this.tagName = tagName
 		this.node = node
 		this.scopeTree = scopeTree
@@ -47,13 +56,9 @@ export abstract class TemplateBasis {
 		this.globalStart = node.getStart() + 1
 		this.globalEnd = node.getEnd() - 1
 
-		let {string, mapper} = TemplateSlotPlaceholder.toTemplateString(node)
-		let valueNodes = TemplateSlotPlaceholder.extractTemplateValues(node)
-		let root = HTMLRoot.fromString(string)
-
 		this.valueNodes = valueNodes
-		this.content = string
-		this.positionMapper = mapper
+		this.content = content
+		this.positionMapper = positionMapper
 		this.root = root
 	}
 

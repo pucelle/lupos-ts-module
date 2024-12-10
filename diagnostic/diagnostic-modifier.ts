@@ -9,31 +9,30 @@ import {PairKeysMap} from '../utils'
 
 /** It helps to modify all the diagnostics of a source file. */
 export class DiagnosticModifier {
-
-	readonly startDiagnostics: TS.Diagnostic[]
-	readonly sourceFile: TS.SourceFile
 	readonly helper: Helper
+
+	protected startDiagnostics!: TS.Diagnostic[]
+	protected sourceFile!: TS.SourceFile
 
 	protected diagnosticsByStartAndCode: PairKeysMap<number, number, TS.Diagnostic> = new PairKeysMap()
 	protected added: TS.Diagnostic[] = []
 	protected deleted: TS.Diagnostic[] = []
 
-	constructor(startDiagnostics: TS.Diagnostic[], sourceFile: TS.SourceFile, helper: Helper) {
-		this.startDiagnostics = startDiagnostics
-		this.sourceFile = sourceFile
+	constructor(helper: Helper) {
 		this.helper = helper
-		this.initialize()
 	}
 
 	/** Initialize before visit a new source file. */
-	protected initialize() {
+	setStart(startDiagnostics: TS.Diagnostic[], sourceFile: TS.SourceFile) {
+		this.startDiagnostics = startDiagnostics
+		this.sourceFile = sourceFile
+
 		for (let diag of this.startDiagnostics) {
 			if (diag.start !== undefined) {
 				this.diagnosticsByStartAndCode.set(diag.start, diag.code, diag)
 			}
 		}
 	}
-
 
 	/** Add a never read diagnostic. */
 	addNeverRead(node: TS.Node, message: string) {

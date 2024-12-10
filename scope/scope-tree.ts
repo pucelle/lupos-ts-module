@@ -22,18 +22,14 @@ export class ScopeTree<S extends Scope = Scope> {
 	/** Scope node -> scope. */
 	protected scopeMap: Map<TS.Node, S> = new Map()
 
-	constructor(sourceFile: TS.SourceFile, helper: Helper, ScopeConstructor: ScopeConstructor<S> = Scope as ScopeConstructor<S>) {
-		this.sourceFile = sourceFile
+	constructor(helper: Helper, ScopeConstructor: ScopeConstructor<S> = Scope as ScopeConstructor<S>) {
 		this.Scope = ScopeConstructor
 		this.helper = helper
 		this.ts = helper.ts
-		
-		this.visitSourceFile(sourceFile)
 	}
 
 	/** Visit a source file and build scope tree. */
-	protected visitSourceFile(sourceFile: TS.SourceFile) {
-		this.initialize()
+	visitSourceFile(sourceFile: TS.SourceFile) {
 		this.sourceFile = sourceFile
 
 		// In the first visiting initialize visit and scope tree.
@@ -46,13 +42,6 @@ export class ScopeTree<S extends Scope = Scope> {
 		}
 
 		visitor(sourceFile)
-	}
-
-	/** Initialize before visiting a new source file. */
-	protected initialize() {
-		this.stack = []
-		this.current = null
-		this.scopeMap.clear()
 	}
 
 	/** To next sibling. */
