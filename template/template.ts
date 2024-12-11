@@ -3,6 +3,7 @@ import {ScopeTree} from '../scope'
 import {HTMLRoot, TemplateSlotPlaceholder} from '../html-syntax'
 import {PositionMapper} from '../utils'
 import {Helper} from '../helper'
+import {TemplatePart} from './parts-parser'
 
 
 // This is no shared way to generate templates from a single source file,
@@ -110,6 +111,24 @@ export abstract class TemplateBasis {
 			}
 		}
 	}
+
+	/** Analyze part value type. */
+	getPartValueType(part: TemplatePart): TS.Type {
+		if (part.strings && part.valueIndices) {
+			return this.helper.typeChecker.getStringType()
+		}
+		else if (part.strings) {
+			return this.helper.typeChecker.getStringLiteralType(part.strings[0])
+		}
+		else if (part.valueIndices) {
+			let valueNode = this.valueNodes[part.valueIndices[0]]
+			return this.helper.types.typeOf(valueNode)
+		}
+		else {
+			return this.helper.typeChecker.getBooleanType()
+		}
+	}
+
 
 	/** Convert template offset to local offset. */
 	templateOffsetToLocal(templateOffset: number): number {

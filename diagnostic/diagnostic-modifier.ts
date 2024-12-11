@@ -44,9 +44,19 @@ export class DiagnosticModifier {
 		this.addByParameters(start, length, 2304, message, this.helper.ts.DiagnosticCategory.Error)
 	}
 
-	/** Add a missing import diagnostic. */
-	addMustBeComponent(start: number, length: number, message: string) {
+	/** Add not assignable diagnostic. */
+	addNotAssignable(start: number, length: number, message: string) {
 		this.addByParameters(start, length, 2322, message, this.helper.ts.DiagnosticCategory.Error)
+	}
+
+	/** Missing argument. */
+	addMissingArgument(start: number, length: number, message: string, category: TS.DiagnosticCategory.Error = this.helper.ts.DiagnosticCategory.Error) {
+		this.addByParameters(start, length, 6210, message, category)
+	}
+
+	/** Not exist on target type. */
+	addNotExistOn(start: number, length: number, message: string, category: TS.DiagnosticCategory.Error = this.helper.ts.DiagnosticCategory.Error) {
+		this.addByParameters(start, length, 2339, message, category)
 	}
 
 	/** Add a custom diagnostic with code `0`. */

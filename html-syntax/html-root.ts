@@ -69,6 +69,8 @@ export class HTMLRoot extends HTMLNode {
 				case HTMLTokenType.AttributeName:
 					if (current && current.type === HTMLNodeType.Tag) {
 						currentAttr = {
+							start: token.start,
+							end: token.end,
 							nameStart: token.start,
 							nameEnd: token.end,
 							valueStart: -1,
@@ -94,6 +96,7 @@ export class HTMLRoot extends HTMLNode {
 
 						currentAttr.valueStart = token.start
 						currentAttr.valueEnd = token.end
+						currentAttr.end = token.end
 						currentAttr.rawValue = token.text
 						currentAttr.value = value
 						currentAttr.quoted = quoted

@@ -4,7 +4,7 @@ import {LuposBinding, LuposComponent, LuposEvent, LuposProperty} from './types'
 import {analyzeLuposBindings, createLuposBinding} from './bindings'
 import {Helper} from '../helper'
 import {ListMap} from '../utils'
-import {KnownInternalBindings, TemplateBasis} from '../template'
+import {TemplateBasis} from '../template'
 
 
 /** 
@@ -88,7 +88,7 @@ export class Analyzer {
 	 * `tagName` can be dynamic component interpolation.
 	 */
 	getComponentByTagName(tagName: string, template: TemplateBasis): LuposComponent | undefined {
-		for (let component of this.walkComponentsByTagName(tagName, template)) {
+		for (let component of this.walkPossibleComponentsByTagName(tagName, template)) {
 			return component
 		}
 
@@ -96,10 +96,10 @@ export class Analyzer {
 	}
 
 	/** 
-	 * Iterate components by template part, the  and template.
+	 * Iterate all possible components by template part tag name.
 	 * `tagName` can be dynamic component interpolation.
 	 */
-	*walkComponentsByTagName(tagName: string, template: TemplateBasis): Iterable<LuposComponent> {
+	protected *walkPossibleComponentsByTagName(tagName: string, template: TemplateBasis): Iterable<LuposComponent> {
 		let classDecls = template.resolveComponentDeclarations(tagName)
 
 		for (let decl of classDecls) {
@@ -148,7 +148,7 @@ export class Analyzer {
 		}
 	}
 
-	/** Get properties of a component. */
+	/** Get a property by name of a component. */
 	getComponentProperty(component: LuposComponent, propertyName: string): LuposProperty | undefined {
 		for (let com of this.walkComponents(component)) {
 			if (com.properties[propertyName]) {
@@ -189,7 +189,7 @@ export class Analyzer {
 	}
 
 	/** Get binding by name and template. */
-	getBindingByNameAndTemplate(name: string, template: TemplateBasis): LuposBinding | undefined {
+	getBindingByName(name: string, template: TemplateBasis): LuposBinding | undefined {
 		let bindingClassDeclOrRef = template.getReferenceByName(name)
 
 		// Local declared.
@@ -205,17 +205,15 @@ export class Analyzer {
 			)
 		}
 
-		// internal bindings like `:class`.
-		if (!bindingClass && KnownInternalBindings[name]) {
-			let declName = KnownInternalBindings[name].name
-			bindingClass = this.getBindingsByName(declName)?.[0]?.declaration
-		}
-
+		// Local declaration or reference.
 		if (bindingClass) {
 			return this.getBindingByDeclaration(bindingClass)
 		}
 
-		return undefined
+		// Internal bindings like `:class`.
+		else {
+			return this.getBindingsByName(name)?.[0]
+		}
 	}
 
 	/** 
@@ -240,5 +238,5 @@ export class Analyzer {
 		}
 
 		return undefined
-	}	
+	}
 }

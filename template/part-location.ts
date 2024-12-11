@@ -56,6 +56,8 @@ export function parseAllTemplatePartLocations(part: TemplatePart): TemplatePartL
 		|| part.type === TemplatePartType.SlotTag
 		|| part.type === TemplatePartType.NormalStartTag
 	) {
+		end += part.node.tagName!.length
+
 		locations.push({
 			type: TemplatePartLocationType.TagName,
 			start,

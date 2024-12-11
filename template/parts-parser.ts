@@ -359,8 +359,8 @@ export class TemplatePartParser {
 					valueIndices,
 					node,
 					attr,
-					start: attr.nameStart,
-					end: attr.valueEnd >= 0 ? attr.valueEnd : attr.nameEnd,
+					start: attr.start,
+					end: attr.end,
 				})
 
 				if (callback) {
@@ -387,8 +387,8 @@ export class TemplatePartParser {
 			valueIndices: null,
 			node,
 			attr,
-			start: attr.nameStart,
-			end: attr.valueEnd >= 0 ? attr.valueEnd : attr.nameEnd,
+			start: attr.start,
+			end: attr.end,
 		})
 	}
 

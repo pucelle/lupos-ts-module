@@ -989,6 +989,18 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return typeCheckerGetter().typeToString(type)
 		},
 
+		/** Get the reference name of a type, all type parameters are excluded. */
+		getTypeReferenceName(type: TS.Type): string | undefined {
+			let typeNode = types.typeToTypeNode(type)
+			return typeNode ? types.getTypeNodeReferenceName(typeNode) : undefined
+		},
+
+		/** Get types of type parameters. */
+		getTypeParameters(type: TS.Type): (TS.Type | undefined)[] | undefined {
+			let typeNode = types.typeToTypeNode(type)
+			return typeNode ? types.getTypeNodeParameters(typeNode)?.map(t => types.typeOfTypeNode(t)) : undefined
+		},
+
 		/** Get the reference name of a type node, all type parameters are excluded. */
 		getTypeNodeReferenceName(node: TS.TypeNode): string | undefined {
 			if (!ts.isTypeReferenceNode(node)) {
@@ -1001,6 +1013,18 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			}
 
 			return typeName.text
+		},
+
+		/** Get the parameters of a type node. */
+		getTypeNodeParameters(node: TS.TypeNode): TS.TypeNode[] | undefined {
+			if (ts.isTypeReferenceNode(node)) {
+				return node.typeArguments ? [...node.typeArguments] : undefined
+			}
+			else if (ts.isArrayTypeNode(node)) {
+				return [node.elementType]
+			}
+
+			return undefined
 		},
 
 		/** Get the returned type of a method / function declaration. */
@@ -1024,7 +1048,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			
 			return typeText === 'void' || typeText === 'Promise<void>'
 		},
-
 
 		/** Test whether type is object. */
 		isObjectType(type: TS.Type): boolean {
@@ -1085,6 +1108,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return typeCheckerGetter().isArrayType(type)
 		},
 
+		/** Test whether type implements `Iterator`. */
+		isIterableType(type: TS.Type): boolean {
+			return !!typeCheckerGetter().getPropertiesOfType(type).find(v => v.getName().startsWith('__@iterator'))
+		},
+
 		/** Analysis whether the property declaration resolve from a node is readonly. */
 		isReadonly(node: TS.Node): boolean {
 
@@ -1123,6 +1151,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			}
 
 			return false
+		},
+
+		/** Whether `from` can be assigned to `to`, which means `from` is narrower. */
+		isAssignableTo(from: TS.Type, to: TS.Type): boolean {
+			return typeCheckerGetter().isTypeAssignableTo(from, to)
 		},
 		
 		/** `'A' | 'B'` -> `['A', 'B']` */
@@ -1615,8 +1648,36 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 	}
 
 
+	/** Do packing and unpacking. */
+	const pack = {
+		
+		/** 
+		 * D expressions to a single binary expression.
+		 * `a, b, c -> [a, b, c]`
+		 */
+		unPackCommaBinaryExpressions(exp: TS.Expression): TS.Expression[] {
+			if (ts.isBinaryExpression(exp)
+				&& exp.operatorToken.kind === ts.SyntaxKind.CommaToken
+			) {
+				return [
+					...pack.unPackCommaBinaryExpressions(exp.left),
+					...pack.unPackCommaBinaryExpressions(exp.right),
+				]
+			}
+			else {
+				return [exp]
+			}
+		}
+	}
+
+
+
 	return {
 		ts,
+		factory: ts.factory,
+		get typeChecker() {
+			return typeCheckerGetter()
+		},
 		isRaw,
 		getFullText,
 		getText,
@@ -1650,5 +1711,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		types,
 		symbol,
 		imports,
+		pack,
 	}
 }

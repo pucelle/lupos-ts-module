@@ -25,6 +25,9 @@ export interface HTMLAttribute {
 	/** Whether has been removed. */
 	removed?: boolean
 
+	start: number
+	end: number
+
 	nameStart: number
 	nameEnd: number
 

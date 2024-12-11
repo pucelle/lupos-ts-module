@@ -1,3 +1,4 @@
+export * from './lupos-internal-bindings'
 export * from './lupos-binding-modifiers'
 export * from './lupos-dom-event-modifiers'
 export * from './lupos-control-flow-tags'

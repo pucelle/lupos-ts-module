@@ -1,5 +1,5 @@
 /** Known bindings existing in `lupos.js`. */
-export const KnownInternalBindings: Record<string, {name: string, parameterCount: number, implementsPart: boolean}> = {
+export const LuposKnownInternalBindings: Record<string, {name: string, parameterCount: number, implementsPart: boolean}> = {
 	class: {name: 'ClassBinding', parameterCount: 1, implementsPart: false},
 	html: {name: 'HTMLBinding', parameterCount: 1, implementsPart: false},
 	ref: {name: 'RefBinding', parameterCount: 3, implementsPart: true},
@@ -10,4 +10,4 @@ export const KnownInternalBindings: Record<string, {name: string, parameterCount
 
 
 /** `ClassBinding`-> `class` */
-export const KnownInternalBindingNamesMap = new Map(Object.entries(KnownInternalBindings).map(v => [v[1].name, v[0]]))
+export const LuposKnownInternalBindingNamesMap = new Map(Object.entries(LuposKnownInternalBindings).map(v => [v[1].name, v[0]]))
