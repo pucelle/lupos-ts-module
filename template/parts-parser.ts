@@ -1,5 +1,5 @@
 import type * as TS from 'typescript'
-import {HTMLAttribute, HTMLNode, HTMLNodeType, HTMLRoot, TemplateSlotPlaceholder} from '../html-syntax'
+import {HTMLAttribute, HTMLNode, HTMLNodeType, HTMLRoot, TemplateSlotPlaceholder, TemplateSlotString, TemplateSlotValueIndex} from '../html-syntax'
 import {Helper} from '../helper'
 
 
@@ -74,15 +74,15 @@ export interface TemplatePart {
 	readonly mainName: string | null
 
 	readonly modifiers: string[] | null
-	readonly strings: string[] | null
-	readonly valueIndices: number[] | null
+	readonly strings: TemplateSlotString[] | null
+	readonly valueIndices: TemplateSlotValueIndex[] | null
 	readonly node: HTMLNode
 	readonly attr: HTMLAttribute | null
 
-	/** For `<tag>`, is the start of tag name. */
+	/** For `<tag>`, is the start of tag name, based on template string position. */
 	readonly start: number
 
-	/** For `<tag>`, is the end of tag name. */
+	/** For `<tag>`, is the end of tag name, based on template string position.. */
 	readonly end: number
 }
 
@@ -226,7 +226,11 @@ export class TemplatePartParser {
 	}
 
 	private parseDynamicTag(node: HTMLNode) {
-		let valueIndices = TemplateSlotPlaceholder.getSlotIndices(node.tagName!)
+		let valueIndex = TemplateSlotPlaceholder.getUniqueSlotIndex(node.tagName!)
+
+		let valueIndices: TemplateSlotValueIndex[] | null = valueIndex !== null
+			? [{index: valueIndex, start: node.nameStart, end: node.nameEnd}]
+			: null
 
 		return this.onPart({
 			type: TemplatePartType.DynamicComponent,
@@ -282,8 +286,9 @@ export class TemplatePartParser {
 
 			// `<tag ...=${...}>
 			// `<tag ...="...${...}...">
-			let strings = value !== null ? TemplateSlotPlaceholder.parseTemplateStrings(value, quoted) : null
-			let valueIndices = value !== null ? TemplateSlotPlaceholder.getSlotIndices(value) : null
+			let parsed = value !== null ? TemplateSlotPlaceholder.parseTemplateContent(value, quoted, attr.valueStart) : null
+			let strings = parsed ? parsed.strings : null
+			let valueIndices = parsed ? parsed.valueIndices : null
 			let prefixFirstChar = namePrefix ? namePrefix[0] : ''
 			
 			switch (prefixFirstChar) {
@@ -396,11 +401,8 @@ export class TemplatePartParser {
 	private parseText(node: HTMLNode) {
 		let callbacks: (() => void)[] = []
 
-		// Note `text` has been trimmed when parsing tokens.
-		let text = node.text!
-
 		// Try to join all neighbor string sections.
-		let group = this.groupTextContent(text)
+		let group = this.groupTextContent(node)
 
 		// Whole text of `...${...}...`
 		if (group.length === 1 && group[0].beText) {
@@ -465,6 +467,7 @@ export class TemplatePartParser {
 
 			for (let item of group) {
 				let {strings, valueIndices, beText} = item
+				let {start, end} = TemplateSlotPlaceholder.getOffsetsByStringsAndValueIndices(strings, valueIndices)!
 
 				// Text, with dynamic content.
 				if (beText && valueIndices) {
@@ -482,10 +485,8 @@ export class TemplatePartParser {
 						valueIndices,
 						node: textNode,
 						attr: null,
-
-						// All sections share same position.
-						start: node.start,
-						end: node.end,
+						start,
+						end,
 					})
 
 					addSlotFn.push(() => callback)
@@ -493,7 +494,7 @@ export class TemplatePartParser {
 
 				// Static text.
 				else if (beText) {
-					let textNode = new HTMLNode(HTMLNodeType.Text, node.start, node.end, undefined, undefined, strings![0])
+					let textNode = new HTMLNode(HTMLNodeType.Text, node.start, node.end, undefined, undefined, strings![0].string)
 					textNode.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(strings, valueIndices)
 					node.before(textNode)
 				}
@@ -514,8 +515,8 @@ export class TemplatePartParser {
 						valueIndices,
 						node: comment,
 						attr: null,
-						start: node.start,
-						end: node.end,
+						start,
+						end,
 					})
 	
 					addSlotFn.push(() => callback)
@@ -541,16 +542,15 @@ export class TemplatePartParser {
 	}
 	
 	/** Group to get bundling text part, and content part. */
-	private groupTextContent(text: string) {
-
+	private groupTextContent(node: HTMLNode) {
 		interface TextContentGroupedItem {
-			strings: string[] | null
-			valueIndices: number[] | null
+			strings: TemplateSlotString[] | null
+			valueIndices: TemplateSlotValueIndex[] | null
 			beText: boolean | null
 		}
 
-		let strings = TemplateSlotPlaceholder.parseTemplateStrings(text)
-		let valueIndices = TemplateSlotPlaceholder.getSlotIndices(text)
+		let text = node.text!
+		let {strings, valueIndices} = TemplateSlotPlaceholder.parseTemplateContent(text, false, node.start)
 
 		// If a value index represents a value type of node, it attracts all neighbor strings.
 		let current: TextContentGroupedItem = {strings: [], valueIndices: [], beText: true}
@@ -578,7 +578,7 @@ export class TemplatePartParser {
 		if (!strings) {
 			current.strings = null
 			current.valueIndices = valueIndices
-			current.beText = this.isValueAtIndexValueType(valueIndices[0])
+			current.beText = this.isValueAtIndexValueType(valueIndices[0].index)
 
 			return group
 		}
@@ -591,16 +591,16 @@ export class TemplatePartParser {
 				break
 			}
 
-			let index = valueIndices[i]
-			let beText = this.isValueAtIndexValueType(index)
+			let valueIndex = valueIndices[i]
+			let beText = this.isValueAtIndexValueType(valueIndex.index)
 
 			if (beText) {
-				current.valueIndices!.push(index)
+				current.valueIndices!.push(valueIndex)
 			}
 			else {
 				group.push({
 					strings: null,
-					valueIndices: [index],
+					valueIndices: [valueIndex],
 					beText: false,
 				})
 
@@ -621,7 +621,7 @@ export class TemplatePartParser {
 			if (item.valueIndices === null
 				&& item.strings
 				&& item.strings.length > 0
-				&& item.strings[0].length === 0
+				&& item.strings[0].string.length === 0
 			) {
 				item.strings = null
 			}

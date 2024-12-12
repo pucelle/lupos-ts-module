@@ -85,7 +85,7 @@ export function diagnoseBinding(
 
 		// `?:binding=${a, b}`, `?:binding=${(a, b)}`
 		if (!part.strings && part.valueIndices) {
-			let valueNode = template.valueNodes[part.valueIndices[0]]
+			let valueNode = template.valueNodes[part.valueIndices[0].index]
 
 			if (ts.isParenthesizedExpression(valueNode)) {
 				valueNode = valueNode.expression

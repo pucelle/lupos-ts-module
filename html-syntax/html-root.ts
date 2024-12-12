@@ -1,3 +1,4 @@
+import {trimText} from '../utils'
 import {HTMLAttribute, HTMLNode, HTMLNodeType} from './html-node'
 import {HTMLTokenParser, HTMLTokenType} from './html-token-parser'
 
@@ -104,20 +105,19 @@ export class HTMLRoot extends HTMLNode {
 					break
 
 				case HTMLTokenType.Text:
-					let nodeText = trimText(token.text)
-					if (nodeText) {
-						let trimOffset = token.text.match(/^[\r\n\t ]+/)?.[0].length || 0
-						let textStart = start + trimOffset
-						let textEnd = textStart + nodeText.length
+					let text = token.text
 
-						current.append(new HTMLNode(HTMLNodeType.Text, textStart, textEnd, undefined, undefined, nodeText))
+					if (trimText(text)) {
+						let textStart = start
+						let textEnd = textStart + text.length
+
+						current.append(new HTMLNode(HTMLNodeType.Text, textStart, textEnd, undefined, undefined, text))
 					}
 					break
 
 				case HTMLTokenType.CommentText:
-					let commentText = token.text.trim()
-					let trimOffset = token.text.indexOf(commentText)
-					let commentStart = start + trimOffset
+					let commentText = token.text
+					let commentStart = start
 					let commentEnd = commentStart + commentText.length
 
 					current.append(new HTMLNode(HTMLNodeType.Comment, commentStart, commentEnd, undefined, undefined, commentText))
@@ -163,11 +163,4 @@ export class HTMLRoot extends HTMLNode {
 			return super.getContentHTMLString()
 		}
 	}
-}
-
-
-/** Trim text by removing `\r\n\t` and spaces in the front and end of each line. */
-function trimText(text: string) {
-	return text.replace(/^[\r\n\t ]+|[\r\n\t ]+$/gm, '')
-		.replace(/[\r\n]/g, '')
 }

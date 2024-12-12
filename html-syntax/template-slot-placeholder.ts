@@ -2,6 +2,36 @@ import type * as TS from 'typescript'
 import {PositionMapper} from '../utils'
 
 
+export interface TemplateContentParsed {
+	strings: TemplateSlotString[] | null
+	valueIndices: TemplateSlotValueIndex[] | null
+}
+
+export interface TemplateSlotString {
+
+	/** Template slot string part. */
+	string: string
+
+	/** Start offset within current parsing string. */
+	start: number
+
+	/** Start offset within current parsing string. */
+	end: number
+}
+
+export interface TemplateSlotValueIndex {
+
+	/** Template slot value index. */
+	index: number
+
+	/** Start offset within current parsing string. */
+	start: number
+
+	/** Start offset within current parsing string. */
+	end: number
+}
+
+
 export namespace TemplateSlotPlaceholder {
 
 	let ts: typeof TS
@@ -18,7 +48,7 @@ export namespace TemplateSlotPlaceholder {
 	 * Will add `$LUPOS_START_\d$ to indicate start of each template part.
 	 * Template slots have been replaced to placeholder `$LUPOS_SLOT_INDEX_\d$`.
 	 */
-	export function toTemplateString(template: TS.TemplateLiteral): {string: string, mapper: PositionMapper} {
+	export function toTemplateContent(template: TS.TemplateLiteral): {string: string, mapper: PositionMapper} {
 		let string = ''
 		let mapper = new PositionMapper()
 
@@ -43,17 +73,70 @@ export namespace TemplateSlotPlaceholder {
 	}
 
 	
+	/** 
+	 * Split a full template string by template slot placeholder `$LUPOS_SLOT_INDEX_\d_.
+	 * If `quoted`, must return a string list.
+	 */
+	export function parseTemplateContent(content: string, quoted: boolean = false, startOffset: number = 0): TemplateContentParsed {
+		let match: RegExpExecArray | null
+		let strings: TemplateSlotString[] | null = []
+		let valueIndices: TemplateSlotValueIndex[] | null = []
+		let stringStart = 0
+		let indexStart = 0
+		let re = /\$LUPOS_SLOT_INDEX_(\d+)\$/g
+
+		while (match = re.exec(content)) {
+			indexStart = match.index
+			let stringEnd = match.index
+			let string = content.slice(stringStart, stringEnd)
+			let indexEnd = match.index + match[0].length
+			let index = Number(match[1])
+
+			strings.push({
+				string,
+				start: stringStart + startOffset,
+				end: stringEnd + startOffset,
+			})
+
+			valueIndices.push({
+				index,
+				start: indexStart + startOffset,
+				end: indexEnd + startOffset,
+			})
+
+			stringStart = indexEnd
+		}
+
+		strings.push({
+			string: content.slice(stringStart, content.length),
+			start: stringStart + startOffset,
+			end: content.length + startOffset,
+		})
+
+		if (strings.length === 0
+			|| strings.length === 2 && strings[0].string === '' && strings[1].string === '' && !quoted
+		) {
+			strings = null
+		}
+
+		return {
+			strings,
+			valueIndices,
+		}
+	}
+
+
 	/** Join strings and value indices to template string. */
-	export function joinStringsAndValueIndices(strings: string[] | null, valueIndices: number[] | null): string {
+	export function joinStringsAndValueIndices(strings: TemplateSlotString[] | null, valueIndices: TemplateSlotValueIndex[] | null): string {
 		let joined = ''
 
 		if (strings) {
-			joined += strings![0]
+			joined += strings![0].string
 		}
 
 		if (valueIndices) {
 			for (let i = 0; i < valueIndices.length; i++) {
-				joined += `$LUPOS_SLOT_INDEX_${valueIndices[i]}$`
+				joined += `$LUPOS_SLOT_INDEX_${valueIndices[i].index}$`
 
 				if (strings) {
 					joined += strings[i + 1]
@@ -64,8 +147,32 @@ export namespace TemplateSlotPlaceholder {
 		return joined
 	}
 
+
+	/** Join strings and value indices to template string. */
+	export function getOffsetsByStringsAndValueIndices(
+		strings: TemplateSlotString[] | null,
+		valueIndices: TemplateSlotValueIndex[] | null
+	): {start: number, end: number} | null {
+		if (strings) {
+			return {
+				start: strings[0].start,
+				end: strings[strings.length - 1].end,
+			}
+		}
+		else if (valueIndices) {
+			return {
+				start: valueIndices[0].start,
+				end: valueIndices[valueIndices.length - 1].end,
+			}
+		}
+		else {
+			return null
+		}
+	}
+
+
 	/** Replace placeholder `$LUPOS_SLOT_INDEX_\d_ with a replacer. */
-	export function replaceTemplateString(
+	export function replaceTemplateContent(
 		string: string,
 		replacer: (index: number) => string
 	): string {
@@ -91,61 +198,30 @@ export namespace TemplateSlotPlaceholder {
 	}
 
 
-	/** 
-	 * Split a full template string by template slot placeholder `$LUPOS_SLOT_INDEX_\d_.
-	 * If `quoted`, must return a string list.
-	 */
-	export function parseTemplateStrings(parsed: string, quoted: boolean = false): string[] | null {
-		let result = parsed.split(/\$LUPOS_SLOT_INDEX_\d+\$/g)
-		if (result.length === 2 && result[0] === '' && result[1] === '' && !quoted) {
-			return null
-		}
+	/** Whether content has a template slot placeholder `$LUPOS_SLOT_INDEX_\d_. */
+	export function hasSlotIndex(content: string): boolean {
+		return /\$LUPOS_SLOT_INDEX_\d+\$/.test(content)
+	}
 
-		return result
+
+	/** Whether content is a complete template slot placeholder `$LUPOS_SLOT_INDEX_\d_. */
+	export function isCompleteSlotIndex(content: string): boolean {
+		return /^\$LUPOS_SLOT_INDEX_\d+\$$/.test(content)
+	}
+
+
+	/** Get slot index from placeholder string `$LUPOS_SLOT_INDEX_\d_. */
+	export function getUniqueSlotIndex(content: string): number | null {
+		return Number(content.match(/^\$LUPOS_SLOT_INDEX_(\d+)\$$/)?.[1] ?? null)
 	}
 
 
 	/** 
-	 * Get all indices from interpolation like `$LUPOS_SLOT_INDEX_\d_.
-	 * It is useful only when natural incremental indices were broken.
-	 */
-	export function parseTemplateIndices(parsed: string): number[] {
-		let re = /\$LUPOS_SLOT_INDEX_(\d+)\$/g
-		let indices: number[] = []
-		let match: RegExpExecArray | null
-
-		while (match = re.exec(parsed)) {
-			indices.push(Number(match[1]))
-		}
-
-		return indices
-	}
-
-
-	/** Whether string has a template slot placeholder `$LUPOS_SLOT_INDEX_\d_. */
-	export function hasSlotIndex(string: string): boolean {
-		return /\$LUPOS_SLOT_INDEX_\d+\$/.test(string)
-	}
-
-
-	/** Whether string is a complete template slot placeholder `$LUPOS_SLOT_INDEX_\d_. */
-	export function isCompleteSlotIndex(string: string): boolean {
-		return /^\$LUPOS_SLOT_INDEX_\d+\$$/.test(string)
-	}
-
-
-	/** Get slot index from placeholder `$LUPOS_SLOT_INDEX_\d_. */
-	export function getUniqueSlotIndex(string: string): number | null {
-		return Number(string.match(/^\$LUPOS_SLOT_INDEX_(\d+)\$$/)?.[1] ?? null)
-	}
-
-
-	/** 
-	 * Get all slot indices from a string containing some template slot placeholders `$LUPOS_SLOT_INDEX_\d_.
+	 * Get all slot indices from template content containing some template slot placeholders `$LUPOS_SLOT_INDEX_\d_.
 	 * Returns `null` if no index.
 	 */
-	export function getSlotIndices(string: string): number[] | null {
-		let indices = [...string.matchAll(/\$LUPOS_SLOT_INDEX_(\d+)\$/g)].map(m => Number(m[1]))
+	export function getSlotIndices(content: string): number[] | null {
+		let indices = [...content.matchAll(/\$LUPOS_SLOT_INDEX_(\d+)\$/g)].map(m => Number(m[1]))
 		return indices.length > 0 ? indices : null
 	}
 

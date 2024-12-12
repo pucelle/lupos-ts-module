@@ -25,16 +25,22 @@ export interface HTMLAttribute {
 	/** Whether has been removed. */
 	removed?: boolean
 
+	/** Start offset based on template string position. */
 	start: number
+
+	/** Start offset based on template string position. */
 	end: number
 
+	/** Start offset of attribute name based on template string position. */
 	nameStart: number
+
+	/** Start offset of attribute name based on template string position. */
 	nameEnd: number
 
-	/** Value start, includes quotes, be `-1` if has no value. */
+	/** Start offset of attribute value based on template string, includes quotes, be `-1` if has no value. */
 	valueStart: number
 
-	/** Value end, includes quotes, be `-1` if has no value. */
+	/** End offset of attribute value based on template string, includes quotes, be `-1` if has no value. */
 	valueEnd: number
 }
 
@@ -44,21 +50,37 @@ export class HTMLNode {
 	readonly type: HTMLNodeType
 	readonly tagName: string | undefined
 
+	/** Start offset of node name based on template string position. */
 	start: number
 
-	/** For tag node, `end` is the end of mapped end tag. */
+	/** 
+	 * End offset of node based on template string position.
+	 * For tag node, `end` is the end of mapped end tag.
+	  */
 	end: number = -1
 	
-	/** For tag node, equals start. */
+	/** 
+	 * Start offset of tag based on template string position.
+	 * For non-tag nodes is always `-1`.
+	 */
 	tagStart: number = -1
 
-	/** For tag node, `end` is the end of tag. */
+	/** 
+	 * End offset of tag based on template string position.
+	 * For non-tag nodes is always `-1`.
+	 */
 	tagEnd: number = -1
 
-	/** For tag node, `start` is the start of tag name. */
+	/** 
+	 * Start offset of tag name based on template string position.
+	 * For non-tag nodes is always `-1`.
+	 */
 	nameStart: number = -1
 
-	/** For tag node, `end` is the end of tag name. */
+	/** 
+	 * End offset of tag name based on template string position.
+	 * For non-tag nodes is always `-1`.
+	 */
 	nameEnd: number = -1
 
 	/** Note this text has been trimmed. */
