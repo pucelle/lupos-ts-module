@@ -78,9 +78,10 @@ export function parseAllTemplatePartPieces(part: TemplatePart): TemplatePartPiec
 	}
 
 
-	if (part.mainName) {
+	// `@|` will also generate an empty name.
+	if (part.mainName || part.namePrefix) {
 		start = end
-		end += part.mainName.length
+		end += part.mainName!.length
 
 		// `@|name|`
 		pieces.push({
