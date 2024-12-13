@@ -261,7 +261,7 @@ export class HTMLNode {
 		}
 	}
 
-	/** Get content string which still include slot indices. */
+	/** Get content string which still include slot indices and text not been trimmed. */
 	getContentString(): string {
 		return this.children.map(child => child.toString()).join('')
 	}

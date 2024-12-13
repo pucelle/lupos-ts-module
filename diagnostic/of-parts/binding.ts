@@ -1,5 +1,5 @@
 import {Analyzer} from '../../analyzer'
-import {LuposBindingModifiers} from '../../complete-data'
+import {LuposBindingModifiers, LuposKnownInternalBindings} from '../../complete-data'
 import {TemplateBasis, TemplatePart, TemplatePartLocation, TemplatePartLocationType} from '../../template'
 import {DiagnosticModifier} from '../diagnostic-modifier'
 
@@ -26,7 +26,7 @@ export function diagnoseBinding(
 		}
 
 		let binding = analyzer.getBindingByName(mainName, template)
-		if (!binding) {
+		if (!binding && !LuposKnownInternalBindings[mainName]) {
 			modifier.addMissingImport(start, length, `Binding class "${mainName}" is not imported or declared.`)
 			return
 		}

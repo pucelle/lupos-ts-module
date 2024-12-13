@@ -118,7 +118,7 @@ export abstract class TemplateBasis {
 			return this.helper.typeChecker.getStringType()
 		}
 		else if (part.strings) {
-			return this.helper.typeChecker.getStringLiteralType(part.strings[0].string)
+			return this.helper.typeChecker.getStringLiteralType(part.strings[0].text)
 		}
 		else if (part.valueIndices) {
 			let valueNode = this.valueNodes[part.valueIndices[0].index]

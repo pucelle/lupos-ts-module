@@ -5,9 +5,9 @@ export function trimText(text: string) {
 
 
 /** Trim a text list. */
-export function trimTextList(texts: string[]) {
+export function trimTextList(texts: string[]): string[] {
 	if (texts.length === 0) {
-		return
+		return texts
 	}
 
 	texts[0] = texts[0].trimStart()

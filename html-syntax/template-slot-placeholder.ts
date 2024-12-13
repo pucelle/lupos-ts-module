@@ -1,5 +1,5 @@
 import type * as TS from 'typescript'
-import {PositionMapper} from '../utils'
+import {PositionMapper, trimTextList} from '../utils'
 
 
 export interface TemplateContentParsed {
@@ -9,8 +9,8 @@ export interface TemplateContentParsed {
 
 export interface TemplateSlotString {
 
-	/** Template slot string part. */
-	string: string
+	/** Template slot text part. */
+	text: string
 
 	/** Start offset within current parsing string. */
 	start: number
@@ -88,12 +88,12 @@ export namespace TemplateSlotPlaceholder {
 		while (match = re.exec(content)) {
 			indexStart = match.index
 			let stringEnd = match.index
-			let string = content.slice(stringStart, stringEnd)
+			let text = content.slice(stringStart, stringEnd)
 			let indexEnd = match.index + match[0].length
 			let index = Number(match[1])
 
 			strings.push({
-				string,
+				text,
 				start: stringStart + startOffset,
 				end: stringEnd + startOffset,
 			})
@@ -108,15 +108,19 @@ export namespace TemplateSlotPlaceholder {
 		}
 
 		strings.push({
-			string: content.slice(stringStart, content.length),
+			text: content.slice(stringStart, content.length),
 			start: stringStart + startOffset,
 			end: content.length + startOffset,
 		})
 
 		if (strings.length === 0
-			|| strings.length === 2 && strings[0].string === '' && strings[1].string === '' && !quoted
+			|| strings.length === 2 && strings[0].text === '' && strings[1].text === '' && !quoted
 		) {
 			strings = null
+		}
+
+		if (valueIndices.length === 0) {
+			valueIndices = null
 		}
 
 		return {
@@ -131,7 +135,7 @@ export namespace TemplateSlotPlaceholder {
 		let joined = ''
 
 		if (strings) {
-			joined += strings![0].string
+			joined += strings![0].text
 		}
 
 		if (valueIndices) {
@@ -139,7 +143,7 @@ export namespace TemplateSlotPlaceholder {
 				joined += `$LUPOS_SLOT_INDEX_${valueIndices[i].index}$`
 
 				if (strings) {
-					joined += strings[i + 1]
+					joined += strings[i + 1].text
 				}
 			}
 		}
@@ -241,5 +245,27 @@ export namespace TemplateSlotPlaceholder {
 	/** Whether tag name represents named component or dynamic component. */
 	export function isComponent(tagName: string): boolean {
 		return isNamedComponent(tagName) || isDynamicComponent(tagName)
+	}
+
+
+	/** Trim string texts. */
+	export function trimStrings(strings: TemplateSlotString[] | null): TemplateSlotString[] | null {
+		if (!strings) {
+			return strings
+		}
+
+		let stringTexts = strings.map(s => s.text)
+		stringTexts = trimTextList(stringTexts)
+
+		if (stringTexts.length === 2 && stringTexts[0] === '' && stringTexts[1] === '') {
+			return null
+		}
+		else {
+			for (let i = 0; i < strings.length; i++) {
+				strings[i].text = stringTexts[i]
+			}
+		}
+
+		return strings
 	}
 }

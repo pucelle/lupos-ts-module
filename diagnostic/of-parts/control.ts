@@ -111,7 +111,7 @@ function diagnoseCatch(
 	modifier: DiagnosticModifier
 ) {
 	let previousNode = part.node.previousSibling
-	if (!previousNode || (previousNode.tagName !== 'lu:await' && previousNode.tagName !== 'lu:catch')) {
+	if (!previousNode || (previousNode.tagName !== 'lu:await' && previousNode.tagName !== 'lu:then')) {
 		modifier.addCustom(start, length, '"<lu:catch>" must follow "<lu:await>" or "<lu:then>".')
 		return
 	}
@@ -150,6 +150,17 @@ function diagnoseFor(
 
 	if (fnValueIndex === null) {
 		modifier.addMissingArgument(start, length, '"<lu:for>${...}</>" must accept a child item renderer as parameter.')
+		return
+	}
+
+	let fnValueNode = template.valueNodes[fnValueIndex]
+	let decl = helper.isFunctionLike(fnValueNode) ? fnValueNode : helper.symbol.resolveDeclaration(fnValueNode, helper.isFunctionLike)
+
+	if (!decl) {
+		let fnValueStart = fnValueNode.pos
+		let fnValueLength = fnValueNode.end - fnValueNode.pos
+
+		modifier.addNotAssignable(fnValueStart, fnValueLength, '"<lu:for>${renderer}</>" must accept a render function as parameter.')
 		return
 	}
 
@@ -223,8 +234,8 @@ function diagnoseElseIf(
 	}
 
 	let previousNode = part.node.previousSibling
-	if (!previousNode || previousNode.tagName !== 'lu:if') {
-		modifier.addCustom(start, length, '"<lu:elseif>" must follow "<lu:if>".')
+	if (!previousNode || (previousNode.tagName !== 'lu:if' && previousNode.tagName !== 'lu:elseif')) {
+		modifier.addCustom(start, length, '"<lu:elseif>" must follow "<lu:if>" or "<lu:elseif>".')
 		return
 	}
 }
@@ -339,10 +350,10 @@ function getUniqueChildValueIndex(node: HTMLNode): number | null {
 
 	let childNode = node.children.find(n => {
 		return n.type === HTMLNodeType.Text
-			&& TemplateSlotPlaceholder.isCompleteSlotIndex(n.text!)
+			&& TemplateSlotPlaceholder.isCompleteSlotIndex(n.text!.trim())
 	})
 
-	let index = childNode ? TemplateSlotPlaceholder.getUniqueSlotIndex(childNode.text!) : null
+	let index = childNode ? TemplateSlotPlaceholder.getUniqueSlotIndex(childNode.text!.trim()) : null
 
 	return index
 }
