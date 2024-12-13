@@ -1,25 +1,25 @@
 import {Analyzer} from '../../analyzer'
 import {LuposBindingModifiers, LuposKnownInternalBindings} from '../../complete-data'
-import {TemplateBasis, TemplatePart, TemplatePartLocation, TemplatePartLocationType} from '../../template'
+import {TemplateBasis, TemplatePart, TemplatePartPiece, TemplatePartPieceType} from '../../template'
 import {DiagnosticModifier} from '../diagnostic-modifier'
 
 
 export function diagnoseBinding(
-	location: TemplatePartLocation,
+	piece: TemplatePartPiece,
 	part: TemplatePart,
 	template: TemplateBasis,
 	modifier: DiagnosticModifier,
 	analyzer: Analyzer
 ) {
-	let start = template.localOffsetToGlobal(location.start)
-	let length = template.localOffsetToGlobal(location.end) - start
+	let start = template.localOffsetToGlobal(piece.start)
+	let length = template.localOffsetToGlobal(piece.end) - start
 	let helper = template.helper
 	let types = helper.types
 	let ts = helper.ts
 	let mainName = part.mainName!
 	let modifiers = part.modifiers!
 
-	if (location.type === TemplatePartLocationType.Name) {
+	if (piece.type === TemplatePartPieceType.Name) {
 		let ref = template.getReferenceByName(mainName)
 		if (ref) {
 			modifier.deleteNeverRead(ref)
@@ -32,8 +32,8 @@ export function diagnoseBinding(
 		}
 	}
 
-	else if (location.type === TemplatePartLocationType.Modifier) {
-		let modifierIndex = location.modifierIndex!
+	else if (piece.type === TemplatePartPieceType.Modifier) {
+		let modifierIndex = piece.modifierIndex!
 		let modifierText = modifiers[modifierIndex]
 
 		if (mainName === 'class') {
@@ -79,9 +79,7 @@ export function diagnoseBinding(
 		}
 	}
 
-	else if (location.type === TemplatePartLocationType.AttrValue) {
-		//let valueNodes: (TS.Expression | null)[] = [null]
-		//let valueTypes = [template.getPartValueType(part)]
+	else if (piece.type === TemplatePartPieceType.AttrValue) {
 
 		// `?:binding=${a, b}`, `?:binding=${(a, b)}`
 		if (!part.strings && part.valueIndices) {
@@ -92,14 +90,6 @@ export function diagnoseBinding(
 			}
 
 			let splittedValueNodes = helper.pack.unPackCommaBinaryExpressions(valueNode)
-			// valueNodes = splittedValueNodes
-			// valueTypes = splittedValueNodes.map(node => types.typeOf(node))
-
-			// // First value decides whether binding should be activated.
-			// if (part.namePrefix === '?:') {
-			// 	valueNodes = splittedValueNodes.slice(1)
-			// 	valueTypes = valueTypes.slice(1)
-			// }
 
 			// May unused comma expression of a for `${a, b}`, here remove it.
 			if (splittedValueNodes.length > 1) {
@@ -108,32 +98,5 @@ export function diagnoseBinding(
 				}
 			}
 		}
-
-		// Currently we are not able to build a function type dynamically,
-		// so can't test whether parameters match binding update method.
-
-		// let binding = analyzer.getBindingByNameAndTemplate(mainName, template)
-		// if (binding) {
-		// 	let method = helper.class.getMethod(binding.declaration, 'update', true)
-		// 	if (method) {
-		// 		let paramTypes = method.parameters.map(param => types.typeOf(param))
-
-		// 		for (let i = 0; i < valueTypes.length; i++) {
-		// 			let valueType = valueTypes[i]
-		// 			let paramType = paramTypes[i]
-		// 			let valueNode = valueNodes[i]
-		// 			let valueStart = valueNode ? valueNode.pos : start
-		// 			let valueLength = valueNode ? valueNode.end - valueStart : length
-
-		// 			if (!paramType) {
-		// 				continue
-		// 			}
-
-		// 			if (!types.isAssignableTo(valueType, paramType)) {
-		// 				modifier.addNotAssignable(valueStart, valueLength, '"renderer" of "<lu:for ${renderer}>" must return a "TemplateResult".')
-		// 			}
-		// 		}
-		// 	}
-		// }
 	}
 }

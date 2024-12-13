@@ -1,3 +1,3 @@
 export * from './parts-parser'
-export * from './part-location'
+export * from './part-piece'
 export * from './template'

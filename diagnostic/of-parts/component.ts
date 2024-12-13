@@ -1,18 +1,18 @@
-import {TemplateBasis, TemplatePart, TemplatePartLocation} from '../../template'
+import {TemplateBasis, TemplatePart, TemplatePartPiece} from '../../template'
 import {DiagnosticModifier} from '../diagnostic-modifier'
 import {TemplateSlotPlaceholder} from '../../html-syntax'
 import {Analyzer} from '../../analyzer'
 
 
 export function diagnoseComponent(
-	location: TemplatePartLocation,
+	piece: TemplatePartPiece,
 	part: TemplatePart,
 	template: TemplateBasis,
 	modifier: DiagnosticModifier,
 	analyzer: Analyzer
 ) {
-	let start = template.localOffsetToGlobal(location.start)
-	let length = template.localOffsetToGlobal(location.end) - start
+	let start = template.localOffsetToGlobal(piece.start)
+	let length = template.localOffsetToGlobal(piece.end) - start
 	let helper = template.helper
 	let tagName = part.node.tagName!
 	let ts = helper.ts

@@ -1,8 +1,8 @@
 import {TemplatePart, TemplatePartType} from './parts-parser'
 
 
-export interface TemplatePartLocation {
-	type: TemplatePartLocationType
+export interface TemplatePartPiece {
+	type: TemplatePartPieceType
 
 	/** Start offset in template region. */
 	start: number
@@ -14,7 +14,7 @@ export interface TemplatePartLocation {
 	modifierIndex?: number
 }
 
-export enum TemplatePartLocationType {
+export enum TemplatePartPieceType {
 	TagName,
 	Prefix,
 	Name,
@@ -23,28 +23,28 @@ export enum TemplatePartLocationType {
 }
 
 
-export function getTemplatePartLocationAt(part: TemplatePart, temOffset: number): TemplatePartLocation | null {
-	let locations = parseAllTemplatePartLocations(part)
+export function getTemplatePartPieceAt(part: TemplatePart, temOffset: number): TemplatePartPiece | null {
+	let pieces = parseAllTemplatePartPieces(part)
 
-	for (let location of locations) {
-		if (temOffset < location.start || temOffset > location.end) {
+	for (let piece of pieces) {
+		if (temOffset < piece.start || temOffset > piece.end) {
 			continue
 		}
 
 		// `|@name`, not `@|name`.
-		if (location.type === TemplatePartLocationType.Prefix && temOffset === location.end) {
+		if (piece.type === TemplatePartPieceType.Prefix && temOffset === piece.end) {
 			continue
 		}
 
-		return location
+		return piece
 	}
 
 	return null
 }
 
 
-export function parseAllTemplatePartLocations(part: TemplatePart): TemplatePartLocation[] {
-	let locations: TemplatePartLocation[] = []
+export function parseAllTemplatePartPieces(part: TemplatePart): TemplatePartPiece[] {
+	let pieces: TemplatePartPiece[] = []
 	let start = part.start
 	let end = start
 
@@ -58,8 +58,8 @@ export function parseAllTemplatePartLocations(part: TemplatePart): TemplatePartL
 	) {
 		end += part.node.tagName!.length
 
-		locations.push({
-			type: TemplatePartLocationType.TagName,
+		pieces.push({
+			type: TemplatePartPieceType.TagName,
 			start,
 			end,
 		})
@@ -70,8 +70,8 @@ export function parseAllTemplatePartLocations(part: TemplatePart): TemplatePartL
 		end += part.namePrefix.length
 
 		// `|@name`, `@|name` should match name.
-		locations.push({
-			type: TemplatePartLocationType.Prefix,
+		pieces.push({
+			type: TemplatePartPieceType.Prefix,
 			start,
 			end,
 		})
@@ -83,8 +83,8 @@ export function parseAllTemplatePartLocations(part: TemplatePart): TemplatePartL
 		end += part.mainName.length
 
 		// `@|name|`
-		locations.push({
-			type: TemplatePartLocationType.Name,
+		pieces.push({
+			type: TemplatePartPieceType.Name,
 			start,
 			end
 		})
@@ -97,8 +97,8 @@ export function parseAllTemplatePartLocations(part: TemplatePart): TemplatePartL
 			end += part.modifiers[i].length + 1
 
 			// `.|modifier|`
-			locations.push({
-				type: TemplatePartLocationType.Modifier,
+			pieces.push({
+				type: TemplatePartPieceType.Modifier,
 				start,
 				end,
 				modifierIndex: i,
@@ -117,12 +117,12 @@ export function parseAllTemplatePartLocations(part: TemplatePart): TemplatePartL
 		}
 
 		// a="|b|"
-		locations.push({
-			type: TemplatePartLocationType.AttrValue,
+		pieces.push({
+			type: TemplatePartPieceType.AttrValue,
 			start: valueStart,
 			end: valueEnd,
 		})
 	}
 
-	return locations
+	return pieces
 }

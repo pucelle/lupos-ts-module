@@ -1,18 +1,18 @@
 import type * as TS from 'typescript'
-import {TemplateBasis, TemplatePart, TemplatePartLocation} from '../../template'
+import {TemplateBasis, TemplatePart, TemplatePartPiece} from '../../template'
 import {DiagnosticModifier} from '../diagnostic-modifier'
 import {HTMLNode, HTMLNodeType, TemplateSlotPlaceholder} from '../../html-syntax'
 import {LuposControlFlowTags} from '../../complete-data'
 
 
 export function diagnoseControl(
-	location: TemplatePartLocation,
+	piece: TemplatePartPiece,
 	part: TemplatePart,
 	template: TemplateBasis,
 	modifier: DiagnosticModifier
 ) {
-	let start = template.localOffsetToGlobal(location.start)
-	let length = template.localOffsetToGlobal(location.end) - start
+	let start = template.localOffsetToGlobal(piece.start)
+	let length = template.localOffsetToGlobal(piece.end) - start
 	let tagName = part.node.tagName!
 
 	if (!LuposControlFlowTags.find(item => item.name === tagName)) {
@@ -163,45 +163,6 @@ function diagnoseFor(
 		modifier.addNotAssignable(fnValueStart, fnValueLength, '"<lu:for>${renderer}</>" must accept a render function as parameter.')
 		return
 	}
-
-	// let fnValueNode = template.valueNodes[fnValueIndex]
-	// let fnValueStart = fnValueNode.pos
-	// let fnValueLength = fnValueNode.end - fnValueNode.pos
-	// let decl = helper.isFunctionLike(fnValueNode) ? fnValueNode : helper.symbol.resolveDeclaration(fnValueNode, helper.isFunctionLike)
-	// let returnType = decl ? types.getReturnType(decl) : undefined
-	// let parameterTypes = decl ? decl.parameters.map(param => types.typeOf(param)) : undefined
-
-	// if (!decl) {
-	// 	modifier.addNotAssignable(fnValueStart, fnValueLength, '"<lu:for>${renderer}</>" must accept a render function as parameter.')
-	// 	return
-	// }
-
-	// let returnedTypeName = returnType ? types.getTypeReferenceName(returnType) : undefined
-	// if (returnedTypeName && returnedTypeName !== 'TemplateResult' && returnedTypeName !== 'any') {
-	// 	modifier.addNotAssignable(fnValueStart, fnValueLength, '"renderer" of "<lu:for ${renderer}>" must return a "TemplateResult".')
-	// 	return
-	// }
-
-	// if (parameterTypes) {
-
-	// 	// Always return `any`...
-	// 	let dataItemType = dataItemsType ? types.getTypeParameters(dataItemsType)?.[0] : undefined
-	// 	let dataItemParamType1 = parameterTypes[0]
-	// 	let dataItemParamType2 = parameterTypes[1]
-
-	// 	if (dataItemType && dataItemParamType1 && !types.isAssignableTo(dataItemParamType1, dataItemType)) {
-	// 		let fromText = types.getTypeFullText(dataItemParamType1)
-	// 		let toText = types.getTypeFullText(dataItemType)
-
-	// 		modifier.addNotAssignable(fnValueStart, fnValueLength, `Render item parameter "${fromText}" is not assignable to "${toText}".`)
-	// 		return
-	// 	}
-
-	// 	if (dataItemParamType2 && !types.isAssignableTo(dataItemParamType2, typeChecker.getNumberType())) {
-	// 		let fromText = types.getTypeFullText(dataItemParamType2)
-	// 		modifier.addNotAssignable(fnValueStart, fnValueLength, `Render index parameter "${fromText}" is not assignable to "number".`)
-	// 	}
-	// }
 }
 
 
