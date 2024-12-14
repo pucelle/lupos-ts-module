@@ -3,6 +3,7 @@ import {TemplateBasis, TemplatePart, TemplatePartPiece} from '../../template'
 import {DiagnosticModifier} from '../diagnostic-modifier'
 import {HTMLNode, HTMLNodeType, TemplateSlotPlaceholder} from '../../html-syntax'
 import {LuposControlFlowTags} from '../../complete-data'
+import {DiagnosticCode} from '../codes'
 
 
 export function diagnoseControl(
@@ -16,7 +17,7 @@ export function diagnoseControl(
 	let tagName = part.node.tagName!
 
 	if (!LuposControlFlowTags.find(item => item.name === tagName)) {
-		modifier.addCustom(start, length, `"<${tagName}>" is not a valid control tag.`)
+		modifier.add(start, length, DiagnosticCode.ControlTagNotValid, `"<${tagName}>" is not a valid control tag.`)
 	}
 	
 	if (tagName === 'lu:await') {
@@ -68,7 +69,7 @@ function diagnoseAwait(
 ) {
 	let promiseIndex = getAttrValueIndex(part.node)
 	if (promiseIndex === null) {
-		modifier.addMissingArgument(start, length, '"<lu:await ${...}>" must accept a parameter as promise to await.')
+		modifier.add(start, length, DiagnosticCode.MissingArgument, '"<lu:await ${...}>" must accept a parameter as promise to await.')
 		return
 	}
 
@@ -82,7 +83,7 @@ function diagnoseAwait(
 	// 	let valueStart = valueNode.pos
 	// 	let valueLength = valueNode.end - valueNode.pos
 
-	// 	modifier.addNotAssignable(valueStart, valueLength, '"<lu:await ${promise}>" can only accept promise type of parameter.')
+	// 	modifier.add(valueStart, valueLength, '"< DiagnosticCode.NotAssignable,lu:await ${promise}>" can only accept promise type of parameter.')
 	// 	return
 	// }
 }
@@ -97,7 +98,7 @@ function diagnoseThen(
 ) {
 	let previousNode = part.node.previousSibling
 	if (!previousNode || previousNode.tagName !== 'lu:await') {
-		modifier.addCustom(start, length, '"<lu:then>" must follow "<lu:await>".')
+		modifier.add(start, length, DiagnosticCode.ControlTagMustFollowSpecified, '"<lu:then>" must follow "<lu:await>".')
 		return
 	}
 }
@@ -112,7 +113,7 @@ function diagnoseCatch(
 ) {
 	let previousNode = part.node.previousSibling
 	if (!previousNode || (previousNode.tagName !== 'lu:await' && previousNode.tagName !== 'lu:then')) {
-		modifier.addCustom(start, length, '"<lu:catch>" must follow "<lu:await>" or "<lu:then>".')
+		modifier.add(start, length, DiagnosticCode.ControlTagMustFollowSpecified, '"<lu:catch>" must follow "<lu:await>" or "<lu:then>".')
 		return
 	}
 }
@@ -133,7 +134,7 @@ function diagnoseFor(
 	let dataItemsType: TS.Type | undefined
 
 	if (ofValueIndex === null) {
-		modifier.addMissingArgument(start, length, '"<lu:for ${...}>" must accept a parameter as loop data.')
+		modifier.add(start, length, DiagnosticCode.MissingArgument, '"<lu:for ${...}>" must accept a parameter as loop data.')
 		return
 	}
 
@@ -144,12 +145,12 @@ function diagnoseFor(
 	dataItemsType = types.typeOf(ofValueNode)
 
 	if (!types.isIterableType(dataItemsType)) {
-		modifier.addNotAssignable(ofValueStart, ofValueLength, '"<lu:for ${iterable}>" can only accept iterable type of parameter.')
+		modifier.add(ofValueStart, ofValueLength, DiagnosticCode.NotAssignable, '"<lu:for ${iterable}>" can only accept iterable type of parameter.')
 		return
 	}
 
 	if (fnValueIndex === null) {
-		modifier.addMissingArgument(start, length, '"<lu:for>${...}</>" must accept a child item renderer as parameter.')
+		modifier.add(start, length, DiagnosticCode.MissingArgument, '"<lu:for>${...}</>" must accept a child item renderer as parameter.')
 		return
 	}
 
@@ -160,7 +161,7 @@ function diagnoseFor(
 		let fnValueStart = fnValueNode.pos
 		let fnValueLength = fnValueNode.end - fnValueNode.pos
 
-		modifier.addNotAssignable(fnValueStart, fnValueLength, '"<lu:for>${renderer}</>" must accept a render function as parameter.')
+		modifier.add(fnValueStart, fnValueLength, DiagnosticCode.NotAssignable, '"<lu:for>${renderer}</>" must accept a render function as parameter.')
 		return
 	}
 }
@@ -175,7 +176,7 @@ function diagnoseIf(
 ) {
 	let conditionIndex = getAttrValueIndex(part.node)
 	if (conditionIndex === null) {
-		modifier.addMissingArgument(start, length, '"<lu:if ${...}>" must accept a parameter as condition.')
+		modifier.add(start, length, DiagnosticCode.MissingArgument, '"<lu:if ${...}>" must accept a parameter as condition.')
 		return
 	}
 }
@@ -190,13 +191,13 @@ function diagnoseElseIf(
 ) {
 	let conditionIndex = getAttrValueIndex(part.node)
 	if (conditionIndex === null) {
-		modifier.addMissingArgument(start, length, '"<lu:elseif ${...}>" must accept a parameter as condition.')
+		modifier.add(start, length, DiagnosticCode.MissingArgument, '"<lu:elseif ${...}>" must accept a parameter as condition.')
 		return
 	}
 
 	let previousNode = part.node.previousSibling
 	if (!previousNode || (previousNode.tagName !== 'lu:if' && previousNode.tagName !== 'lu:elseif')) {
-		modifier.addCustom(start, length, '"<lu:elseif>" must follow "<lu:if>" or "<lu:elseif>".')
+		modifier.add(start, length, DiagnosticCode.ControlTagMustFollowSpecified, '"<lu:elseif>" must follow "<lu:if>" or "<lu:elseif>".')
 		return
 	}
 }
@@ -211,13 +212,13 @@ function diagnoseElse(
 ) {
 	let conditionIndex = getAttrValueIndex(part.node)
 	if (conditionIndex !== null) {
-		modifier.addMissingArgument(start, length, '"<lu:else ${...}>" can not accept any condition parameter.')
+		modifier.add(start, length, DiagnosticCode.MissingArgument, '"<lu:else ${...}>" can not accept any condition parameter.')
 		return
 	}
 
 	let previousNode = part.node.previousSibling
 	if (!previousNode || (previousNode.tagName !== 'lu:if' && previousNode.tagName !== 'lu:elseif')) {
-		modifier.addCustom(start, length, '"<lu:else>" must follow "<lu:if>" or "<lu:elseif>".')
+		modifier.add(start, length, DiagnosticCode.ControlTagMustFollowSpecified, '"<lu:else>" must follow "<lu:if>" or "<lu:elseif>".')
 		return
 	}
 }
@@ -232,7 +233,7 @@ function diagnoseKeyed(
 ) {
 	let conditionIndex = getAttrValueIndex(part.node)
 	if (conditionIndex === null) {
-		modifier.addMissingArgument(start, length, '"<lu:keyed ${...}>" must accept a parameter as key.')
+		modifier.add(start, length, DiagnosticCode.MissingArgument, '"<lu:keyed ${...}>" must accept a parameter as key.')
 		return
 	}
 }
@@ -242,13 +243,23 @@ function diagnoseSwitch(
 	part: TemplatePart,
 	start: number,
 	length: number,
-	_template: TemplateBasis,
+	template: TemplateBasis,
 	modifier: DiagnosticModifier
 ) {
 	let conditionIndex = getAttrValueIndex(part.node)
 	if (conditionIndex === null) {
-		modifier.addMissingArgument(start, length, '"<lu:switch ${...}>" must accept a parameter as switch expression.')
+		modifier.add(start, length, DiagnosticCode.MissingArgument, '"<lu:switch ${...}>" must accept a parameter as switch expression.')
 		return
+	}
+
+	for (let child of part.node.children) {
+		if (child.type !== HTMLNodeType.Tag || (child.tagName !== 'lu:case' && child.tagName !== 'lu:default')) {
+			let start = template.localOffsetToGlobal(child.start)
+			let length = template.localOffsetToGlobal(child.end) - start
+
+			modifier.add(start, length, DiagnosticCode.ControlTagMustContainSpecified, '"<lu:switch>" can only contain "<lu:case>" or "<lu:default>".')
+			return
+		}
 	}
 }
 
@@ -262,13 +273,13 @@ function diagnoseCase(
 ) {
 	let conditionIndex = getAttrValueIndex(part.node)
 	if (conditionIndex === null) {
-		modifier.addMissingArgument(start, length, '"<lu:case ${...}>" must accept a parameter as case condition.')
+		modifier.add(start, length, DiagnosticCode.MissingArgument, '"<lu:case ${...}>" must accept a parameter as case condition.')
 		return
 	}
 
 	let parentNode = part.node.parent
 	if (!parentNode || parentNode.tagName !== 'lu:switch') {
-		modifier.addCustom(start, length, '"<lu:case>" must be contained by "<lu:switch>".')
+		modifier.add(start, length, DiagnosticCode.ControlTagMustBeContainedIn, '"<lu:case>" must be contained in "<lu:switch>".')
 		return
 	}
 }
@@ -283,13 +294,19 @@ function diagnoseDefault(
 ) {
 	let conditionIndex = getAttrValueIndex(part.node)
 	if (conditionIndex !== null) {
-		modifier.addMissingArgument(start, length, '"<lu:default ${...}>" can not accept any condition parameter.')
+		modifier.add(start, length, DiagnosticCode.MissingArgument, '"<lu:default ${...}>" can not accept any condition parameter.')
 		return
 	}
 
 	let parentNode = part.node.parent
 	if (!parentNode || parentNode.tagName !== 'lu:switch') {
-		modifier.addCustom(start, length, '"<lu:default>" must be contained by "<lu:switch>".')
+		modifier.add(start, length, DiagnosticCode.ControlTagMustBeContainedIn, '"<lu:default>" must be contained in "<lu:switch>".')
+		return
+	}
+
+	let nextNode = part.node.nextSibling
+	if (nextNode) {
+		modifier.add(start, length, DiagnosticCode.ControlTagMustBeLastChild, '"<lu:default>" must be the last child of "<lu:switch>".')
 		return
 	}
 }

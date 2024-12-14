@@ -1,5 +1,6 @@
 import {Analyzer} from '../../analyzer'
 import {TemplateBasis, TemplatePart, TemplatePartPiece, TemplatePartPieceType} from '../../template'
+import {DiagnosticCode} from '../codes'
 import {DiagnosticModifier} from '../diagnostic-modifier'
 
 
@@ -20,7 +21,7 @@ export function diagnoseProperty(
 		let property = component ? analyzer.getComponentProperty(component, mainName) : null
 
 		if (component && !property) {
-			modifier.addNotExistOn(start, length, `"${mainName}" is not exist on "<${tagName}>".`)
+			modifier.add(start, length, DiagnosticCode.NotExistOn, `"${mainName}" is not exist on "<${tagName}>".`)
 			return
 		}
 	}

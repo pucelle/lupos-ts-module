@@ -78,14 +78,15 @@ export class Analyzer {
 		return this.bindingsByFile.values()
 	}
 
-	/** Get components by name. */
-	getComponentsByName(name: string): LuposComponent[] | undefined {
+	/** Get components by name across all workspace. */
+	getWorkspaceComponentsByName(name: string): LuposComponent[] | undefined {
 		return this.componentsByName.get(name)
 	}
 
 	/** 
-	 * Get components by template part, the and template.
+	 * Get component by template part, the and template.
 	 * `tagName` can be dynamic component interpolation.
+	 * Component must be imported.
 	 */
 	getComponentByTagName(tagName: string, template: TemplateBasis): LuposComponent | undefined {
 		for (let component of this.walkPossibleComponentsByTagName(tagName, template)) {
@@ -183,12 +184,15 @@ export class Analyzer {
 	}
 
 
-	/** Get bindings by name. */
-	getBindingsByName(name: string): LuposBinding[] | undefined {
+	/** Get bindings across whole space by name. */
+	getWorkspaceBindingsByName(name: string): LuposBinding[] | undefined {
 		return this.bindingsByName.get(name)
 	}
 
-	/** Get binding by name and template. */
+	/** 
+	 * Get binding by name and template.
+	 * Binding class must be imported.
+	 */
 	getBindingByName(name: string, template: TemplateBasis): LuposBinding | undefined {
 		let bindingClassDeclOrRef = template.getReferenceByName(name)
 
@@ -212,7 +216,7 @@ export class Analyzer {
 
 		// Internal bindings like `:class`.
 		else {
-			return this.getBindingsByName(name)?.[0]
+			return this.getWorkspaceBindingsByName(name)?.[0]
 		}
 	}
 

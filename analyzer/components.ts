@@ -1,6 +1,7 @@
 import type * as TS from 'typescript'
 import {LuposComponent, LuposEvent, LuposProperty} from './types'
-import {Helper} from '../../lupos-ts-module'
+import {Helper} from '../helper'
+
 
 
 /** Walk and Discover all lupos components from a given node and it's children. */

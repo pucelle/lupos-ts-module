@@ -2,6 +2,7 @@ import {Analyzer} from '../../analyzer'
 import {findCompletionDataItem, LuposDOMEventCategories, LuposDOMEventModifiers} from '../../complete-data'
 import {TemplateSlotPlaceholder} from '../../html-syntax'
 import {TemplateBasis, TemplatePart, TemplatePartPiece, TemplatePartPieceType} from '../../template'
+import {DiagnosticCode} from '../codes'
 import {DiagnosticModifier} from '../diagnostic-modifier'
 
 
@@ -26,7 +27,7 @@ export function diagnoseEvent(
 	if (piece.type === TemplatePartPieceType.Name) {
 		if (component) {
 			if (part.namePrefix === '@@' && !comEvent) {
-				modifier.addNotExistOn(start, length, `"<${component.name}>" does not support event "${mainName}".`)
+				modifier.add(start, length, DiagnosticCode.NotExistOn, `"<${component.name}>" does not support event "${mainName}".`)
 				return
 			}
 		}
@@ -48,7 +49,7 @@ export function diagnoseEvent(
 				let inCategory = !!findCompletionDataItem(LuposDOMEventModifiers[category], modifierValue)
 
 				if (!inCategory) {
-					modifier.addNotExistOn(start, length, `Modifier "${modifierValue}" is not supported by event "${mainName}".`)
+					modifier.add(start, length, DiagnosticCode.NotExistOn, `Modifier "${modifierValue}" is not supported by event "${mainName}".`)
 				}
 			}
 		}

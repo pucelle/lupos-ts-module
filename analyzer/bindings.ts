@@ -1,6 +1,6 @@
 import type * as TS from 'typescript'
 import {LuposBinding} from './types'
-import {Helper, LuposKnownInternalBindingNamesMap} from '../../lupos-ts-module'
+import {Helper, LuposKnownInternalBindingNamesMap} from '..'
 
 
 /** Walk and Discover all lupos bindings from a given node and it's children. */

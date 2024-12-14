@@ -2,6 +2,7 @@ import {TemplateBasis, TemplatePart, TemplatePartPiece} from '../../template'
 import {DiagnosticModifier} from '../diagnostic-modifier'
 import {TemplateSlotPlaceholder} from '../../html-syntax'
 import {Analyzer} from '../../analyzer'
+import {DiagnosticCode} from '../codes'
 
 
 export function diagnoseComponent(
@@ -20,23 +21,23 @@ export function diagnoseComponent(
 	if (TemplateSlotPlaceholder.isNamedComponent(tagName)) {
 		let ref = template.getReferenceByName(tagName)
 		if (ref) {
-			modifier.deleteNeverRead(ref)
+			modifier.deleteNeverReadFromNodeExtended(ref)
 		}
 
 		let component = analyzer.getComponentByTagName(tagName, template)
 		if (!component) {
-			modifier.addMissingImport(start, length, `Component "<${tagName}>" is not imported or declared.`)
+			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Component "<${tagName}>" is not imported or declared.`)
 			return
 		}
 		else if (!helper.class.isDerivedOf(component.declaration, 'Component', '@pucelle/lupos.js')) {
-			modifier.addNotAssignable(start, length, `"<${tagName}>" is not a component.`)
+			modifier.add(start, length, DiagnosticCode.NotAssignable, `"<${tagName}>" is not a component.`)
 			return
 		}
 	}
 	else {
 		let valueIndex = TemplateSlotPlaceholder.getUniqueSlotIndex(tagName)
 		if (valueIndex === null) {
-			modifier.addNotAssignable(start, length, `Must be a component!`)
+			modifier.add(start, length, DiagnosticCode.NotAssignable, `Must be a component!`)
 			return
 		}
 		else {
@@ -44,7 +45,7 @@ export function diagnoseComponent(
 
 			let decl = helper.symbol.resolveDeclaration(valueNode, ts.isClassDeclaration)
 			if (!decl || !helper.class.isDerivedOf(decl, 'Component', '@pucelle/lupos.js')) {
-				modifier.addNotAssignable(start, length, `"${helper.getFullText(valueNode)}" is not a component.`)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `"${helper.getFullText(valueNode)}" is not a component.`)
 				return
 			}
 		}
