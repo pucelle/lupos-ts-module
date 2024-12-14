@@ -153,17 +153,6 @@ function diagnoseFor(
 		modifier.add(start, length, DiagnosticCode.MissingArgument, '"<lu:for>${...}</>" must accept a child item renderer as parameter.')
 		return
 	}
-
-	let fnValueNode = template.valueNodes[fnValueIndex]
-	let decl = helper.isFunctionLike(fnValueNode) ? fnValueNode : helper.symbol.resolveDeclaration(fnValueNode, helper.isFunctionLike)
-
-	if (!decl) {
-		let fnValueStart = fnValueNode.pos
-		let fnValueLength = fnValueNode.end - fnValueNode.pos
-
-		modifier.add(fnValueStart, fnValueLength, DiagnosticCode.NotAssignable, '"<lu:for>${renderer}</>" must accept a render function as parameter.')
-		return
-	}
 }
 
 
