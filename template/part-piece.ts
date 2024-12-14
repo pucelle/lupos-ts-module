@@ -1,3 +1,4 @@
+import {HTMLNodeType} from '../html-syntax'
 import {TemplatePart, TemplatePartType} from './parts-parser'
 
 
@@ -56,7 +57,7 @@ export function parseAllTemplatePartPieces(part: TemplatePart): TemplatePartPiec
 		|| part.type === TemplatePartType.SlotTag
 		|| part.type === TemplatePartType.NormalStartTag
 	) {
-		end += part.node.tagName!.length
+		end += part.node.type === HTMLNodeType.Tag ? part.node.tagName!.length : 0
 
 		pieces.push({
 			type: TemplatePartPieceType.TagName,
