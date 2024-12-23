@@ -31,7 +31,7 @@ export enum HTMLTokenType {
 	Text,
 
 	/** Exclude `<!--` and `-->`. */
-	CommentText,
+	Comment,
 }
 
 
@@ -156,7 +156,8 @@ export class HTMLTokenParser {
 				if (this.peekChars(1, 3) === '!--') {
 					yield* this.endText()
 					this.state = ScanState.WithinComment
-					this.followSteps(4)
+					this.followSteps()
+					this.offset += 3
 				}
 
 				// |</
@@ -186,7 +187,7 @@ export class HTMLTokenParser {
 
 				// --|>
 				if (this.peekChars(-2, 2) === '--') {
-					yield this.makeToken(HTMLTokenType.CommentText, this.start, this.offset - 2)
+					yield this.makeToken(HTMLTokenType.Comment, this.start, this.offset + 1)
 					this.state = ScanState.AnyContent
 					this.followSteps(1)
 				}

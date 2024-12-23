@@ -115,7 +115,7 @@ export class HTMLRoot extends HTMLNode {
 					}
 					break
 
-				case HTMLTokenType.CommentText:
+				case HTMLTokenType.Comment:
 					let commentText = token.text
 					let commentStart = start
 					let commentEnd = commentStart + commentText.length
