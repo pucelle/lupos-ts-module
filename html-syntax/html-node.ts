@@ -1,5 +1,5 @@
 import {TemplateSlotPlaceholder} from './template-slot-placeholder'
-import {HTMLTokenParser} from './html-token-parser'
+import {SelfClosingTags} from './html-token-parser'
 
 
 export enum HTMLNodeType {
@@ -324,7 +324,7 @@ export class HTMLNode {
 				this.removeAttr(tagNameAttr)
 			}
 	
-			if (HTMLTokenParser.SelfClosingTags.includes(tagName)) {
+			if (SelfClosingTags.includes(tagName)) {
 				return `<${tagName}${this.toStringOfAttrs(false)} />`
 			}
 

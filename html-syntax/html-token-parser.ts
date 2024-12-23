@@ -9,327 +9,351 @@ export interface HTMLToken {
 /** HTML token type. */
 export enum HTMLTokenType {
 
-	/** Exclude `<`. */
-	StartTagName = 0,
+	/** Start tag name exclude `<`. */
+	StartTagName,
 
-	/** Exclude `</` and `>`. */
-	EndTagName = 1,
+	/** End tag name exclude `</` and `>`. */
+	EndTagName,
 
-	TagEnd = 2,
-	SelfCloseTagEnd = 3,
+	/** `<... >`, not include tag end of close tag. */
+	TagEnd,
+
+	/** `<... />`. */
+	SelfCloseTagEnd,
 	
-	AttributeName = 4,
+	/** Attribute name part. */
+	AttributeName,
 
 	/** Include quotes. */
-	AttributeValue = 5,
+	AttributeValue,
 
 	/** Original text, not been trimmed. */
-	Text = 6,
+	Text,
 
 	/** Exclude `<!--` and `-->`. */
-	CommentText = 7,
+	CommentText,
 }
 
 
-export namespace HTMLTokenParser {
-
-	/** 
-	 * Tags that self closing.
-	 * Reference from https://developer.mozilla.org/en-US/docs/Glossary/Void_element
-	 */
-	export const SelfClosingTags = [
-		'area',
-		'base',
-		'br',
-		'col',
-		'embed',
-		'hr',
-		'img',
-		'input',
-		'link',
-		'meta',
-		'param',
-		'source',
-		'track',
-		'wbr',
-	]
+/** 
+ * Tags that self closing.
+ * Reference from https://developer.mozilla.org/en-US/docs/Glossary/Void_element
+ */
+export const SelfClosingTags = [
+	'area',
+	'base',
+	'br',
+	'col',
+	'embed',
+	'hr',
+	'img',
+	'input',
+	'link',
+	'meta',
+	'param',
+	'source',
+	'track',
+	'wbr',
+]
 
 
-	enum ScanState {
-		AnyContent,
-		WithinStartTag,
-		AfterStartTag,
-		WithinEndTag,
-		WithinAttributeName,
-		AfterAttributeName,
-		AfterAttributeEqual,
-		WithinAttributeValue,
-		WithinComment,
+enum ScanState {
+	AnyContent,
+	WithinStartTag,
+	AfterStartTag,
+	WithinEndTag,
+	WithinAttributeName,
+	AfterAttributeName,
+	AfterAttributeEqual,
+	WithinAttributeValue,
+	WithinComment,
+	EOF,
+}
+
+
+export class HTMLTokenParser {
+
+	private string: string
+	private start = 0
+	private offset = 0
+	private state: ScanState = ScanState.AnyContent
+
+	constructor(string: string) {
+		this.string = string
 	}
 
+	private isEnded(): boolean {
+		return this.state === ScanState.EOF
+	}
+
+	private peekChars(additionalOffset: number = 0, count: number): string {
+		return this.string.slice(this.offset + additionalOffset, this.offset + additionalOffset + count)
+	}
+
+	private peekChar(additionalOffset: number = 0): string {
+		return this.string[this.offset + additionalOffset]
+	}
+
+	private isEmptyChar(char: string): boolean {
+		return /\s/.test(char)
+	}
+
+	/** It moves `offset` to before until char. */
+	private readUntilChars(chars: string[], additionalOffset: number = 0) {
+		for (let i = this.offset + additionalOffset; i < this.string.length; i++) {
+			let char = this.string[i]
+			if (chars.includes(char)) {
+				this.offset = i
+				return
+			}
+		}
+
+		this.offset = this.string.length
+		this.state = ScanState.EOF
+	}
+
+	/** It moves `offset` to before not match char. */
+	private readUntilNotMatch(test: (char: string) => boolean, additionalOffset: number = 0) {
+		for (let i = this.offset + additionalOffset; i < this.string.length; i++) {
+			let char = this.string[i]
+			if (!test(char)) {
+				this.offset = i
+				return
+			}
+		}
+
+		this.offset = this.string.length
+		this.state = ScanState.EOF
+	}
+
+	private makeToken(type: HTMLTokenType, start: number = this.start, end: number = this.offset): HTMLToken {
+		return {
+			type,
+			text: this.string.slice(start, end),
+			start,
+			end,
+		}
+	}
+
+	private followSteps(additionalOffset: number = 0) {
+		this.start = this.offset = this.offset + additionalOffset
+	}
 
 	/**
 	 * Parse html string to tokens.
 	 * After parsed, all comments were removed, and `\r\n\t`s in text nodes were cleansed too.
 	 */
-	export function parseToTokens(string: string): HTMLToken[] {
-		let start = 0
-		let offset = 0
-		let state: ScanState = ScanState.AnyContent
-		let tokens: HTMLToken[] = []
+	*parseToTokens(): Iterable<HTMLToken> {
+		while (this.offset < this.string.length) {
+			if (this.state === ScanState.AnyContent) {
+				this.readUntilChars(['<'])
 
-		while (offset < string.length) {
-			if (state === ScanState.AnyContent) {
-				offset = readUntilChars(string, offset, ['<'])
-				if (offset === string.length) {
+				if (this.isEnded()) {
 					break
 				}
 
 				// |<!--
-				if (peekChars(string, offset + 1, 3) === '!--') {
-					endText(string, tokens, start, offset)
-					state = ScanState.WithinComment
-					start = offset += 4
+				if (this.peekChars(1, 3) === '!--') {
+					yield* this.endText()
+					this.state = ScanState.WithinComment
+					this.followSteps(4)
 				}
 
 				// |</
-				else if (peekChar(string, offset + 1) === '/') {
-					endText(string, tokens, start, offset)
-					state = ScanState.WithinEndTag
-					start = offset += 2
+				else if (this.peekChar(1) === '/') {
+					yield* this.endText()
+					this.state = ScanState.WithinEndTag
+					this.followSteps(2)
 				}
 
 				// |<a
-				else if (isNameChar(peekChar(string, offset + 1))) {
-					endText(string, tokens, start, offset)
-					state = ScanState.WithinStartTag
-					start = offset += 1
+				else if (this.isNameChar(this.peekChar(1))) {
+					yield* this.endText()
+					this.state = ScanState.WithinStartTag
+					this.followSteps(1)
 				}
 				else {
-					offset += 1
+					this.offset += 1
 				}
 			}
 
-			else if (state === ScanState.WithinComment) {
-				offset = readUntilChars(string, offset, ['>'])
-				if (offset === string.length) {
+			else if (this.state === ScanState.WithinComment) {
+				this.readUntilChars(['>'])
+
+				if (this.isEnded()) {
 					break
 				}
 
 				// --|>
-				if (peekChars(string, offset - 2, 2) === '--') {
-					tokens.push(makeToken(string, HTMLTokenType.CommentText, start, offset - 2))
-					state = ScanState.AnyContent
-					start = offset += 1
+				if (this.peekChars(-2, 2) === '--') {
+					yield this.makeToken(HTMLTokenType.CommentText, this.start, this.offset - 2)
+					this.state = ScanState.AnyContent
+					this.followSteps(1)
 				}
 				else {
-					offset += 1
+					this.offset += 1
 				}
 			}
 
-			else if (state === ScanState.WithinStartTag) {
+			else if (this.state === ScanState.WithinStartTag) {
 
 				// <abc| ..
-				offset = readUntilNotMatch(string, start, isNameChar)
-				if (offset === string.length) {
+				this.readUntilNotMatch(this.isNameChar)
+
+				if (this.isEnded()) {
 					break
 				}
 
-				tokens.push(makeToken(string, HTMLTokenType.StartTagName, start, offset))
-				state = ScanState.AfterStartTag
-				start = offset
+				yield this.makeToken(HTMLTokenType.StartTagName)
+				this.state = ScanState.AfterStartTag
+				this.followSteps()
 			}
 
-			else if (state === ScanState.WithinEndTag) {
+			else if (this.state === ScanState.WithinEndTag) {
 
 				// </abc|> or </|>
-				offset = readUntilNotMatch(string, start, isNameChar)
-				if (offset === string.length) {
+				this.readUntilNotMatch(this.isNameChar)
+
+				if (this.isEnded()) {
 					break
 				}
 
-				tokens.push(makeToken(string, HTMLTokenType.EndTagName, start, offset))
+				yield this.makeToken(HTMLTokenType.EndTagName)
 
 				// </abc|>
-				offset = readUntilChars(string, offset, ['>'])
-				if (offset === string.length) {
+				this.readUntilChars(['>'])
+
+				if (this.isEnded()) {
 					break
 				}
 
-				state = ScanState.AnyContent
-				start = offset += 1
+				this.state = ScanState.AnyContent
+				this.followSteps(1)
 			}
 
-			else if (state === ScanState.AfterStartTag) {
-				let char = string[offset]
+			else if (this.state === ScanState.AfterStartTag) {
+				let char = this.peekChar()
 				if (char === '>') {
 
 					// /|>
-					if (peekChar(string, offset - 1) === '/') {
-						tokens.push(makeToken(string, HTMLTokenType.SelfCloseTagEnd, offset - 1, offset + 1))
+					if (this.peekChar(-1) === '/') {
+						yield this.makeToken(HTMLTokenType.SelfCloseTagEnd, this.offset - 1, this.offset + 1)
 					}
 
 					// |>
 					else {
-						tokens.push(makeToken(string, HTMLTokenType.TagEnd, offset, offset + 1))
+						yield this.makeToken(HTMLTokenType.TagEnd, this.offset, this.offset + 1)
 					}
 
-					state = ScanState.AnyContent
-					start = offset += 1
+					this.state = ScanState.AnyContent
+					this.followSteps(1)
 				}
 
 				// |name
-				else if (isAttrNameChar(char)) {
-					state = ScanState.WithinAttributeName
-					start = offset
+				else if (this.isAttrNameChar(char)) {
+					this.state = ScanState.WithinAttributeName
+					this.followSteps()
 				}
 
 				else {
-					start = offset += 1
+					this.followSteps(1)
 				}
 			}
 
-			else if (state === ScanState.WithinAttributeName) {
+			else if (this.state === ScanState.WithinAttributeName) {
 
 				// name|
-				offset = readUntilNotMatch(string, start, isAttrNameChar)
-				tokens.push(makeToken(string, HTMLTokenType.AttributeName, start, offset))
-				state = ScanState.AfterAttributeName
-				start = offset
+				this.readUntilNotMatch(this.isAttrNameChar)
+				
+				yield this.makeToken(HTMLTokenType.AttributeName)
+				this.state = ScanState.AfterAttributeName
+				this.followSteps()
 			}
 
-			else if (state === ScanState.AfterAttributeName) {
-				offset = readUntilNotMatch(string, start, isEmptyChar)
-				let endChar = string[offset]
+			else if (this.state === ScanState.AfterAttributeName) {
+				this.readUntilNotMatch(this.isEmptyChar)
 
 				// name|=
-				if (endChar === '=') {
-					state = ScanState.WithinAttributeValue
-					start = offset = readUntilNotMatch(string, offset + 1, isEmptyChar)
+				if (this.peekChar() === '=') {
+					this.readUntilNotMatch(this.isEmptyChar, 1)
+					this.state = ScanState.WithinAttributeValue
+					this.followSteps()
 				}
 
 				//name |?
 				else {
-					state = ScanState.AfterStartTag
-					start = offset
+					this.state = ScanState.AfterStartTag
+					this.followSteps()
 				}
 			}
 
-			else if (state === ScanState.WithinAttributeValue) {
-				let char = string[offset]
+			else if (this.state === ScanState.WithinAttributeValue) {
+				let char = this.peekChar()
 
 				// =|"..."
 				if (char === '"' || char === '\'') {
 
 					// "..."|
-					offset = endStringAttributeValue(string, tokens, offset, char)
-					state = ScanState.AfterStartTag
-					start = offset
+					yield* this.endStringAttributeValue(char)
+					this.state = ScanState.AfterStartTag
+					this.followSteps()
 				}
 				else {
 
 					// name=value|
-					offset = readUntilNotMatch(string, start, isNameChar)
-					tokens.push(makeToken(string, HTMLTokenType.AttributeValue, start, offset))
+					this.readUntilNotMatch(this.isNameChar)
+					yield this.makeToken(HTMLTokenType.AttributeValue)
 
-					state = ScanState.AfterStartTag
-					start = offset
+					this.state = ScanState.AfterStartTag
+					this.followSteps()
 				}
 			}
 		}
 
-		if (state === ScanState.AnyContent) {
-			endText(string, tokens, start, offset)
+		if (this.state === ScanState.EOF) {
+			yield* this.endText()
 		}
-		
-		return tokens
 	}
 
 
-	function peekChars(string: string, index: number, count: number): string {
-		return string.slice(index, index + count)
-	}
-
-	function peekChar(string: string, index: number): string {
-		return string[index]
-	}
-
-	function isNameChar(char: string): boolean {
+	private isNameChar(char: string): boolean {
 
 		// Add `$` to match template interpolation.
 		return /[\w:$]/.test(char)
 	}
 
-	function isAttrNameChar(char: string): boolean {
+	private isAttrNameChar(char: string): boolean {
 		return /[\w@:.?$-]/.test(char)
 	}
 
-	function isEmptyChar(char: string): boolean {
-		return /\s/.test(char)
-	}
-
-	function readUntilChars(string: string, start: number, chars: string[]) {
-		for (let i = start; i < string.length; i++) {
-			let char = string[i]
-			if (chars.includes(char)) {
-				return i
-			}
-		}
-
-		return string.length
-	}
-
-	function readUntilNotMatch(string: string, start: number, test: (char: string) => boolean) {
-		for (let i = start; i < string.length; i++) {
-			let char = string[i]
-			if (!test(char)) {
-				return i
-			}
-		}
-
-		return string.length
-	}
-
-	function endText(string: string, tokens: HTMLToken[], start: number, index: number) {
-		if (index > start) {
-			tokens.push(makeToken(string, HTMLTokenType.Text, start, index))
+	private *endText(): Iterable<HTMLToken> {
+		if (this.start < this.offset) {
+			yield this.makeToken(HTMLTokenType.Text, this.start, this.offset)
 		}
 	}
 
 	/** Return after position of end quote: `"..."|` */
-	function endStringAttributeValue(string: string, tokens: HTMLToken[], start: number, quote: string): number {
-		let from = start + 1
-		let until
+	private *endStringAttributeValue(quote: string): Iterable<HTMLToken> {
+
+		// Avoid read start quote.
+		this.offset += 1
 
 		do {
 			// "...|"
-			until = readUntilChars(string, from, ['\\', quote])
+			this.readUntilChars(['\\', quote])
 
-			if (until === string.length) {
-				break
+			if (this.isEnded()) {
+				return
 			}
 			
-			if (string[until] === quote) {
+			if (this.peekChar() === quote) {
+				this.offset += 1
 				break
 			}
 
-			// `\\"`
-			from = until + 1
 		}
-		while (from < string.length)
+		while (true)
 
-		let end = Math.min(until + 1, string.length)
-		tokens.push(makeToken(string, HTMLTokenType.AttributeValue, start, end))
-
-		return end
-	}
-
-	function makeToken(string: string, type: HTMLTokenType, start: number, end: number): HTMLToken {
-		return {
-			type,
-			text: string.slice(start, end),
-			start,
-			end,
-		}
+		yield this.makeToken(HTMLTokenType.AttributeValue)
 	}
 }
