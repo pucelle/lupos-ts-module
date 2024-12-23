@@ -1,12 +1,12 @@
 import {trimText} from '../utils'
 import {HTMLAttribute, HTMLNode, HTMLNodeType} from './html-node'
-import {HTMLTokenParser, HTMLTokenType, SelfClosingTags} from './html-token-parser'
+import {HTMLTokenScanner, HTMLTokenType, SelfClosingTags} from './html-token-scanner'
 
 
 export class HTMLRoot extends HTMLNode {
 
 	static fromString(string: string): HTMLRoot {
-		let tokens = new HTMLTokenParser(string).parseToTokens()
+		let tokens = new HTMLTokenScanner(string).parseToTokens()
 		let tree = new HTMLRoot()
 		let current: HTMLNode | null = tree
 		let currentAttr: HTMLAttribute | null = null

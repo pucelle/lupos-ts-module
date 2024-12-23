@@ -1,5 +1,5 @@
 import {TemplateSlotPlaceholder} from './template-slot-placeholder'
-import {SelfClosingTags} from './html-token-parser'
+import {SelfClosingTags} from './html-token-scanner'
 
 
 export enum HTMLNodeType {

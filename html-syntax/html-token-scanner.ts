@@ -71,7 +71,7 @@ enum ScanState {
 }
 
 
-export class HTMLTokenParser {
+export class HTMLTokenScanner {
 
 	private string: string
 	private start = 0
@@ -98,13 +98,23 @@ export class HTMLTokenParser {
 		return /\s/.test(char)
 	}
 
-	/** It moves `offset` to before until char. */
-	private readUntilChars(chars: string[], additionalOffset: number = 0) {
-		for (let i = this.offset + additionalOffset; i < this.string.length; i++) {
+	/** 
+	 * It moves `offset` to before match by default,
+	 * can specify `moveOffsetAfter=true` to move after match.
+	 */
+	private readUntil(matches: string[], moveOffsetAfter: boolean = false) {
+		for (let i = this.offset; i < this.string.length; i++) {
 			let char = this.string[i]
-			if (chars.includes(char)) {
-				this.offset = i
-				return
+
+			for (let match of matches) {
+				if (match[0] !== char) {
+					continue
+				}
+
+				if (match.length === 1 || match === this.string.slice(i, i + match.length)) {
+					this.offset = moveOffsetAfter ? i + match.length : i
+					return
+				}
 			}
 		}
 
@@ -112,9 +122,9 @@ export class HTMLTokenParser {
 		this.state = ScanState.EOF
 	}
 
-	/** It moves `offset` to before not match char. */
-	private readUntilNotMatch(test: (char: string) => boolean, additionalOffset: number = 0) {
-		for (let i = this.offset + additionalOffset; i < this.string.length; i++) {
+	/** It moves `offset` to before not match character. */
+	private readUntilCharNotMatch(test: (char: string) => boolean) {
+		for (let i = this.offset; i < this.string.length; i++) {
 			let char = this.string[i]
 			if (!test(char)) {
 				this.offset = i
@@ -135,7 +145,7 @@ export class HTMLTokenParser {
 		}
 	}
 
-	private followSteps(additionalOffset: number = 0) {
+	private syncSteps(additionalOffset: number = 0) {
 		this.start = this.offset = this.offset + additionalOffset
 	}
 
@@ -146,7 +156,7 @@ export class HTMLTokenParser {
 	*parseToTokens(): Iterable<HTMLToken> {
 		while (this.offset < this.string.length) {
 			if (this.state === ScanState.AnyContent) {
-				this.readUntilChars(['<'])
+				this.readUntil(['<'])
 
 				if (this.isEnded()) {
 					break
@@ -156,7 +166,7 @@ export class HTMLTokenParser {
 				if (this.peekChars(1, 3) === '!--') {
 					yield* this.endText()
 					this.state = ScanState.WithinComment
-					this.followSteps()
+					this.syncSteps()
 					this.offset += 3
 				}
 
@@ -164,14 +174,14 @@ export class HTMLTokenParser {
 				else if (this.peekChar(1) === '/') {
 					yield* this.endText()
 					this.state = ScanState.WithinEndTag
-					this.followSteps(2)
+					this.syncSteps(2)
 				}
 
 				// |<a
 				else if (this.isNameChar(this.peekChar(1))) {
 					yield* this.endText()
 					this.state = ScanState.WithinStartTag
-					this.followSteps(1)
+					this.syncSteps(1)
 				}
 				else {
 					this.offset += 1
@@ -179,27 +189,22 @@ export class HTMLTokenParser {
 			}
 
 			else if (this.state === ScanState.WithinComment) {
-				this.readUntilChars(['>'])
+				// -->|
+				this.readUntil(['-->'], true)
 
 				if (this.isEnded()) {
 					break
 				}
 
-				// --|>
-				if (this.peekChars(-2, 2) === '--') {
-					yield this.makeToken(HTMLTokenType.Comment, this.start, this.offset + 1)
-					this.state = ScanState.AnyContent
-					this.followSteps(1)
-				}
-				else {
-					this.offset += 1
-				}
+				yield this.makeToken(HTMLTokenType.Comment, this.start, this.offset + 1)
+				this.state = ScanState.AnyContent
+				this.syncSteps()
 			}
 
 			else if (this.state === ScanState.WithinStartTag) {
 
 				// <abc| ..
-				this.readUntilNotMatch(this.isNameChar)
+				this.readUntilCharNotMatch(this.isNameChar)
 
 				if (this.isEnded()) {
 					break
@@ -207,13 +212,13 @@ export class HTMLTokenParser {
 
 				yield this.makeToken(HTMLTokenType.StartTagName)
 				this.state = ScanState.AfterStartTag
-				this.followSteps()
+				this.syncSteps()
 			}
 
 			else if (this.state === ScanState.WithinEndTag) {
 
 				// </abc|> or </|>
-				this.readUntilNotMatch(this.isNameChar)
+				this.readUntilCharNotMatch(this.isNameChar)
 
 				if (this.isEnded()) {
 					break
@@ -222,14 +227,14 @@ export class HTMLTokenParser {
 				yield this.makeToken(HTMLTokenType.EndTagName)
 
 				// </abc|>
-				this.readUntilChars(['>'])
+				this.readUntil(['>'], true)
 
 				if (this.isEnded()) {
 					break
 				}
 
 				this.state = ScanState.AnyContent
-				this.followSteps(1)
+				this.syncSteps()
 			}
 
 			else if (this.state === ScanState.AfterStartTag) {
@@ -247,44 +252,45 @@ export class HTMLTokenParser {
 					}
 
 					this.state = ScanState.AnyContent
-					this.followSteps(1)
+					this.syncSteps(1)
 				}
 
 				// |name
 				else if (this.isAttrNameChar(char)) {
 					this.state = ScanState.WithinAttributeName
-					this.followSteps()
+					this.syncSteps()
 				}
 
 				else {
-					this.followSteps(1)
+					this.syncSteps(1)
 				}
 			}
 
 			else if (this.state === ScanState.WithinAttributeName) {
 
 				// name|
-				this.readUntilNotMatch(this.isAttrNameChar)
+				this.readUntilCharNotMatch(this.isAttrNameChar)
 				
 				yield this.makeToken(HTMLTokenType.AttributeName)
 				this.state = ScanState.AfterAttributeName
-				this.followSteps()
+				this.syncSteps()
 			}
 
 			else if (this.state === ScanState.AfterAttributeName) {
-				this.readUntilNotMatch(this.isEmptyChar)
+				this.readUntilCharNotMatch(this.isEmptyChar)
 
 				// name|=
 				if (this.peekChar() === '=') {
-					this.readUntilNotMatch(this.isEmptyChar, 1)
+					this.offset++
+					this.readUntilCharNotMatch(this.isEmptyChar)
 					this.state = ScanState.WithinAttributeValue
-					this.followSteps()
+					this.syncSteps()
 				}
 
 				//name |?
 				else {
 					this.state = ScanState.AfterStartTag
-					this.followSteps()
+					this.syncSteps()
 				}
 			}
 
@@ -297,16 +303,16 @@ export class HTMLTokenParser {
 					// "..."|
 					yield* this.endStringAttributeValue(char)
 					this.state = ScanState.AfterStartTag
-					this.followSteps()
+					this.syncSteps()
 				}
 				else {
 
 					// name=value|
-					this.readUntilNotMatch(this.isNameChar)
+					this.readUntilCharNotMatch(this.isNameChar)
 					yield this.makeToken(HTMLTokenType.AttributeValue)
 
 					this.state = ScanState.AfterStartTag
-					this.followSteps()
+					this.syncSteps()
 				}
 			}
 		}
@@ -340,18 +346,16 @@ export class HTMLTokenParser {
 		this.offset += 1
 
 		do {
-			// "...|"
-			this.readUntilChars(['\\', quote])
+			// "..."|
+			this.readUntil(['\\', quote], true)
 
 			if (this.isEnded()) {
 				return
 			}
 			
-			if (this.peekChar() === quote) {
-				this.offset += 1
+			if (this.peekChar(-1) === quote) {
 				break
 			}
-
 		}
 		while (true)
 
