@@ -13,13 +13,13 @@ export class HTMLRoot extends HTMLNode {
 
 		for (let token of tokens) {
 			let start = token.start
-			let end = token.end
+			let end = token.start + token.text.length
 
 			switch (token.type) {
 				case HTMLTokenType.StartTagName:
 					
 					// start is the start of tag name.
-					let node = new HTMLNode(HTMLNodeType.Tag, start - 1, -1, token.text, [])
+					let node = new HTMLNode(HTMLNodeType.Tag, start, -1, token.text, [])
 					node.nameEnd = end
 					current.append(node)
 					current = node
@@ -30,19 +30,19 @@ export class HTMLRoot extends HTMLNode {
 
 						// </name>
 						if (current.tagName === token.text) {
-							current.end = end
+							current.closureEnd = end
 							current = current.parent
 							break
 						}
 
 						// </>
 						if (token.text === '') {
-							current.end = end
+							current.closureEnd = end
 							current = current.parent
 							break
 						}
 
-						current.end = end
+						current.closureEnd = end
 						current = current.parent
 					} while (current)
 					break
@@ -53,7 +53,7 @@ export class HTMLRoot extends HTMLNode {
 					if (current && current.type === HTMLNodeType.Tag
 						&& SelfClosingTags.includes(current.tagName!)
 					) {
-						current.end = end
+						current.closureEnd = end
 						current = current.parent
 					}
 					break
@@ -62,7 +62,7 @@ export class HTMLRoot extends HTMLNode {
 					current.tagEnd = end
 					
 					if (current && current.type === HTMLNodeType.Tag) {
-						current.end = end
+						current.closureEnd = end
 						current = current.parent
 					}
 					break
@@ -71,9 +71,9 @@ export class HTMLRoot extends HTMLNode {
 					if (current && current.type === HTMLNodeType.Tag) {
 						currentAttr = {
 							start: token.start,
-							end: token.end,
+							end: token.start + token.text.length,
 							nameStart: token.start,
-							nameEnd: token.end,
+							nameEnd: token.start + token.text.length,
 							valueStart: -1,
 							valueEnd: -1,
 							name: token.text,
@@ -96,8 +96,8 @@ export class HTMLRoot extends HTMLNode {
 						}
 
 						currentAttr.valueStart = token.start
-						currentAttr.valueEnd = token.end
-						currentAttr.end = token.end
+						currentAttr.valueEnd = token.start + token.text.length
+						currentAttr.end = token.start + token.text.length
 						currentAttr.rawValue = token.text
 						currentAttr.value = value
 						currentAttr.quoted = quoted
@@ -115,7 +115,7 @@ export class HTMLRoot extends HTMLNode {
 					}
 					break
 
-				case HTMLTokenType.Comment:
+				case HTMLTokenType.CommentText:
 					let commentText = token.text
 					let commentStart = start
 					let commentEnd = commentStart + commentText.length

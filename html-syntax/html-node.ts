@@ -50,12 +50,15 @@ export class HTMLNode {
 	readonly type: HTMLNodeType
 	readonly tagName: string | undefined
 
-	/** Start offset of node name based on template string position. */
+	/** 
+	 * Start offset of node name based on template string position.
+	 * For tag node, `start` is the start of tag name.
+	 */
 	start: number
 
 	/** 
 	 * End offset of node based on template string position.
-	 * For tag node, `end` is the end of mapped end tag.
+	 * For tag node, `end` is the end of tag name.
 	  */
 	end: number = -1
 	
@@ -83,7 +86,19 @@ export class HTMLNode {
 	 */
 	nameEnd: number = -1
 
-	/** Note this text has been trimmed. */
+	/** 
+	 * Start offset of start tag.
+	 * For non-tag nodes is always `-1`.
+	 */
+	closureStart: number = -1
+
+	/** 
+	 * End offset of mapped end tag.
+	 * For non-tag nodes is always `-1`.
+	 */
+	closureEnd: number = -1
+
+	/** This text has not been trimmed. */
 	text: string | undefined
 	
 	attrs: HTMLAttribute[] | undefined
@@ -100,13 +115,20 @@ export class HTMLNode {
 		this.end = end
 
 		if (type === HTMLNodeType.Tag) {
-			this.tagStart = start
-			this.nameStart = start + 1
+			this.tagStart = start - 1
+			this.nameStart = start
+			this.closureStart = start - 1
 		}
 
 		this.tagName = tagName
 		this.attrs = attrs
-		this.text = text
+
+		if (type === HTMLNodeType.Text || type === HTMLNodeType.Comment) {
+			this.text = text ?? ''
+		}
+		else {
+			this.text = undefined
+		}
 	}
 
 	private setParent(parent: HTMLNode | null) {
