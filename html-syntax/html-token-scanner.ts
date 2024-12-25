@@ -86,12 +86,12 @@ export class HTMLTokenScanner {
 		return this.state === ScanState.EOF
 	}
 
-	private peekChars(additionalOffset: number = 0, count: number): string {
-		return this.string.slice(this.offset + additionalOffset, this.offset + additionalOffset + count)
+	private peekChars(move: number = 0, count: number): string {
+		return this.string.slice(this.offset + move, this.offset + move + count)
 	}
 
-	private peekChar(additionalOffset: number = 0): string {
-		return this.string[this.offset + additionalOffset]
+	private peekChar(move: number = 0): string {
+		return this.string[this.offset + move]
 	}
 
 	private isEmptyChar(char: string): boolean {
@@ -145,14 +145,11 @@ export class HTMLTokenScanner {
 		}
 	}
 
-	private syncSteps(additionalOffset: number = 0) {
-		this.start = this.offset = this.offset + additionalOffset
+	private syncSteps(move: number = 0) {
+		this.start = this.offset = this.offset + move
 	}
 
-	/**
-	 * Parse html string to tokens.
-	 * After parsed, all comments were removed, and `\r\n\t`s in text nodes were cleansed too.
-	 */
+	/** Parse html string to tokens. */
 	*parseToTokens(): Iterable<HTMLToken> {
 		while (this.offset < this.string.length) {
 			if (this.state === ScanState.AnyContent) {
