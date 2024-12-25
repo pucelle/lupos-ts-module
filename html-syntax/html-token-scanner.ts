@@ -3,6 +3,7 @@ export interface HTMLToken {
 	type: HTMLTokenType
 	text: string
 	start: number
+	end: number
 }
 
 /** HTML token type. */
@@ -194,6 +195,7 @@ export class HTMLTokenScanner {
 			type,
 			text: this.string.slice(start, end),
 			start,
+			end,
 		}
 	}
 

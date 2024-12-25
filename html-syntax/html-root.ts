@@ -13,7 +13,7 @@ export class HTMLRoot extends HTMLNode {
 
 		for (let token of tokens) {
 			let start = token.start
-			let end = token.start + token.text.length
+			let end = token.end
 
 			switch (token.type) {
 				case HTMLTokenType.StartTagName:
@@ -71,9 +71,9 @@ export class HTMLRoot extends HTMLNode {
 					if (current && current.type === HTMLNodeType.Tag) {
 						currentAttr = {
 							start: token.start,
-							end: token.start + token.text.length,
+							end: token.end,
 							nameStart: token.start,
-							nameEnd: token.start + token.text.length,
+							nameEnd: token.end,
 							valueStart: -1,
 							valueEnd: -1,
 							name: token.text,
@@ -96,8 +96,8 @@ export class HTMLRoot extends HTMLNode {
 						}
 
 						currentAttr.valueStart = token.start
-						currentAttr.valueEnd = token.start + token.text.length
-						currentAttr.end = token.start + token.text.length
+						currentAttr.valueEnd = token.end
+						currentAttr.end = token.end
 						currentAttr.rawValue = token.text
 						currentAttr.value = value
 						currentAttr.quoted = quoted
@@ -108,19 +108,12 @@ export class HTMLRoot extends HTMLNode {
 					let text = token.text
 
 					if (trimText(text)) {
-						let textStart = start
-						let textEnd = textStart + text.length
-
-						current.append(new HTMLNode(HTMLNodeType.Text, textStart, textEnd, undefined, undefined, text))
+						current.append(new HTMLNode(HTMLNodeType.Text, start, end, undefined, undefined, text))
 					}
 					break
 
 				case HTMLTokenType.CommentText:
-					let commentText = token.text
-					let commentStart = start
-					let commentEnd = commentStart + commentText.length
-
-					current.append(new HTMLNode(HTMLNodeType.Comment, commentStart, commentEnd, undefined, undefined, commentText))
+					current.append(new HTMLNode(HTMLNodeType.Comment, start, end, undefined, undefined, token.text))
 					break
 			}
 
