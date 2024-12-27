@@ -72,10 +72,10 @@ enum ScanState {
 
 
 /** Match tag name, Add `$` to match template interpolation. */
-const IsTagName = /[\w:$]/g
+const IsTagName = /[\w:$-]/g
 
 /** Match not tag name. */
-const IsNotTagName = /[^\w:$]/g
+const IsNotTagName = /[^\w:$-]/g
 
 /** Match attribute name. */
 const IsAttrName = /[\w@:.?$-]/g
@@ -106,11 +106,7 @@ export class HTMLTokenScanner {
 		this.string = string
 	}
 
-	private isEnded(): boolean {
-		return this.state === ScanState.EOF
-	}
-
-	private peekChars(move: number = 0, count: number): string {
+	private peekChars(move: number, count: number): string {
 		return this.string.slice(this.offset + move, this.offset + move + count)
 	}
 
@@ -157,21 +153,18 @@ export class HTMLTokenScanner {
 	}
 
 	/** Return after position of end quote: `"..."|` */
-	private readString(quote: string) {
+	private readString(quote: string): boolean {
 
 		// Avoid read start quote.
 		this.offset += 1
 
 		do {
 			// "..."|
-			this.readOut(/['"`\\]/g)
-
-			if (this.isEnded()) {
-				return
+			if (!this.readOut(/['"`\\]/g)) {
+				return false
 			}
 
 			let char = this.peekChar(-1)
-			
 			if (char === quote) {
 				break
 			}
@@ -182,6 +175,13 @@ export class HTMLTokenScanner {
 			}
 		}
 		while (true)
+
+		return true
+	}
+
+	/** Read all whitespaces. */
+	private readWhiteSpaces(): boolean {
+		return !!this.readUntil(/\S/g)
 	}
 
 	/** Note it will sync start to offset. */
@@ -210,9 +210,7 @@ export class HTMLTokenScanner {
 			if (this.state === ScanState.AnyContent) {
 
 				// `|<`
-				this.readUntil(/</g)
-
-				if (this.isEnded()) {
+				if (!this.readUntil(/</g)) {
 					break
 				}
 
@@ -223,7 +221,6 @@ export class HTMLTokenScanner {
 					// Move to `<--|`
 					this.offset += 3
 					this.sync()
-
 					this.state = ScanState.WithinComment
 				}
 
@@ -234,7 +231,6 @@ export class HTMLTokenScanner {
 					// Move to `</|`
 					this.offset += 2
 					this.sync()
-
 					this.state = ScanState.WithinEndTag
 				}
 
@@ -245,7 +241,6 @@ export class HTMLTokenScanner {
 					// Move to `<|a`
 					this.offset += 1
 					this.sync()
-
 					this.state = ScanState.WithinStartTag
 				}
 				else {
@@ -255,26 +250,23 @@ export class HTMLTokenScanner {
 
 			else if (this.state === ScanState.WithinComment) {
 
-				// `-->|`
-				this.readUntil(/-->/g)
-
-				if (this.isEnded()) {
+				// `|-->`
+				if (!this.readUntil(/-->/g)) {
 					break
 				}
 
 				yield this.makeToken(HTMLTokenType.CommentText)
+
+				// Move to `-->|`
 				this.offset += 3
 				this.sync()
-
 				this.state = ScanState.AnyContent
 			}
 
 			else if (this.state === ScanState.WithinStartTag) {
 
 				// `<abc|`
-				this.readUntil(IsNotTagName)
-
-				if (this.isEnded()) {
+				if (!this.readUntil(IsNotTagName)) {
 					break
 				}
 
@@ -286,9 +278,7 @@ export class HTMLTokenScanner {
 			else if (this.state === ScanState.WithinEndTag) {
 
 				// `</abc|>` or `</|>`
-				this.readUntil(IsNotTagName)
-
-				if (this.isEnded()) {
+				if (!this.readUntil(IsNotTagName)) {
 					break
 				}
 
@@ -296,17 +286,19 @@ export class HTMLTokenScanner {
 				yield this.makeToken(HTMLTokenType.EndTagName)
 
 				// `</abc>|`, skip `>`
-				this.readOut(/>/g)
-				this.sync()
-
-				if (this.isEnded()) {
+				if (!this.readOut(/>/g)) {
 					break
 				}
 
+				this.sync()
 				this.state = ScanState.AnyContent
 			}
 
 			else if (this.state === ScanState.AfterStartTag) {
+
+				// Skip whitespaces.
+				this.readWhiteSpaces()
+
 				let char = this.peekChar()
 				if (char === '>') {
 
@@ -350,7 +342,10 @@ export class HTMLTokenScanner {
 			else if (this.state === ScanState.AfterAttributeName) {
 
 				// Skip white spaces.
-				this.readUntil(/\S/g)
+				if (!this.readWhiteSpaces()) {
+					break
+				}
+				
 				this.sync()
 
 				// `name|=`
@@ -360,7 +355,7 @@ export class HTMLTokenScanner {
 					this.offset += 1
 
 					// Skip white spaces.
-					this.readUntil(/\S/g)
+					this.readWhiteSpaces()
 					this.sync()
 
 					this.state = ScanState.WithinAttributeValue
@@ -395,9 +390,7 @@ export class HTMLTokenScanner {
 			}
 		}
 
-		if (this.state === ScanState.EOF) {
-			yield* this.makeTextToken()
-		}
+		yield* this.makeTextToken()
 	}
 
 	private *makeTextToken(): Iterable<HTMLToken> {
