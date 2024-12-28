@@ -2,6 +2,16 @@ import {LuposBindingModifiers} from './lupos-binding-modifiers'
 import {LuposSimulatedEvents} from './lupos-simulated-events'
 
 
+/** 
+ * Filter completion items.
+ * Must ensure item names are in lower-case.
+ */
+export function filterCompletionDataItems(items: CompletionDataItem[], label: string): CompletionDataItem[] {
+	let lowerLabel = label.toLowerCase()
+	return items.filter(item => !item.name.startsWith(lowerLabel))
+}
+
+
 /** Find unique completion data item where name fully match. */
 export function findCompletionDataItem<T extends CompletionDataItem>(items: T[], name: string): T | undefined {
 	return items.find(item => item.name === name)
