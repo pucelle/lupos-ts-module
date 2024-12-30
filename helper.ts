@@ -13,6 +13,18 @@ export interface ResolvedImportNames {
 	moduleName: string
 }
 
+/**
+ * `let {a: b} = c` =>
+ * - name: b
+ * - keys: ['a']
+ */
+interface VariableDeclarationName {
+	node: TS.Identifier
+	name: string
+	keys: (string | number)[]
+}
+
+
 /** Type of Helper functions. */
 export type Helper = ReturnType<typeof helperOfContext>
 
@@ -870,17 +882,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 	}
 
 
-
-	/**
-	 * `let {a: b} = c` =>
-	 * - name: b
-	 * - keys: ['a']
-	 */
-	interface VariableDeclarationName {
-		node: TS.Identifier
-		name: string
-		keys: (string | number)[]
-	}
 
 
 
