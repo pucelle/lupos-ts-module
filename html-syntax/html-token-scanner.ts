@@ -111,7 +111,7 @@ export class HTMLTokenScanner {
 	}
 
 	private peekChar(move: number = 0): string {
-		return this.string[this.offset + move]
+		return this.string.slice(this.offset + move, this.offset + move + 1)
 	}
 
 	/** 
