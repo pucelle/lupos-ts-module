@@ -79,7 +79,7 @@ export function parseAllTemplatePartPieces(part: TemplatePart): TemplatePartPiec
 	}
 
 
-	// `@|` will also generate an empty name.
+	// `@|` will also generate an empty name, to do completion.
 	if (part.mainName || part.namePrefix) {
 		start = end
 		end += part.mainName!.length

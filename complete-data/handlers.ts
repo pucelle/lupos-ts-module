@@ -8,7 +8,7 @@ import {LuposSimulatedEvents} from './lupos-simulated-events'
  */
 export function filterCompletionDataItems(items: CompletionDataItem[], label: string): CompletionDataItem[] {
 	let lowerLabel = label.toLowerCase()
-	return items.filter(item => !item.name.startsWith(lowerLabel))
+	return items.filter(item => item.name.startsWith(lowerLabel))
 }
 
 
