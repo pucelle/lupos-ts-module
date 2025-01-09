@@ -206,7 +206,7 @@ export class HTMLTokenScanner {
 
 	/** Parse html string to tokens. */
 	*parseToTokens(): Iterable<HTMLToken> {
-		while (this.offset < this.string.length) {
+		while (this.state !== ScanState.EOF) {
 			if (this.state === ScanState.AnyContent) {
 
 				// `|<`

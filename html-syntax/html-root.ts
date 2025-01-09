@@ -43,7 +43,7 @@ export class HTMLRoot extends HTMLNode {
 
 					current.closureEnd = end
 					current = current.parent ?? tree
-				} while (current)
+				} while (current !== tree)
 			}
 
 			else if (token.type === HTMLTokenType.TagEnd) {
