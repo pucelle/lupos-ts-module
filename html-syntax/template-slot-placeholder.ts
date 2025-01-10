@@ -55,25 +55,19 @@ export namespace TemplateSlotPlaceholder {
 		if (ts.isNoSubstitutionTemplateLiteral(template)) {
 			mapper.add(string.length, template.getStart() + 1)
 
-			// Note here can't use text, which has bee replace from `\r\n` to `\n`.
-			string += template.getFullText().slice(1, -1)
+			// Note here can't use `text`, which has been replaced from `\r\n` to `\n`.
+			string += template.rawText
 		}
 		else if (ts.isTemplateExpression(template)) {
 			mapper.add(string.length, template.head.getStart() + 1)
-			string += template.head.getFullText().slice(1)
+			string += template.head.rawText
 
 			let index = -1
 			
 			for (let span of template.templateSpans) {
 				string += `\$LUPOS_SLOT_INDEX_${++index}\$`
 				mapper.add(string.length, span.literal.getStart() + 1)
-
-				if (ts.isTemplateTail(span.literal)) {
-					string += span.literal.getFullText().slice(0, -1)
-				}
-				else {
-					string += span.literal.getFullText()
-				}
+				string += span.literal.rawText
 			}
 		}
 
