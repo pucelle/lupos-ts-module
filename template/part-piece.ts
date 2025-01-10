@@ -17,7 +17,6 @@ export interface TemplatePartPiece {
 
 export enum TemplatePartPieceType {
 	TagName,
-	Prefix,
 	Name,
 	Modifier,
 	AttrValue,
@@ -29,11 +28,6 @@ export function getTemplatePartPieceAt(part: TemplatePart, temOffset: number): T
 
 	for (let piece of pieces) {
 		if (temOffset < piece.start || temOffset > piece.end) {
-			continue
-		}
-
-		// `|@name`, not `@|name`.
-		if (piece.type === TemplatePartPieceType.Prefix && temOffset === piece.end) {
 			continue
 		}
 
@@ -67,22 +61,10 @@ export function parseAllTemplatePartPieces(part: TemplatePart): TemplatePartPiec
 	}
 
 
-	if (part.namePrefix) {
-		end += part.namePrefix.length
-
-		// `|@name`, `@|name` should match name.
-		pieces.push({
-			type: TemplatePartPieceType.Prefix,
-			start,
-			end,
-		})
-	}
-
-
 	// `@|` will also generate an empty name, to do completion.
 	if (part.mainName || part.namePrefix) {
 		start = end
-		end += part.mainName!.length
+		end += (part.namePrefix?.length ?? 0) + (part.mainName?.length ?? 0)
 
 		// `@|name|`
 		pieces.push({
