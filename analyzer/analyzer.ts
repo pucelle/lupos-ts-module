@@ -83,6 +83,22 @@ export class Analyzer {
 		return this.componentsByName.get(name)
 	}
 
+	/** Get components by name across all workspace. */
+	getWorkspaceComponentByName(name: string): LuposComponent | undefined {
+		let components = this.componentsByName.get(name)
+		if (!components || components.length === 0) {
+			return undefined
+		}
+
+		// If have multiple declarations, return the first non-declaration file.
+		if (components.length > 1) {
+			return components.find(c => !c.sourceFile.fileName.endsWith('.d.ts'))
+				?? components[0]
+		}
+
+		return components[0]
+	}
+
 	/** 
 	 * Get component by template part, the and template.
 	 * `tagName` can be dynamic component interpolation.
