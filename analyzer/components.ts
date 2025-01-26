@@ -106,11 +106,10 @@ function analyzeLuposComponentMemberProperty(node: TS.ClassElement, helper: Help
 
 	// `class {property = value, property: type = value}`, property must be public and not readonly.
 	if (helper.ts.isPropertyDeclaration(node) || helper.ts.isPropertySignature(node)) {
-		let beReadOnly = helper.class.hasModifier(node, 'readonly')
 		let bePublic = helper.class.getVisibility(node) === 'public'
 		let beStatic = helper.class.hasModifier(node, 'static')
 
-		if (!beReadOnly && !beStatic) {
+		if (!beStatic) {
 			return {
 				name: helper.getText(node.name),
 				nameNode: node,
