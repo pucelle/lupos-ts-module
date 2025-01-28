@@ -263,17 +263,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			&& isArray(node.parent.expression.expression)
 	}
 
-	/** Test whether be `Map` or `Set`, or of `Array` type. */
-	function isListStruct(rawNode: TS.Node): boolean {
-		let type = types.typeOf(rawNode)
-		let typeNode = types.getOrMakeTypeNode(rawNode)
-		let objName = typeNode ? types.getTypeNodeReferenceName(typeNode) : undefined
-
-		return objName === 'Map'
-			|| objName === 'Set'
-			|| types.isArrayType(type)
-	}
-	
 
 	/** Walk node and all descendant nodes, test fn return a node to stop. */
 	function walkInward(fromNode: TS.Node, test: (node: TS.Node) => TS.Node | void) : TS.Node | undefined {
@@ -570,6 +559,19 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return firstType
 		},
 
+		/** Get implements expression. */
+		getImplements(node: TS.ClassLikeDeclaration): TS.ExpressionWithTypeArguments[] {
+			let extendHeritageClause = node.heritageClauses?.find(hc => {
+				return hc.token === ts.SyntaxKind.ImplementsKeyword
+			})
+
+			if (!extendHeritageClause) {
+				return []
+			}
+
+			return Array.from(extendHeritageClause.types)
+		},
+
 		/** Get super class declaration. */
 		getSuper(node: TS.ClassLikeDeclaration): TS.ClassDeclaration | undefined {
 			let extendsNode = cls.getExtends(node)
@@ -656,9 +658,9 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 						return true
 					}
 
-					// Import relative module, try match file path.
+					// Import relative module, try match file path after excluding user part.
 					if (resolved.moduleName.startsWith('.')
-						&& node.getSourceFile().fileName.includes('/' + moduleName + '/')
+						&& node.getSourceFile().fileName.includes('/' + moduleName.replace(/^@[\w-]+\//, '') + '/')
 					) {
 						return true
 					}
@@ -959,6 +961,21 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				typeNode = symbol.resolveDeclaration(node.expression, isFunctionLike)?.type
 			}
 
+			// `(...)`
+			else if (ts.isParenthesizedExpression(node)) {
+				return types.getOrMakeTypeNode(node.expression)
+			}
+
+			// `...!`
+			else if (ts.isNonNullExpression(node)) {
+				return types.getOrMakeTypeNode(node.expression)
+			}
+
+			// `(a as Type)`
+			else if (ts.isAsExpression(node)) {
+				typeNode = node.type
+			}
+
 			if (typeNode) {
 				return typeNode
 			}
@@ -1130,24 +1147,35 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			// `readonly {...}` -> it may not 100% strict.
 			if (access.isAccess(node)) {
 				let exp = node.expression
+				return types.isElementsReadonly(exp)
+			}
 
-				let expTypeNode = types.getOrMakeTypeNode(exp)
-				if (!expTypeNode) {
-					return false
+			return false
+		},
+
+		/** Analysis whether the elements of specified node - normally an array, are readonly. */
+		isElementsReadonly(node: TS.Node): boolean {
+			// `a: Readonly<{...}>` -> `a` is elements readonly, not observe.
+			// `a: ReadonlyArray<...>` -> `a` is elements readonly, not observe.
+			// `a: DeepReadonly<...>` -> `a.?` and `d.?.?` are readonly, not observe.
+			// `readonly {...}` to convert type properties readonly -> this may not 100% strict.
+	
+			let typeNode = types.getOrMakeTypeNode(node)
+			if (!typeNode) {
+				return false
+			}
+
+			if (ts.isTypeReferenceNode(typeNode)) {
+				let name = types.getTypeNodeReferenceName(typeNode)
+				if (name === 'Readonly' || name === 'ReadonlyArray') {
+					return true
 				}
+			}
 
-				if (ts.isTypeReferenceNode(expTypeNode)) {
-					let name = types.getTypeNodeReferenceName(expTypeNode)
-					if (name === 'Readonly' || name === 'ReadonlyArray') {
-						return true
-					}
-				}
-
-				// Type was expanded and removed alias.
-				else if (ts.isTypeOperatorNode(expTypeNode)) {
-					if (expTypeNode.operator === ts.SyntaxKind.ReadonlyKeyword) {
-						return true
-					}
+			// Type was expanded and alias get removed.
+			else if (ts.isTypeOperatorNode(typeNode)) {
+				if (typeNode.operator === ts.SyntaxKind.ReadonlyKeyword) {
+					return true
 				}
 			}
 
@@ -1695,7 +1723,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		isArray,
 		isArraySpreadElement,
 		isInstantlyRunFunction,
-		isListStruct,
 		walkInward,
 		walkOutward,
 		findInward,
