@@ -5,7 +5,7 @@ import type * as TS from 'typescript'
 export type AccessNode = TS.PropertyAccessExpression | TS.ElementAccessExpression
 
 /** Property access types. */
-export type AssignmentNode = TS.BinaryExpression | TS.PostfixUnaryExpression | TS.PrefixUnaryExpression
+export type AssignmentNode = TS.BinaryExpression | TS.PostfixUnaryExpression | TS.PrefixUnaryExpression | TS.DeleteExpression
 
 /** Resolved names after resolve importing of a node. */
 export interface ResolvedImportNames {
@@ -804,7 +804,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 	/** Property Assignment */
 	const assign = {
 
-		/** Whether be property assignment like `a = x`. */
+		/** Whether be property assignment like `a = x`, `delete a.b`. */
 		isAssignment(node: TS.Node): node is AssignmentNode {
 			if (ts.isBinaryExpression(node)) {
 				return node.operatorToken.kind === ts.SyntaxKind.EqualsToken
@@ -832,6 +832,9 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				return node.operator === ts.SyntaxKind.PlusPlusToken
 					|| node.operator === ts.SyntaxKind.MinusMinusToken
 			}
+			else if (ts.isDeleteExpression(node)) {
+				return true
+			}
 
 			return false
 		},
@@ -844,8 +847,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			if (ts.isBinaryExpression(node)) {
 				return node.right
 			}
-			else {
+			else if (ts.isPostfixUnaryExpression(node) || ts.isPrefixUnaryExpression(node)) {
 				return node.operand
+			}
+
+			// delete `a.b`
+			else {
+				return node.expression
 			}
 		},
 
@@ -858,8 +866,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			if (ts.isBinaryExpression(node)) {
 				return [...assign.walkAssignToExpressions(node.left)]
 			}
-			else {
+			else if (ts.isPostfixUnaryExpression(node) || ts.isPrefixUnaryExpression(node)) {
 				return [node.operand]
+			}
+
+			// delete `a.b`
+			else {
+				return [node.expression]
 			}
 		},
 
@@ -882,8 +895,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			}
 		},
 	}
-
-
 
 
 
@@ -941,10 +952,21 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Get type node of a node.
 		 * Will firstly try to get type node when doing declaration,
-		 * If can't find, make a new type node, but it can't be resolved.
+		 * If can't find and `makeIfNotExist`, make a new type node, but it can't be resolved.
+		 * If `resolveObserved`, resolve `Observed<T>` to get `T`.
 		 */
-		getOrMakeTypeNode(node: TS.Node): TS.TypeNode | undefined {
+		getTypeNode(node: TS.Node, makeIfNotExist: boolean = false, resolveObserved: boolean = false): TS.TypeNode | undefined {
 			let typeNode: TS.TypeNode | undefined
+
+			// `(...)`
+			if (ts.isParenthesizedExpression(node)) {
+				return types.getTypeNode(node.expression, makeIfNotExist, resolveObserved)
+			}
+
+			// `...!`
+			if (ts.isNonNullExpression(node)) {
+				return types.getTypeNode(node.expression, makeIfNotExist, resolveObserved)
+			}
 
 			// `class {a: Type = xxx}`
 			if (access.isAccess(node)) {
@@ -961,19 +983,18 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				typeNode = symbol.resolveDeclaration(node.expression, isFunctionLike)?.type
 			}
 
-			// `(...)`
-			else if (ts.isParenthesizedExpression(node)) {
-				return types.getOrMakeTypeNode(node.expression)
-			}
-
-			// `...!`
-			else if (ts.isNonNullExpression(node)) {
-				return types.getOrMakeTypeNode(node.expression)
-			}
-
 			// `(a as Type)`
 			else if (ts.isAsExpression(node)) {
 				typeNode = node.type
+			}
+
+			// `let a: Observed<...>`
+			if (typeNode
+				&& resolveObserved
+				&& ts.isTypeReferenceNode(typeNode)
+				&& symbol.isImportedFrom(typeNode, 'Observed', '@pucelle/ff')
+			) {
+				typeNode = typeNode.typeArguments?.[0]
 			}
 
 			if (typeNode) {
@@ -981,7 +1002,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			}
 
 			// This generated type node can't be resolved.
-			return types.typeToTypeNode(types.typeOf(node))
+			if (makeIfNotExist) {
+				return types.typeToTypeNode(types.typeOf(node))
+			}
+
+			return undefined
 		},
 
 		/** Get type of a node. */
@@ -1160,14 +1185,16 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			// `a: DeepReadonly<...>` -> `a.?` and `d.?.?` are readonly, not observe.
 			// `readonly {...}` to convert type properties readonly -> this may not 100% strict.
 	
-			let typeNode = types.getOrMakeTypeNode(node)
+			let typeNode = types.getTypeNode(node)
 			if (!typeNode) {
 				return false
 			}
 
 			if (ts.isTypeReferenceNode(typeNode)) {
 				let name = types.getTypeNodeReferenceName(typeNode)
-				if (name === 'Readonly' || name === 'ReadonlyArray') {
+
+				// Supports `DeepReadonly<...>` in `@pucelle/ff`.
+				if (name === 'Readonly' || name === 'ReadonlyArray' || name === 'DeepReadonly') {
 					return true
 				}
 			}
