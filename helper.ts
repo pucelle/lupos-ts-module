@@ -42,7 +42,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		return node.pos >= 0
 	}
 
-	/** Get node full text, can output from a newly created node. */
+	/** 
+	 * Get node full text, can output from a newly created node.
+	 * For string literal, will output text with quotes.
+	 */
 	function getFullText(node: TS.Node) {
 		if (node.pos >= 0) {
 			try {
@@ -57,7 +60,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		}
 	}
 
-	/** get text without quoted for string, otherwise get full text. */
+	/** Get text without quoted for string literal, otherwise get full text. */
 	function getText(node: TS.Node): string {
 		if (ts.isStringLiteral(node)) {
 			return node.text
@@ -245,12 +248,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 	function isArray(rawNode: TS.Node): boolean {
 		let type = types.typeOf(rawNode)
 		return types.isArrayType(type)
-	}
-
-	/** Test whether be element of `[a...]`. */
-	function isArraySpreadElement(node: TS.Node): boolean {
-		return node.parent && ts.isSpreadElement(node.parent)
-			&& node.parent.parent && ts.isArrayLiteralExpression(node.parent.parent)
 	}
 
 	/** Whether function will instantly run. */
@@ -594,6 +591,12 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			}
 		},
 
+		/** Walk `node` and super class declarations, not include current. */
+		*walkSelfAndSuper(node: TS.ClassDeclaration): Iterable<TS.ClassDeclaration> {
+			yield node
+			yield* cls.walkSuper(node)
+		},
+
 		/** Test whether is derived class of a specified named class, and of specified module. */
 		isDerivedOf(node: TS.ClassLikeDeclaration, declName: string, moduleName: string): boolean {
 			let extendHeritageClause = node.heritageClauses?.find(hc => {
@@ -797,8 +800,204 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			return topmost
 		},
-	}
 
+		/** 
+		 * Test whether be all elements read access like:
+		 *   - `[...a]`, or `{...a}`
+		 *   - `Object.keys(a)`, `Object.values(a)`, `Object.entries(a)`
+		 *   - `Object.assign(..., a)`
+		 */
+		isAllElementsReadAccess(node: TS.Node): boolean {
+			if (node.parent
+				&& (ts.isSpreadElement(node.parent)
+					|| ts.isSpreadAssignment(node.parent)
+				)
+				&& !assign.isWithinAssignmentTo(node)
+			) {
+				return true
+			}
+
+			// `Object.xx(...)`
+			if (node.parent
+				&& ts.isCallExpression(node.parent)
+				&& ts.isPropertyAccessExpression(node.parent.expression)
+				&& getText(node.parent.expression.expression) === 'Object'
+				&& node.parent.arguments.includes(node as TS.Expression)
+			) {
+				let methodName = getText(node.parent.expression.name)
+				if (methodName === 'keys'
+					|| methodName === 'values'
+					|| methodName === 'entries'
+				) {
+					return true
+				}
+
+				if (methodName === 'assign') {
+					if (node.parent.arguments.indexOf(node as TS.Expression) > 0) {
+						return true
+					}
+				}
+			}
+
+			return false
+		},
+
+		/** 
+		 * Test whether be all elements write access like:
+		 *   - `[...a] = ...`, or `{...a} = ...`
+		 *   - `Object.assign(a, ...)`
+		 */
+		isAllElementsWriteAccess(node: TS.Node): boolean {
+			if (node.parent
+				&& (ts.isSpreadElement(node.parent)
+					|| ts.isSpreadAssignment(node.parent)
+				)
+				&& assign.isWithinAssignmentTo(node)
+			) {
+				return true
+			}
+
+			// `Object.xx(...)`
+			if (node.parent
+				&& ts.isCallExpression(node.parent)
+				&& ts.isPropertyAccessExpression(node.parent.expression)
+				&& getText(node.parent.expression.expression) === 'Object'
+				&& node.parent.arguments.includes(node as TS.Expression)
+			) {
+				let methodName = getText(node.parent.expression.name)
+				if (methodName === 'assign') {
+					if (node.parent.arguments.indexOf(node as TS.Expression) === 0) {
+						return true
+					}
+				}
+			}
+
+			return false
+		},
+		
+		/** 
+		 * Test whether be `Map` or `Set`, or of `Array`.
+		 * Otherwise if resolved type is `MethodsObservable`,
+		 * or resolved class implements `MethodsObservable`, returns `true`.
+		 */
+		isOfElements(rawNode: TS.Node): boolean {
+
+			// Array type.
+			let type = types.typeOf(rawNode)
+			if (types.isArrayType(type)) {
+				return true
+			}
+			
+			// Map or Set.
+			let typeNode = types.getTypeNode(rawNode, true, true)
+			let objName = typeNode ? types.getTypeNodeReferenceName(typeNode) : undefined
+
+			if (objName === 'Map' || objName === 'Set') {
+				return true
+			}
+
+			// resolved class implements `MethodsObservable`.
+			if (typeNode) {
+				let classDecl = symbol.resolveDeclaration(typeNode, ts.isClassDeclaration)
+				if (classDecl) {
+					for (let superClass of cls.walkSelfAndSuper(classDecl)) {
+						if (cls.isImplemented(superClass, 'MethodsObservable', '@pucelle/ff')) {
+							return true
+						}
+					}
+				}
+			}
+
+			return false
+		},
+
+		/** Test whether calls reading process of `Map`, `Set`, `Array`. */
+		isOfElementsReadAccess(rawNode: AccessNode): boolean {
+			let expType = types.typeOf(rawNode.expression)
+			let expTypeNode = types.getTypeNode(rawNode.expression, true, true)
+			let objName = expTypeNode ? types.getTypeNodeReferenceName(expTypeNode) : undefined
+			let propName = access.getPropertyText(rawNode)
+
+			if (objName === 'Map') {
+				return propName === 'has' || propName === 'get' || propName === 'size'
+			}
+			else if (objName === 'Set') {
+				return propName === 'has' || propName === 'size'
+			}
+			else if (types.isArrayType(expType)) {
+				let methodDecl = symbol.resolveDeclaration(rawNode, isMethodLike)
+
+				return !methodDecl || !(
+					propName === 'push'
+					|| propName === 'unshift'
+					|| propName === 'sort'
+					|| propName === 'splice'
+				)
+			}
+			else if (expTypeNode) {
+				return access._isOfMethodsObservable(expTypeNode, propName, 0)
+			}
+
+			return false
+		},
+
+		/** Test whether calls `Map.set`, or `Set.set`. */
+		isOfElementsWriteAccess(rawNode: AccessNode) {
+			let expType = types.typeOf(rawNode.expression)
+			let expTypeNode = types.getTypeNode(rawNode.expression, true, true)
+			let objName = expTypeNode ? types.getTypeNodeReferenceName(expTypeNode) : undefined
+			let propName = access.getPropertyText(rawNode)
+
+			if (objName === 'Map') {
+				return propName === 'set' || propName === 'delete' || propName === 'clear'
+			}
+			else if (objName === 'Set') {
+				return propName === 'add' || propName === 'delete' || propName === 'clear'
+			}
+			else if (types.isArrayType(expType)) {
+				let methodDecl = symbol.resolveDeclaration(rawNode, isMethodLike)
+
+				return !!methodDecl && (
+					propName === 'push'
+					|| propName === 'unshift'
+					|| propName === 'sort'
+					|| propName === 'splice'
+				)
+			}
+			else if (expTypeNode) {
+				return access._isOfMethodsObservable(expTypeNode, propName, 1)
+			}
+
+			return false
+		},
+		
+		_isOfMethodsObservable(expTypeNode: TS.TypeNode, propName: string, paramIndex: number) {
+			let classDecl = symbol.resolveDeclaration(expTypeNode, ts.isClassDeclaration)
+			if (!classDecl) {
+				return false
+			}
+
+			for (let superClass of cls.walkSelfAndSuper(classDecl)) {
+				let implemented = cls.getImplements(superClass)
+				let methodsHalfObservedImplement = implemented.find(im => getText(im.expression) === 'MethodsObservable')
+				if (!methodsHalfObservedImplement) {
+					continue
+				}
+
+				let methodNamesType = methodsHalfObservedImplement.typeArguments?.[paramIndex]
+				if (!methodNamesType) {
+					continue
+				}
+
+				let methodNames = types.splitUnionTypeToStringList(types.typeOfTypeNode(methodNamesType)!)
+				if (methodNames.includes(propName)) {
+					return true
+				}
+			}
+
+			return false
+		}
+	}
 
 
 	/** Property Assignment */
@@ -834,6 +1033,33 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			}
 			else if (ts.isDeleteExpression(node)) {
 				return true
+			}
+
+			return false
+		},
+
+		/** Like `a.b` of `a.b = 1`. */
+		isWithinAssignmentTo(node: TS.Node): boolean {
+			if (!node.parent) {
+				return false
+			}
+
+			// Reach topmost assignment expression.
+			if (assign.isAssignment(node.parent)
+				&& ts.isBinaryExpression(node.parent)
+				&& node === node.parent.left
+			) {
+				return true
+			}
+			
+			// Visit parent to determine.
+			if (access.isAccess(node)
+				|| ts.isObjectLiteralExpression(node)
+				|| ts.isArrayLiteralExpression(node)
+				|| ts.isSpreadElement(node)
+				|| ts.isSpreadAssignment(node)
+			) {
+				return assign.isWithinAssignmentTo(node.parent)
 			}
 
 			return false
@@ -907,39 +1133,40 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * `let {a, b}` = ... -> `[a, b]`
 		 */
 		*walkDeclarationNames(node: TS.VariableDeclaration): Iterable<VariableDeclarationName> {
-			return yield* walkVariablePatternElement(node.name, [])
+			return yield* variable._walkVariablePatternElement(node.name, [])
 		},
-	}
 
-	/** Get all declared variable name from a variable pattern. */
-	function *walkVariablePatternElement(
-		node: TS.BindingName | TS.BindingElement | TS.ObjectBindingPattern | TS.ArrayBindingPattern | TS.OmittedExpression,
-		keys: (string | number)[]
-	): Iterable<VariableDeclarationName> {
-		if (ts.isOmittedExpression(node)) {
-			return
-		}
+			
+		/** Get all declared variable name from a variable pattern. */
+		*_walkVariablePatternElement(
+			node: TS.BindingName | TS.BindingElement | TS.ObjectBindingPattern | TS.ArrayBindingPattern | TS.OmittedExpression,
+			keys: (string | number)[]
+		): Iterable<VariableDeclarationName> {
+			if (ts.isOmittedExpression(node)) {
+				return
+			}
 
-		if (ts.isObjectBindingPattern(node)) {
-			for (let element of node.elements) {
-				let key = getText(element.propertyName ?? element.name)
-				yield* walkVariablePatternElement(element, [...keys, key])
+			if (ts.isObjectBindingPattern(node)) {
+				for (let element of node.elements) {
+					let key = getText(element.propertyName ?? element.name)
+					yield* variable._walkVariablePatternElement(element, [...keys, key])
+				}
 			}
-		}
-		else if (ts.isArrayBindingPattern(node)) {
-			for (let i = 0; i < node.elements.length; i++) {
-				let element = node.elements[i]
-				yield* walkVariablePatternElement(element, [...keys, i])
+			else if (ts.isArrayBindingPattern(node)) {
+				for (let i = 0; i < node.elements.length; i++) {
+					let element = node.elements[i]
+					yield* variable._walkVariablePatternElement(element, [...keys, i])
+				}
 			}
-		}
-		else if (ts.isBindingElement(node)) {
-			yield* walkVariablePatternElement(node.name, keys)
-		}
-		else if (ts.isIdentifier(node)) {
-			yield {
-				node,
-				name: getFullText(node),
-				keys,
+			else if (ts.isBindingElement(node)) {
+				yield* variable._walkVariablePatternElement(node.name, keys)
+			}
+			else if (ts.isIdentifier(node)) {
+				yield {
+					node,
+					name: getFullText(node),
+					keys,
+				}
 			}
 		}
 	}
@@ -973,9 +1200,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				typeNode = symbol.resolveDeclaration(node, isPropertyOrGetAccessor)?.type
 			}
 
-			// `let a: Type`
+			// `let a: Type` or `(a: Type) => {...}`
 			else if (isVariableIdentifier(node)) {
-				typeNode = symbol.resolveDeclaration(node, ts.isVariableDeclaration)?.type
+				typeNode = symbol.resolveDeclaration(node, n => {
+					return ts.isVariableDeclaration(n) || ts.isParameter(n)
+				})?.type
 			}
 
 			// `() => Type`
@@ -1235,20 +1464,19 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			(TS.TypeReferenceNode | TS.TypeLiteralNode | TS.TypeQueryNode)[]
 		{
 			let list: (TS.TypeReferenceNode | TS.TypeLiteralNode)[] = []
-			destructTypeNodeRecursively(node, list)
+			types._destructTypeNodeRecursively(node, list)
 
 			return list
 		},
-	}
+		
+		_destructTypeNodeRecursively(node: TS.Node, list: TS.TypeNode[]) {
+			if (ts.isTypeReferenceNode(node) || ts.isTypeLiteralNode(node) || ts.isTypeQueryNode(node)) {
+				list.push(node)
+			}
 
-	function destructTypeNodeRecursively(node: TS.Node, list: TS.TypeNode[]) {
-		if (ts.isTypeReferenceNode(node) || ts.isTypeLiteralNode(node) || ts.isTypeQueryNode(node)) {
-			list.push(node)
+			ts.forEachChild(node, (n: TS.Node) => types._destructTypeNodeRecursively(n, list))
 		}
-
-		ts.forEachChild(node, (n: TS.Node) => destructTypeNodeRecursively(n, list))
 	}
-
 
 
 	/** 
@@ -1553,12 +1781,27 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 							continue
 						}
 	
-						yield* resolveInstanceDeclarationsOfTypeNodeNormally(newTypeNode)
+						yield* symbol._resolveInstanceDeclarationsOfTypeNodeNormally(newTypeNode)
 					}
 				}
 			}
 		},
 	
+		/** Destruct type node, and resolve class declarations of each. */
+		*_resolveInstanceDeclarationsOfTypeNodeNormally(typeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
+			let typeNodes = types.destructTypeNode(typeNode)
+			if (typeNodes.length === 0) {
+				return
+			}
+
+			for (let typeNode of typeNodes) {
+				let decls = symbol.resolveDeclarations(typeNode, ts.isClassDeclaration)
+				if (decls) {
+					yield* decls
+				}
+			}
+		},
+
 
 		/** 
 		 * Resolve all the class type parameters,
@@ -1592,7 +1835,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 					break
 				}
 
-				refedTypeParameters = remapRefedTypeParameters(refedTypeParameters, selfParameters, superParameters)
+				refedTypeParameters = symbol._remapRefedTypeParameters(refedTypeParameters, selfParameters, superParameters)
 
 				// `C`
 				if (getFullText(extendsNode.expression) === finalHeritageName) {
@@ -1604,6 +1847,58 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			
 			return []
 		},
+
+		/** Analysis type references, and remap type reference from input parameters to super parameters. */
+		_remapRefedTypeParameters(
+			refed: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][],
+			selfParameters: TS.NodeArray<TS.TypeParameterDeclaration> | undefined,
+			extendsParameters: TS.NodeArray<TS.TypeNode>
+		): (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][] {
+			let selfMap: Map<string, (TS.InterfaceDeclaration | TS.TypeLiteralNode)[]> = new Map()
+			let remapped: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][] = []
+
+			// Assume `A<B> extends C<D & B>`
+
+			// `B`
+			if (selfParameters) {
+				for (let i = 0; i < selfParameters.length; i++) {
+					let param = selfParameters[i]
+
+					// May no this parameter inputted.
+					if (refed[i]) {
+						selfMap.set(param.name.text, refed[i])
+					}
+				}
+			}
+
+			for (let i = 0; i < extendsParameters.length; i++) {
+				let param = extendsParameters[i]
+				let destructed = types.destructTypeNode(param)
+				let paramRefed: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[] = []
+
+				for (let ref of destructed) {
+					if (ts.isTypeReferenceNode(ref)) {
+						let refName = getFullText(ref.typeName)
+
+						// Use input parameter.
+						if (selfMap.has(refName)) {
+							paramRefed.push(...selfMap.get(refName)!)
+						}
+
+						// Use declared interface, or type literal.
+						else {
+							let chain = symbol.resolveChainedInterfaces(ref)
+							paramRefed.push(...chain)
+						}
+					}
+				}
+
+				remapped.push(paramRefed)
+			}
+
+			return remapped
+		},
+
 
 		/** Check whether a property or get accessor declare in typescript library. */
 		isOfTypescriptLib(rawNode: TS.Node): boolean {
@@ -1620,73 +1915,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 	}
 
 	
-	/** Destruct type node, and resolve class declarations of each. */
-	function* resolveInstanceDeclarationsOfTypeNodeNormally(typeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
-		let typeNodes = types.destructTypeNode(typeNode)
-		if (typeNodes.length === 0) {
-			return
-		}
-
-		for (let typeNode of typeNodes) {
-			let decls = symbol.resolveDeclarations(typeNode, ts.isClassDeclaration)
-			if (decls) {
-				yield* decls
-			}
-		}
-	}
-
-	/** Analysis type references, and remap type reference from input parameters to super parameters. */
-	function remapRefedTypeParameters(
-		refed: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][],
-		selfParameters: TS.NodeArray<TS.TypeParameterDeclaration> | undefined,
-		extendsParameters: TS.NodeArray<TS.TypeNode>
-	): (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][] {
-		let selfMap: Map<string, (TS.InterfaceDeclaration | TS.TypeLiteralNode)[]> = new Map()
-		let remapped: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][] = []
-
-		// Assume `A<B> extends C<D & B>`
-
-		// `B`
-		if (selfParameters) {
-			for (let i = 0; i < selfParameters.length; i++) {
-				let param = selfParameters[i]
-
-				// May no this parameter inputted.
-				if (refed[i]) {
-					selfMap.set(param.name.text, refed[i])
-				}
-			}
-		}
-
-		for (let i = 0; i < extendsParameters.length; i++) {
-			let param = extendsParameters[i]
-			let destructed = types.destructTypeNode(param)
-			let paramRefed: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[] = []
-
-			for (let ref of destructed) {
-				if (ts.isTypeReferenceNode(ref)) {
-					let refName = getFullText(ref.typeName)
-
-					// Use input parameter.
-					if (selfMap.has(refName)) {
-						paramRefed.push(...selfMap.get(refName)!)
-					}
-
-					// Use declared interface, or type literal.
-					else {
-						let chain = symbol.resolveChainedInterfaces(ref)
-						paramRefed.push(...chain)
-					}
-				}
-			}
-
-			remapped.push(paramRefed)
-		}
-
-		return remapped
-	}
-
-
 
 	/** Import part. */
 	const imports = {
@@ -1727,7 +1955,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 	}
 
 
-
 	return {
 		ts,
 		factory: ts.factory,
@@ -1748,7 +1975,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		isTypeDeclaration,
 		isThis,
 		isArray,
-		isArraySpreadElement,
 		isInstantlyRunFunction,
 		walkInward,
 		walkOutward,
