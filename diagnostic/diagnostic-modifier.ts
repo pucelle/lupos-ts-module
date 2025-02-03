@@ -79,7 +79,7 @@ export class DiagnosticModifier {
 
 	/** Get all diagnostics after modified. */
 	getModified(startDiagnostics: TS.Diagnostic[]) {
-		let diags = startDiagnostics.filter(diag => () => {
+		let diags = startDiagnostics.filter(diag => {
 			return !this.deleted.find(item => item.start === diag.start && item.code === diag.code)
 		})
 
