@@ -78,7 +78,7 @@ export function parseAllTemplatePartPieces(part: TemplatePart): TemplatePartPiec
 	if (part.modifiers) {
 		for (let i = 0; i < part.modifiers.length; i++) {
 			start = end + 1
-			end += part.modifiers[i].length + 1
+			end = start + part.modifiers[i].length
 
 			// `.|modifier|`
 			pieces.push({

@@ -5,6 +5,7 @@ import {analyzeLuposBindings, createLuposBinding} from './bindings'
 import {Helper} from '../helper'
 import {ListMap} from '../utils'
 import {TemplateBasis} from '../template'
+import {LuposKnownInternalBindings} from '../complete-data'
 
 
 /** 
@@ -19,16 +20,16 @@ export class Analyzer {
 	protected files: Set<TS.SourceFile> = new Set()
 
 	/** Analyzed components by source file. */
-	protected componentsByFile: ListMap<TS.SourceFile, LuposComponent> = new ListMap()
+	protected workspaceComponentsByFile: ListMap<TS.SourceFile, LuposComponent> = new ListMap()
 
 	/** Analyzed components by name. */
-	protected componentsByName: ListMap<string, LuposComponent> = new ListMap()
+	protected workspaceComponentsByName: ListMap<string, LuposComponent> = new ListMap()
 
 	/** Analyzed bindings by name. */
-	protected bindingsByName: ListMap<string, LuposBinding> = new ListMap()
+	protected workspaceBindingsByName: ListMap<string, LuposBinding> = new ListMap()
 
 	/** Analyzed bindings by source file. */
-	protected bindingsByFile: ListMap<TS.SourceFile, LuposBinding> = new ListMap()
+	protected workSpaceBindingsByFile: ListMap<TS.SourceFile, LuposBinding> = new ListMap()
 
 	constructor(helper: Helper) {
 		this.helper = helper
@@ -42,13 +43,13 @@ export class Analyzer {
 		this.files.add(sourceFile)
 
 		for (let component of components) {
-			this.componentsByName.add(component.name, component)
-			this.componentsByFile.add(component.sourceFile, component)
+			this.workspaceComponentsByName.add(component.name, component)
+			this.workspaceComponentsByFile.add(component.sourceFile, component)
 		}
 	
 		for (let binding of bindings) {
-			this.bindingsByName.add(binding.name, binding)
-			this.bindingsByFile.add(binding.sourceFile, binding)
+			this.workspaceBindingsByName.add(binding.name, binding)
+			this.workSpaceBindingsByFile.add(binding.sourceFile, binding)
 		}
 	}
 
@@ -56,36 +57,36 @@ export class Analyzer {
 	protected makeFileExpire(file: TS.SourceFile) {
 
 		// Components expired.
-		for (let component of [...this.componentsByFile.get(file) || []]) {
-			this.componentsByName.delete(component.name, component)
-			this.componentsByFile.delete(component.sourceFile, component)
+		for (let component of [...this.workspaceComponentsByFile.get(file) || []]) {
+			this.workspaceComponentsByName.delete(component.name, component)
+			this.workspaceComponentsByFile.delete(component.sourceFile, component)
 		}
 
 		// Binding expired.
-		for (let binding of [...this.bindingsByFile.get(file) || []]) {
-			this.bindingsByName.delete(binding.name, binding)
-			this.bindingsByFile.delete(binding.sourceFile, binding)
+		for (let binding of [...this.workSpaceBindingsByFile.get(file) || []]) {
+			this.workspaceBindingsByName.delete(binding.name, binding)
+			this.workSpaceBindingsByFile.delete(binding.sourceFile, binding)
 		}
 	}
 
 	/** Iterate all components. */
 	protected get components(): Iterable<LuposComponent> {
-		return this.componentsByFile.values()
+		return this.workspaceComponentsByFile.values()
 	}
 
 	/** Iterate all bindings. */
 	protected get bindings(): Iterable<LuposBinding> {
-		return this.bindingsByFile.values()
+		return this.workSpaceBindingsByFile.values()
 	}
 
 	/** Get components by name across all workspace. */
 	getWorkspaceComponentsByName(name: string): LuposComponent[] | undefined {
-		return this.componentsByName.get(name)
+		return this.workspaceComponentsByName.get(name)
 	}
 
 	/** Get components by name across all workspace. */
 	getWorkspaceComponentByName(name: string): LuposComponent | undefined {
-		let components = this.componentsByName.get(name)
+		let components = this.workspaceComponentsByName.get(name)
 		if (!components || components.length === 0) {
 			return undefined
 		}
@@ -143,7 +144,7 @@ export class Analyzer {
 			return createLuposComponent(declaration, this.helper)
 		}
 
-		let components = this.componentsByFile.get(sourceFile)
+		let components = this.workspaceComponentsByFile.get(sourceFile)
 		if (components) {
 			return components?.find(c => c.declaration === declaration)
 		}
@@ -202,7 +203,23 @@ export class Analyzer {
 
 	/** Get bindings across whole space by name. */
 	getWorkspaceBindingsByName(name: string): LuposBinding[] | undefined {
-		return this.bindingsByName.get(name)
+		return this.workspaceBindingsByName.get(name)
+	}
+
+	/** Get binding by name across all workspace. */
+	getWorkspaceBindingByName(name: string): LuposBinding | undefined {
+		let bindings = this.workspaceBindingsByName.get(name)
+		if (!bindings || bindings.length === 0) {
+			return undefined
+		}
+
+		// If have multiple declarations, return the first non-declaration file.
+		if (bindings.length > 1) {
+			return bindings.find(c => !c.sourceFile.fileName.endsWith('.d.ts'))
+				?? bindings[0]
+		}
+
+		return bindings[0]
 	}
 
 	/** 
@@ -231,9 +248,11 @@ export class Analyzer {
 		}
 
 		// Internal bindings like `:class`.
-		else {
+		else if (LuposKnownInternalBindings[name]) {
 			return this.getWorkspaceBindingsByName(name)?.[0]
 		}
+
+		return undefined
 	}
 
 	/** 
@@ -252,7 +271,7 @@ export class Analyzer {
 			return createLuposBinding(declaration, this.helper)
 		}
 
-		let bindings = this.bindingsByFile.get(sourceFile)
+		let bindings = this.workSpaceBindingsByFile.get(sourceFile)
 		if (bindings) {
 			return bindings?.find(c => c.declaration === declaration)
 		}
