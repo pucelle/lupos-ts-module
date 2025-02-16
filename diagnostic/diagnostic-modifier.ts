@@ -55,7 +55,7 @@ export class DiagnosticModifier {
 			let importDecl = node.parent.parent.parent
 
 			if (this.helper.ts.isImportDeclaration(importDecl)) {
-				this.deleteOfNode(importDecl, [DiagnosticCode.AllImportsUnused])
+				this.deleteOfNode(importDecl, [DiagnosticCode.ValueNeverRead, DiagnosticCode.AllImportsUnused])
 
 				// Note not return here, all imports, and specified
 				// import diagnostics exist at the same time.
