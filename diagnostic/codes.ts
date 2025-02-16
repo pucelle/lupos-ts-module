@@ -11,6 +11,7 @@ export enum DiagnosticCode {
 	UnUsedComma = 2695,
 	ValueNeverRead = 6133,
 	MissingArgument = 6210,
+	AllImportsUnused = 6192,
 	NeverRead = 6196,
 	ControlTagNotValid = 30000,
 	ControlTagMustFollowSpecified = 30001,

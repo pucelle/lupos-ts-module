@@ -55,7 +55,7 @@ export class DiagnosticModifier {
 			let importDecl = node.parent.parent.parent
 
 			if (this.helper.ts.isImportDeclaration(importDecl)) {
-				this.deleteOfNode(importDecl, [6133])
+				this.deleteOfNode(importDecl, [DiagnosticCode.AllImportsUnused])
 
 				// Note not return here, all imports, and specified
 				// import diagnostics exist at the same time.
@@ -65,7 +65,7 @@ export class DiagnosticModifier {
 		// Diagnostic normally locate at declaration identifier.
 		node = this.helper.getIdentifier(node) ?? node
 
-		this.deleteOfNode(node, [6133, 6196])
+		this.deleteOfNode(node, [DiagnosticCode.ValueNeverRead, DiagnosticCode.NeverRead])
 	}
 
 	/** For binding multiple parameters `:bind=${a, b}`. */
