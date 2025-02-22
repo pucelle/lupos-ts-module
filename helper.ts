@@ -877,8 +877,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		
 		/** 
 		 * Test whether be `Map` or `Set`, or of `Array`.
-		 * Otherwise if resolved type is `MethodsObservable`,
-		 * or resolved class implements `MethodsObservable`, returns `true`.
+		 * Otherwise if resolved type is `MethodsObserved`,
+		 * or resolved class implements `MethodsObserved`, returns `true`.
 		 */
 		isOfElements(rawNode: TS.Node): boolean {
 
@@ -896,12 +896,12 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				return true
 			}
 
-			// resolved class implements `MethodsObservable`.
+			// resolved class implements `MethodsObserved`.
 			if (typeNode) {
 				let classDecl = symbol.resolveDeclaration(typeNode, ts.isClassDeclaration)
 				if (classDecl) {
 					for (let superClass of cls.walkSelfAndSuper(classDecl)) {
-						if (cls.isImplemented(superClass, 'MethodsObservable', '@pucelle/ff')) {
+						if (cls.isImplemented(superClass, 'MethodsObserved', '@pucelle/ff')) {
 							return true
 						}
 					}
@@ -979,7 +979,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			for (let superClass of cls.walkSelfAndSuper(classDecl)) {
 				let implemented = cls.getImplements(superClass)
-				let methodsHalfObservedImplement = implemented.find(im => getText(im.expression) === 'MethodsObservable')
+				let methodsHalfObservedImplement = implemented.find(im => getText(im.expression) === 'MethodsObserved')
 				if (!methodsHalfObservedImplement) {
 					continue
 				}
