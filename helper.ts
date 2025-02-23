@@ -299,7 +299,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		let found: TS.Node | undefined = undefined
 
 		ts.forEachChild(fromNode, (n) => {
-			found ||= findInward(n, test)
+			found ??= findInward(n, test)
 			return found
 		})
 
@@ -318,7 +318,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		return undefined
 	}
-
 
 	/** 
 	 * Visit self and ancestral nodes, and find a node match test fn.
@@ -340,7 +339,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		return undefined
 	}
 
-
 	/**
 	 * Find by walking down the descendants of the node.
 	 * Note that will also search children when parent match.
@@ -354,6 +352,26 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		node.forEachChild(child => {
 			found.push(...findAllInward(child, test))
+		})
+
+		return found
+	}
+
+	/** Visit node and all descendant nodes but skip function and their descendants, find a node match test fn. */
+	function findInstantlyRunInward<T extends TS.Node>(fromNode: TS.Node, test: (node: TS.Node) => node is T) : T | undefined {
+		if (isFunctionLike(fromNode)) {
+			return undefined
+		}
+
+		if (test(fromNode)) {
+			return fromNode
+		}
+
+		let found: TS.Node | undefined = undefined
+
+		ts.forEachChild(fromNode, (n) => {
+			found ??= findInstantlyRunInward(n, test)
+			return found
 		})
 
 		return found
@@ -1982,6 +2000,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		findOutward,
 		findOutwardUntil,
 		findAllInward,
+		findInstantlyRunInward,
 		getNodeAtOffset,
 		getNodeDescription,
 		deco,
