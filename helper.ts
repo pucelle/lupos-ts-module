@@ -1234,7 +1234,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			}
 
 			// `let a: Type`
-			// `let a = b`, resolve type node of b.
 			if (ts.isVariableDeclaration(node)) {
 				typeNode = node.type
 
@@ -1243,6 +1242,14 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				}
 			}
 
+			// `(a: Type) => {}`
+			if (ts.isParameter(node)) {
+				typeNode = node.type
+
+				if (!typeNode && node.initializer) {
+					return types.getTypeNode(node.initializer, makeIfNotExist, resolveObserved)
+				}
+			}
 
 			// `a` of `a.b`
 			if (isPropertyOrGetAccessor(node)) {
