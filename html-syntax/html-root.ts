@@ -130,7 +130,7 @@ export class HTMLRoot extends HTMLNode {
 	static fromSeparatingChildren(node: HTMLNode): HTMLRoot {
 		let root = new HTMLRoot()
 
-		for (let child of node.children) {
+		for (let child of [...node.children]) {
 			child.remove()
 			root.append(child)
 		}
