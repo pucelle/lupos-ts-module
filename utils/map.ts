@@ -158,6 +158,17 @@ export class ListMap<K, V> {
 		this.map.delete(k)
 	}
 
+	/** Clone to get a new list map with same data. */
+	clone(): ListMap<K, V> {
+		let cloned = new ListMap<K, V>()
+
+		for (let [key, list] of this.map.entries()) {
+			cloned.map.set(key, [...list])
+		}
+
+		return cloned
+	}
+
 	/** Clear all the data. */
 	clear() {
 		this.map = new Map()

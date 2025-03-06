@@ -324,23 +324,22 @@ export class TemplatePartParser {
 					}
 			}
 
-			// On component or template, component inner may bind more.
-			let isSharedModificationNode = node.tagName === 'template'
+			// On component or template, component inner may add more.
+			let isSharedModification = node.tagName === 'template'
 				|| node.tagName && TemplateSlotPlaceholder.isComponent(node.tagName)
+				|| (name === 'class' || name === 'style') && attrs.find(attr => attr.name.startsWith(':' + name))
 
-			// Append attribute, but not set, to $context.el, or component.
-			if (type === null && isSharedModificationNode) {
+			// To add attribute, but not fully set.
+			if (type === null && isSharedModification) {
 				type = TemplatePartType.SlottedAttribute
 			}
 
 			// `<Com class=...>` use `:class` to do binding, to avoid conflict with component inner class attribute.
-			// Or `<div class=... :class=...>`, should upgrade `class` to `:class` to avoid it overwrites.
+			// Or `<div class=... :class=...>`, should upgrade `class` to `:class` to avoid it `setAttributes('class')` overwrites.
 			if (type === TemplatePartType.SlottedAttribute
 				&& (name === 'class' || name === 'style')
 			) {
-				let upgradeToBinding = isSharedModificationNode && valueIndices
-					|| attrs.find(attr => attr.name.startsWith(':' + name))
-
+				let upgradeToBinding = isSharedModification && valueIndices
 				if (upgradeToBinding) {
 					type = TemplatePartType.Binding
 				}

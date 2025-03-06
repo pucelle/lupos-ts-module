@@ -129,7 +129,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 	}
 
 
-	/** Test whether a node is an variable name identifier. */
+	/** Test whether node is a variable name identifier. */
 	function isVariableIdentifier(node: TS.Node): node is TS.Identifier {
 		if (!ts.isIdentifier(node)) {
 			return false
@@ -262,32 +262,31 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 
 	/** Walk node and all descendant nodes, test fn return a node to stop. */
-	function walkInward(fromNode: TS.Node, test: (node: TS.Node) => TS.Node | void) : TS.Node | undefined {
-		if (test(fromNode)) {
-			return fromNode
+	function* walkInward(fromNode: TS.Node, test?: (node: TS.Node) => TS.Node | void) : Iterable<TS.Node> {
+		if (!test || test(fromNode)) {
+			yield fromNode
 		}
 
-		let stop: TS.Node | undefined = undefined
+		let childNodes: TS.Node[] = []
 
 		ts.forEachChild(fromNode, (n) => {
-			stop ||= walkInward(n, test)
-			return stop
+			childNodes.push(n)
 		})
 
-		return stop
+		for (let childNode of childNodes) {
+			yield* walkInward(childNode, test)
+		}
 	}
 
 	/** Walk and all ancestral nodes, test fn return a node to stop. */
-	function walkOutward(fromNode: TS.Node, test: (node: TS.Node) => TS.Node | void): TS.Node | null {
-		if (test(fromNode)) {
-			return fromNode
+	function* walkOutward(fromNode: TS.Node, test?: (node: TS.Node) => TS.Node | void): Iterable<TS.Node> {
+		if (!test || test(fromNode)) {
+			yield fromNode
 		}
 
 		if (fromNode.parent) {
-			return walkOutward(fromNode.parent, test)
+			yield* walkOutward(fromNode.parent, test)
 		}
-
-		return null
 	}
 
 	/** Visit node and all descendant nodes, find a node match test fn. */
@@ -299,7 +298,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		let found: TS.Node | undefined = undefined
 
 		ts.forEachChild(fromNode, (n) => {
-			found ||= findInward(n, test)
+			found ??= findInward(n, test)
 			return found
 		})
 
@@ -318,7 +317,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		return undefined
 	}
-
 
 	/** 
 	 * Visit self and ancestral nodes, and find a node match test fn.
@@ -340,7 +338,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		return undefined
 	}
 
-
 	/**
 	 * Find by walking down the descendants of the node.
 	 * Note that will also search children when parent match.
@@ -354,6 +351,26 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		node.forEachChild(child => {
 			found.push(...findAllInward(child, test))
+		})
+
+		return found
+	}
+
+	/** Visit node and all descendant nodes but skip function and their descendants, find a node match test fn. */
+	function findInstantlyRunInward<T extends TS.Node>(fromNode: TS.Node, test: (node: TS.Node) => node is T) : T | undefined {
+		if (isFunctionLike(fromNode)) {
+			return undefined
+		}
+
+		if (test(fromNode)) {
+			return fromNode
+		}
+
+		let found: TS.Node | undefined = undefined
+
+		ts.forEachChild(fromNode, (n) => {
+			found ??= findInstantlyRunInward(n, test)
+			return found
 		})
 
 		return found
@@ -877,10 +894,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		
 		/** 
 		 * Test whether be `Map` or `Set`, or of `Array`.
-		 * Otherwise if resolved type is `MethodsObservable`,
-		 * or resolved class implements `MethodsObservable`, returns `true`.
+		 * Otherwise if resolved type is `MethodsObserved`,
+		 * or resolved class implements `MethodsObserved`, returns `true`.
 		 */
-		isOfElements(rawNode: TS.Node): boolean {
+		isExpOfElementsAccess(rawNode: TS.Node): boolean {
 
 			// Array type.
 			let type = types.typeOf(rawNode)
@@ -895,13 +912,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			if (objName === 'Map' || objName === 'Set') {
 				return true
 			}
-
-			// resolved class implements `MethodsObservable`.
+		
+			// resolved class implements `MethodsObserved`.
 			if (typeNode) {
 				let classDecl = symbol.resolveDeclaration(typeNode, ts.isClassDeclaration)
 				if (classDecl) {
 					for (let superClass of cls.walkSelfAndSuper(classDecl)) {
-						if (cls.isImplemented(superClass, 'MethodsObservable', '@pucelle/ff')) {
+						if (cls.isImplemented(superClass, 'MethodsObserved', '@pucelle/ff')) {
 							return true
 						}
 					}
@@ -979,7 +996,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			for (let superClass of cls.walkSelfAndSuper(classDecl)) {
 				let implemented = cls.getImplements(superClass)
-				let methodsHalfObservedImplement = implemented.find(im => getText(im.expression) === 'MethodsObservable')
+				let methodsHalfObservedImplement = implemented.find(im => getText(im.expression) === 'MethodsObserved')
 				if (!methodsHalfObservedImplement) {
 					continue
 				}
@@ -1179,11 +1196,16 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Get type node of a node.
 		 * Will firstly try to get type node when doing declaration,
-		 * If can't find and `makeIfNotExist`, make a new type node, but it can't be resolved.
+		 * If can't find and `makeIfNotExist` is true, make a new type node, but it can't be resolved.
 		 * If `resolveObserved`, resolve `Observed<T>` to get `T`.
 		 */
 		getTypeNode(node: TS.Node, makeIfNotExist: boolean = false, resolveObserved: boolean = false): TS.TypeNode | undefined {
 			let typeNode: TS.TypeNode | undefined
+
+			// Getting type of source file raise an error.
+			if (ts.isSourceFile(node)) {
+				return undefined
+			}
 
 			// `(...)`
 			if (ts.isParenthesizedExpression(node)) {
@@ -1197,14 +1219,41 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			// `class {a: Type = xxx}`
 			if (access.isAccess(node)) {
-				typeNode = symbol.resolveDeclaration(node, isPropertyOrGetAccessor)?.type
+				let resolved = symbol.resolveDeclaration(node)
+				if (resolved) {
+					return types.getTypeNode(resolved, makeIfNotExist, resolveObserved)
+				}
 			}
 
-			// `let a: Type` or `(a: Type) => {...}`
-			else if (isVariableIdentifier(node)) {
-				typeNode = symbol.resolveDeclaration(node, n => {
-					return ts.isVariableDeclaration(n) || ts.isParameter(n)
-				})?.type
+			// `a`
+			if (isVariableIdentifier(node)) {
+				let resolved = symbol.resolveDeclaration(node)
+				if (resolved) {
+					return types.getTypeNode(resolved, makeIfNotExist, resolveObserved)
+				}
+			}
+
+			// `let a: Type`
+			if (ts.isVariableDeclaration(node)) {
+				typeNode = node.type
+
+				if (!typeNode && node.initializer) {
+					return types.getTypeNode(node.initializer, makeIfNotExist, resolveObserved)
+				}
+			}
+
+			// `(a: Type) => {}`
+			if (ts.isParameter(node)) {
+				typeNode = node.type
+
+				if (!typeNode && node.initializer) {
+					return types.getTypeNode(node.initializer, makeIfNotExist, resolveObserved)
+				}
+			}
+
+			// `a` of `a.b`
+			if (isPropertyOrGetAccessor(node)) {
+				typeNode = node.type
 			}
 
 			// `() => Type`
@@ -1216,6 +1265,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			else if (ts.isAsExpression(node)) {
 				typeNode = node.type
 			}
+
 
 			// `let a: Observed<...>`
 			if (typeNode
@@ -1584,7 +1634,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** Resolves the first declaration from a node. */
-		resolveDeclaration<T extends TS.Node>(
+		resolveDeclaration<T extends TS.Declaration>(
 			node: TS.Node,
 			test?: (node: TS.Node) => node is T,
 			resolveAlias: boolean = true
@@ -1594,7 +1644,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** Resolves all declarations from a symbol. */
-		resolveDeclarationsBySymbol<T extends TS.Node>(symbol: TS.Symbol, test?: (node: TS.Node) => node is T): T[] | undefined {
+		resolveDeclarationsBySymbol<T extends TS.Declaration>(symbol: TS.Symbol, test?: (node: TS.Node) => node is T): T[] | undefined {
 			let decls = symbol.getDeclarations()
 			if (test && decls) {
 				decls = decls.filter(decl => test(decl))
@@ -1604,7 +1654,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** Resolves the first declaration from a symbol. */
-		resolveDeclarationBySymbol<T extends TS.Node>(symbol: TS.Symbol, test?: (node: TS.Node) => node is T): T | undefined {
+		resolveDeclarationBySymbol<T extends TS.Declaration>(symbol: TS.Symbol, test?: (node: TS.Node) => node is T): T | undefined {
 			let decls = symbol.getDeclarations()
 			return (test ? decls?.find(test) : decls?.[0]) as T | undefined
 		},
@@ -1900,7 +1950,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 
-		/** Check whether a property or get accessor declare in typescript library. */
+		/** Check whether node resolve result declared in typescript library. */
 		isOfTypescriptLib(rawNode: TS.Node): boolean {
 
 			// Like `this.el.style.display`
@@ -1982,6 +2032,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		findOutward,
 		findOutwardUntil,
 		findAllInward,
+		findInstantlyRunInward,
 		getNodeAtOffset,
 		getNodeDescription,
 		deco,
