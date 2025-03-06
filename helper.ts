@@ -33,7 +33,6 @@ export type Helper = ReturnType<typeof helperOfContext>
 export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeChecker) {
 	let printer = ts.createPrinter()
 
-
 	
 	//// Global
 
@@ -1302,11 +1301,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return undefined
 		},
 
-		/** Get type of a node. */
-		typeOf(node: TS.Node): TS.Type {
-			return typeCheckerGetter().getTypeAtLocation(node)
-		},
-
 		/** 
 		 * Get type node of a type.
 		 * Note the returned type node is not in source file, so can't be resolved.
@@ -1315,28 +1309,18 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return typeCheckerGetter().typeToTypeNode(type, undefined, undefined)
 		},
 
+
+
+		/** Get type of a node. */
+		typeOf(node: TS.Node): TS.Type {
+			return typeCheckerGetter().getTypeAtLocation(node)
+		},
+
 		/** Get type of a type node. */
 		typeOfTypeNode(typeNode: TS.TypeNode): TS.Type | undefined {
 			return typeCheckerGetter().getTypeFromTypeNode(typeNode)
 		},
-
-		/** Get full text of a type, all type parameters are included. */
-		getTypeFullText(type: TS.Type): string {
-			return typeCheckerGetter().typeToString(type)
-		},
-
-		/** Get the reference name of a type, all type parameters are excluded. */
-		getTypeReferenceName(type: TS.Type): string | undefined {
-			let typeNode = types.typeToTypeNode(type)
-			return typeNode ? types.getTypeNodeReferenceName(typeNode) : undefined
-		},
-
-		/** Get types of type parameters. */
-		getTypeParameters(type: TS.Type): (TS.Type | undefined)[] | undefined {
-			let typeNode = types.typeToTypeNode(type)
-			return typeNode ? types.getTypeNodeParameters(typeNode)?.map(t => types.typeOfTypeNode(t)) : undefined
-		},
-
+		
 		/** Get the reference name of a type node, all type parameters are excluded. */
 		getTypeNodeReferenceName(node: TS.TypeNode): string | undefined {
 			if (!ts.isTypeReferenceNode(node)) {
@@ -1361,6 +1345,45 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			}
 
 			return undefined
+		},
+
+		/** 
+		 * `A & B` -> `[A, B]`
+		 * `Omit<A, B>` -> `[A, B]`
+		 */
+		destructTypeNode(node: TS.TypeNode):
+			(TS.TypeReferenceNode | TS.TypeLiteralNode | TS.TypeQueryNode)[]
+		{
+			let list: (TS.TypeReferenceNode | TS.TypeLiteralNode)[] = []
+			types._destructTypeNodeRecursively(node, list)
+
+			return list
+		},
+		
+		_destructTypeNodeRecursively(node: TS.Node, list: TS.TypeNode[]) {
+			if (ts.isTypeReferenceNode(node) || ts.isTypeLiteralNode(node) || ts.isTypeQueryNode(node)) {
+				list.push(node)
+			}
+
+			ts.forEachChild(node, (n: TS.Node) => types._destructTypeNodeRecursively(n, list))
+		},
+
+
+		/** Get full text of a type, all type parameters are included. */
+		getTypeFullText(type: TS.Type): string {
+			return typeCheckerGetter().typeToString(type)
+		},
+
+		/** Get the reference name of a type, all type parameters are excluded. */
+		getTypeReferenceName(type: TS.Type): string | undefined {
+			let typeNode = types.typeToTypeNode(type)
+			return typeNode ? types.getTypeNodeReferenceName(typeNode) : undefined
+		},
+
+		/** Get types of type parameters. */
+		getTypeParameters(type: TS.Type): (TS.Type | undefined)[] | undefined {
+			let typeNode = types.typeToTypeNode(type)
+			return typeNode ? types.getTypeNodeParameters(typeNode)?.map(t => types.typeOfTypeNode(t)) : undefined
 		},
 
 		/** Get the returned type of a method / function declaration. */
@@ -1434,7 +1457,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** Test whether type implements `Iterator`. */
 		isIterableType(type: TS.Type): boolean {
-			return !!typeCheckerGetter().getPropertiesOfType(type).find(v => v.getName().startsWith('__@iterator'))
+			return !!type.getProperties().find(v => v.getName().startsWith('__@iterator'))
 		},
 
 		/** Test whether type is function. */
@@ -1450,7 +1473,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		isAssignableTo(from: TS.Type, to: TS.Type): boolean {
 			return typeCheckerGetter().isTypeAssignableTo(from, to)
 		},
-		
+
 		/** Analysis whether the property declaration resolve from a node is readonly. */
 		isReadonly(node: TS.Node): boolean {
 
@@ -1516,27 +1539,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				return []
 			}
 		},
-
-		/** 
-		 * `A & B` -> `[A, B]`
-		 * `Omit<A, B>` -> `[A, B]`
-		 */
-		destructTypeNode(node: TS.TypeNode):
-			(TS.TypeReferenceNode | TS.TypeLiteralNode | TS.TypeQueryNode)[]
-		{
-			let list: (TS.TypeReferenceNode | TS.TypeLiteralNode)[] = []
-			types._destructTypeNodeRecursively(node, list)
-
-			return list
-		},
-		
-		_destructTypeNodeRecursively(node: TS.Node, list: TS.TypeNode[]) {
-			if (ts.isTypeReferenceNode(node) || ts.isTypeLiteralNode(node) || ts.isTypeQueryNode(node)) {
-				list.push(node)
-			}
-
-			ts.forEachChild(node, (n: TS.Node) => types._destructTypeNodeRecursively(n, list))
-		}
 	}
 
 
