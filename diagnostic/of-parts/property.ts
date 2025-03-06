@@ -25,7 +25,12 @@ export function diagnoseProperty(
 			modifier.add(start, length, DiagnosticCode.NotExistOn, `"${mainName}" is not exist on "<${tagName}>".`)
 			return
 		}
-	
+	}
+
+	else if (piece.type === TemplatePartPieceType.AttrValue) {
+		let component = analyzer.getComponentByTagName(tagName, template)
+		let property = component ? analyzer.getComponentProperty(component, mainName) : null
+
 		// Can't compare types correctly, especially when have generic parameter.
 		if (component && property) {
 			let propertyType = helper.types.typeOf(property.nameNode)
@@ -35,7 +40,7 @@ export function diagnoseProperty(
 				let fromText = helper.types.getTypeFullText(valueType)
 				let toText = helper.types.getTypeFullText(propertyType)
 
-				modifier.add(start, length, DiagnosticCode.NotAssignable, `Property value "${fromText}" is not assignable to "${toText}".`)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `Property type "${fromText}" is not assignable to "${toText}".`)
 				return
 			}
 		}

@@ -118,14 +118,14 @@ export function diagnoseBinding(
 		let binding = analyzer.getBindingByName(mainName, template)
 		if (binding) {
 			if (mainName === 'class') {
-				diagnoseClassUpdateParameter(binding, start, valueNodes, valueTypes, part, template, modifier)
+				diagnoseClassUpdateParameter(binding, valueNodes, valueTypes, start, length, part, template, modifier)
 			}
 			else if (mainName === 'style') {
-				diagnoseStyleUpdateParameter(binding, start, valueNodes, valueTypes, part, template, modifier)
+				diagnoseStyleUpdateParameter(binding, valueNodes, valueTypes, start, length, part, template, modifier)
 			}
 			else if (mainName === 'ref') {}
 			else {
-				diagnoseOtherUpdateParameter(binding, start, valueNodes, valueTypes, template, modifier)
+				diagnoseOtherUpdateParameter(binding, valueNodes, valueTypes, start, length, template, modifier)
 			}
 		}
 	}
@@ -134,9 +134,10 @@ export function diagnoseBinding(
 
 function diagnoseClassUpdateParameter(
 	binding: LuposBinding,
-	start: number,
 	valueNodes: (TS.Expression | null)[],
 	valueTypes: TS.Type[],
+	start: number,
+	length: number,
 	part: TemplatePart,
 	template: TemplateBasis,
 	modifier: DiagnosticModifier
@@ -146,15 +147,16 @@ function diagnoseClassUpdateParameter(
 		return
 	}
 
-	diagnoseOtherUpdateParameter(binding, start, valueNodes, valueTypes, template, modifier)
+	diagnoseOtherUpdateParameter(binding, valueNodes, valueTypes, start, length, template, modifier)
 }
 
 
 function diagnoseStyleUpdateParameter(
 	binding: LuposBinding,
-	start: number,
 	valueNodes: (TS.Expression | null)[],
 	valueTypes: TS.Type[],
+	start: number,
+	length: number,
 	part: TemplatePart,
 	template: TemplateBasis,
 	modifier: DiagnosticModifier
@@ -171,21 +173,22 @@ function diagnoseStyleUpdateParameter(
 			let valueLength = valueNode ? valueNode.end - valueStart : length
 			let fromText = helper.types.getTypeFullText(valueType)
 
-			modifier.add(valueStart, valueLength, DiagnosticCode.NotAssignable, `Value "${fromText}" is not assignable to :style Binding Parameter.`)
+			modifier.add(valueStart, valueLength, DiagnosticCode.NotAssignable, `Type "${fromText}" is not assignable to ":style" Binding Parameter.`)
 		}
 
 		return 
 	}
 
-	diagnoseOtherUpdateParameter(binding, start, valueNodes, valueTypes, template, modifier)
+	diagnoseOtherUpdateParameter(binding, valueNodes, valueTypes, start, length, template, modifier)
 }
 
 
 function diagnoseOtherUpdateParameter(
 	binding: LuposBinding,
-	start: number,
 	valueNodes: (TS.Expression | null)[],
 	valueTypes: TS.Type[],
+	start: number,
+	length: number,
 	template: TemplateBasis,
 	modifier: DiagnosticModifier
 ) {
@@ -213,7 +216,7 @@ function diagnoseOtherUpdateParameter(
 			let fromText = helper.types.getTypeFullText(valueType)
 			let toText = helper.types.getTypeFullText(paramType)
 
-			modifier.add(valueStart, valueLength, DiagnosticCode.NotAssignable, `Value "${fromText}" is not assignable to Binding Parameter "${toText}".`)
+			modifier.add(valueStart, valueLength, DiagnosticCode.NotAssignable, `Type "${fromText}" is not assignable to Binding Parameter type "${toText}".`)
 		}
 	}
 }
