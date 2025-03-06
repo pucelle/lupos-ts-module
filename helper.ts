@@ -1385,6 +1385,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return !!typeCheckerGetter().getPropertiesOfType(type).find(v => v.getName().startsWith('__@iterator'))
 		},
 
+		/** Whether `from` can be assigned to `to`, which means `from` is narrower. */
+		isAssignableTo(from: TS.Type, to: TS.Type): boolean {
+			return typeCheckerGetter().isTypeAssignableTo(from, to)
+		},
+		
 		/** Analysis whether the property declaration resolve from a node is readonly. */
 		isReadonly(node: TS.Node): boolean {
 
@@ -1438,11 +1443,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return false
 		},
 
-		/** Whether `from` can be assigned to `to`, which means `from` is narrower. */
-		isAssignableTo(from: TS.Type, to: TS.Type): boolean {
-			return typeCheckerGetter().isTypeAssignableTo(from, to)
-		},
-		
 		/** `'A' | 'B'` -> `['A', 'B']` */
 		splitUnionTypeToStringList(type: TS.Type): string[] {
 			if (type.isUnion()) {

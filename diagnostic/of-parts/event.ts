@@ -18,6 +18,7 @@ export function diagnoseEvent(
 	let mainName = part.mainName!
 	let tagName = part.node.tagName!
 	let modifiers = part.modifiers!
+	let helper = template.helper
 
 	let isComponent = TemplateSlotPlaceholder.isComponent(tagName)
 	let component = isComponent ? analyzer.getComponentByTagName(tagName, template) : null
@@ -29,6 +30,19 @@ export function diagnoseEvent(
 			if (part.namePrefix === '@@' && !comEvent) {
 				modifier.add(start, length, DiagnosticCode.NotExistOn, `"<${component.name}>" does not support event "${mainName}".`)
 				return
+			}
+
+			if (comEvent) {
+				let eventType = comEvent.type
+				let handlerType = template.getPartValueType(part)
+
+				if (!helper.types.isAssignableTo(handlerType, eventType)) {
+					let fromText = helper.types.getTypeFullText(handlerType)
+					let toText = helper.types.getTypeFullText(eventType)
+	
+					modifier.add(start, length, DiagnosticCode.NotAssignable, `Property value type "${fromText}" is not assignable to "${toText}".`)
+					return
+				}
 			}
 		}
 	}
@@ -52,6 +66,17 @@ export function diagnoseEvent(
 					modifier.add(start, length, DiagnosticCode.NotExistOn, `Modifier "${modifierValue}" is not supported by event "${mainName}".`)
 				}
 			}
+
+			// let handlerType = template.getPartValueType(part)
+			// let eventType = 
+
+			// if (!helper.types.isAssignableTo(handlerType, eventType)) {
+			// 	let fromText = helper.types.getTypeFullText(handlerType)
+			// 	let toText = helper.types.getTypeFullText(eventType)
+
+			// 	modifier.add(start, length, DiagnosticCode.NotAssignable, `Property value type "${fromText}" is not assignable to "${toText}".`)
+			// 	return
+			// }
 		}
 	}
 }
