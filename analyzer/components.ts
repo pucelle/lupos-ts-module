@@ -3,7 +3,6 @@ import {LuposComponent, LuposEvent, LuposProperty} from './types'
 import {Helper} from '../helper'
 
 
-
 /** Walk and Discover all lupos components from a given node and it's children. */
 export function analyzeLuposComponents(sourceFile: TS.SourceFile, helper: Helper): LuposComponent[] {
 	let components: LuposComponent[] = []
@@ -44,7 +43,6 @@ export function createLuposComponent(node: TS.ClassDeclaration, helper: Helper):
 		name: helper.getText(node.name!),
 		nameNode: node.name!,
 		declaration: node,
-		type: helper.types.typeOf(node),
 		description: helper.getNodeDescription(node) || '',
 		sourceFile: node.getSourceFile(),
 		properties,
@@ -74,7 +72,6 @@ export function analyzeLuposComponentEvents(node: TS.ClassDeclaration, helper: H
 			events.push({
 				name: helper.getText(member.name),
 				nameNode: member.name,
-				type: helper.types.typeOf(member)!,
 				description: helper.getNodeDescription(member) || '',
 				sourceFile: node.getSourceFile(),
 			})
@@ -113,7 +110,6 @@ function analyzeLuposComponentMemberProperty(node: TS.ClassElement, helper: Help
 			return {
 				name: helper.getText(node.name),
 				nameNode: node,
-				type: helper.types.typeOf(node),
 				description: helper.getNodeDescription(node) || '',
 				sourceFile: node.getSourceFile(),
 				public: bePublic,
@@ -123,8 +119,6 @@ function analyzeLuposComponentMemberProperty(node: TS.ClassElement, helper: Help
 
 	// `class {set property(value)}`
 	else if (helper.ts.isSetAccessor(node)) {
-		let firstParameter = node.parameters?.[0]
-		let type = helper.types.typeOf(firstParameter || node)
 		let bePublic = helper.class.getVisibility(node) === 'public'
 		let beStatic = helper.class.hasModifier(node, 'static')
 
@@ -132,7 +126,6 @@ function analyzeLuposComponentMemberProperty(node: TS.ClassElement, helper: Help
 			return{
 				name: helper.getText(node.name),
 				nameNode: node,
-				type,
 				description: helper.getNodeDescription(node) || '',
 				sourceFile: node.getSourceFile(),
 				public: bePublic,
@@ -173,7 +166,6 @@ export function analyzeLuposComponentSubProperties(component: TS.ClassLikeDeclar
 		let property: LuposProperty = {
 			name: helper.getText(typeMember.name),
 			nameNode: typeMember,
-			type: helper.types.typeOf(typeMember),
 			description: helper.getNodeDescription(typeMember) || '',
 			sourceFile: typeMember.getSourceFile(),
 			public: true,

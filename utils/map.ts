@@ -367,3 +367,217 @@ export class WeakerPairKeysMap<K1 extends object, K2 extends object, V> {
 		this.map = new WeakMap()
 	}
 }
+
+
+/**
+ * Map Struct that can query from left to right list and right to left list.
+ * `L -> R[]`
+ * `R -> L[]`
+ */
+export class TwoWayListMap<L, R> {
+
+	protected lm: ListMap<L, R> = new ListMap()
+	protected rm: ListMap<R, L> = new ListMap()
+
+	/** Returns total count of left keys. */
+	leftKeyCount(): number {
+		return this.lm.keyCount()
+	}
+
+	/** Returns total count of right keys. */
+	rightKeyCount(): number {
+		return this.rm.keyCount()
+	}
+
+	/** Iterate all left keys. */
+	leftKeys(): Iterable<L> {
+		return this.lm.keys()
+	}
+
+	/** Iterate all right keys. */
+	rightKeys(): Iterable<R> {
+		return this.rm.keys()
+	}
+
+	/** Iterate associated left keys by right key. */
+	*leftValuesOf(r: R): Iterable<L> {
+		let ls = this.rm.get(r)
+		if (ls) {
+			yield* ls
+		}
+	}
+
+	/** Iterate associated right keys by left key. */
+	*rightValuesOf(l: L): Iterable<R> {
+		let rs = this.lm.get(l)
+		if (rs) {
+			yield* rs
+		} 
+	}
+
+	/** Iterate left and it's associated right value list. */
+	leftEntries(): Iterable<[L, R[]]> {
+		return this.lm.entries()
+	}
+
+	/** Iterate right and it's associated left value list. */
+	rightEntries(): Iterable<[R, L[]]> {
+		return this.rm.entries()
+	}
+	
+	/** Iterate each left and right key pairs. */
+	flatEntries(): Iterable<[L, R]> {
+		return this.lm.flatEntries()
+	}
+
+	/** Has a left and right key pair. */
+	has(l: L, r: R): boolean {
+		return this.lm.has(l, r)
+	}
+
+	/** Has a left key. */
+	hasLeft(l: L): boolean {
+		return this.lm.hasKey(l)
+	}
+
+	/** Has a right key. */
+	hasRight(r: R): boolean {
+		return this.rm.hasKey(r)
+	}
+
+	/** Get count of associated right keys by a left key. */
+	countOfLeft(l: L): number {
+		return this.lm.countOf(l)
+	}
+
+	/** Get count of associated left keys by a right key. */
+	countOfRight(r: R): number {
+		return this.rm.countOf(r)
+	}
+
+	/** Get associated right keys by a left key. */
+	getByLeft(l: L): R[] | undefined {
+		return this.lm.get(l)
+	}
+
+	/** Get associated left keys by a right key. */
+	getByRight(r: R): L[] | undefined {
+		return this.rm.get(r)
+	}
+
+	/** Clone to get a new two way list map with same data. */
+	clone(): TwoWayListMap<L, R> {
+		let cloned = new TwoWayListMap<L, R>()
+
+		cloned.lm = this.lm.clone()
+		cloned.rm = this.rm.clone()
+
+		return cloned
+	}
+
+	/** 
+	 * Add a left and right value as a pair.
+	 * Note it will not validate whether value exist, and will add it repeatedly if it exists.
+	 */
+	add(l: L, r: R) {
+		this.lm.add(l, r)
+		this.rm.add(r, l)
+	}
+
+	/** 
+	 * Add a left and right value as a pair.
+	 * Note it will validate whether value exist, and do nothing if it exists.
+	 */
+	addIf(l: L, r: R) {
+		this.lm.addIf(l, r)
+		this.rm.addIf(r, l)
+	}
+
+	/** Delete a left and right key pair. */
+	delete(l: L, r: R) {
+		this.lm.delete(l, r)
+		this.rm.delete(r, l)
+	}
+
+	/** Delete by left key. */
+	deleteLeft(l: L) {
+		let rs = this.getByLeft(l)
+		if (rs) {
+			for (let r of rs) {
+				this.rm.delete(r, l)
+			}
+
+			this.lm.deleteOf(l)
+		}
+	}
+
+	/** Delete by right key. */
+	deleteRight(r: R) {
+		let ls = this.getByRight(r)
+		if (ls) {
+			for (let l of ls) {
+				this.lm.delete(l, r)
+			}
+
+			this.rm.deleteOf(r)
+		}
+	}
+
+	/** Replace left and all it's associated right keys. */
+	replaceLeft(l: L, rs: R[]) {
+		let oldRs = this.lm.get(l)
+
+		if (oldRs) {
+			for (let r of rs) {
+				if (!oldRs.includes(r)) {
+					this.rm.add(r, l)
+				}
+			}
+
+			for (let r of oldRs) {
+				if (!rs.includes(r)) {
+					this.rm.delete(r, l)
+				}
+			}
+		}
+		else {
+			for (let r of rs) {
+				this.rm.add(r, l)
+			}
+		}
+
+		this.lm.set(l, rs)
+	}
+
+	/** Replace right and all it's associated left keys. */
+	replaceRight(r: R, ls: L[]) {
+		let oldLs = this.rm.get(r)
+
+		if (oldLs) {
+			for (let l of ls) {
+				if (!oldLs.includes(l)) {
+					this.lm.add(l, r)
+				}
+			}
+
+			for (let l of oldLs) {
+				if (!ls.includes(l)) {
+					this.lm.delete(l, r)
+				}
+			}
+		}
+		else {
+			for (let l of ls) {
+				this.lm.add(l, r)
+			}
+		}
+
+		this.rm.set(r, ls)
+	}
+
+	/** Clear all the data. */
+	clear() {
+		this.lm.clear()
+		this.rm.clear()
+	}
+}

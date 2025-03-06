@@ -1,8 +1,9 @@
-import {Analyzer} from '../../analyzer'
+import {Analyzer, LuposBinding} from '../../analyzer'
 import {LuposBindingModifiers, LuposKnownInternalBindings} from '../../complete-data'
 import {TemplateBasis, TemplatePart, TemplatePartPiece, TemplatePartPieceType} from '../../template'
 import {DiagnosticCode} from '../codes'
 import {DiagnosticModifier} from '../diagnostic-modifier'
+import type * as TS from 'typescript'
 
 
 export function diagnoseBinding(
@@ -81,8 +82,8 @@ export function diagnoseBinding(
 	}
 
 	else if (piece.type === TemplatePartPieceType.AttrValue) {
-		//let valueNodes: (TS.Expression | null)[] = [null]
-		//let valueTypes = [template.getPartValueType(part)]
+		let valueNodes: (TS.Expression | null)[] = [null]
+		let valueTypes = [template.getPartValueType(part)]
 
 		// `?:binding=${a, b}`, `?:binding=${(a, b)}`
 		if (!part.strings && part.valueIndices) {
@@ -94,14 +95,14 @@ export function diagnoseBinding(
 
 			let splittedValueNodes = helper.pack.unPackCommaBinaryExpressions(valueNode)
 			
-			// valueNodes = splittedValueNodes
-			// valueTypes = splittedValueNodes.map(node => types.typeOf(node))
+			valueNodes = splittedValueNodes
+			valueTypes = splittedValueNodes.map(node => types.typeOf(node))
 
-			// // First value decides whether binding should be activated.
-			// if (part.namePrefix === '?:') {
-			// 	valueNodes = splittedValueNodes.slice(1)
-			// 	valueTypes = valueTypes.slice(1)
-			// }
+			// First value decides whether binding should be activated.
+			if (part.namePrefix === '?:') {
+				valueNodes = splittedValueNodes.slice(1)
+				valueTypes = valueTypes.slice(1)
+			}
 
 			// May unused comma expression of a for `${a, b}`, here remove it.
 			if (splittedValueNodes.length > 1) {
@@ -114,28 +115,105 @@ export function diagnoseBinding(
 		// Currently we are not able to build a function type dynamically,
 		// so can't test whether parameters match binding update method.
 
-		// let binding = analyzer.getBindingByNameAndTemplate(mainName, template)
-		// if (binding) {
-		// 	let method = helper.class.getMethod(binding.declaration, 'update', true)
-		// 	if (method) {
-		// 		let paramTypes = method.parameters.map(param => types.typeOf(param))
+		let binding = analyzer.getBindingByName(mainName, template)
+		if (binding) {
+			if (mainName === 'class') {
+				diagnoseClassUpdateParameter(binding, start, valueNodes, valueTypes, part, template, modifier)
+			}
+			else if (mainName === 'style') {
+				diagnoseStyleUpdateParameter(binding, start, valueNodes, valueTypes, part, template, modifier)
+			}
+			else if (mainName === 'ref') {}
+			else {
+				diagnoseOtherUpdateParameter(binding, start, valueNodes, valueTypes, template, modifier)
+			}
+		}
+	}
+}
 
-		// 		for (let i = 0; i < valueTypes.length; i++) {
-		// 			let valueType = valueTypes[i]
-		// 			let paramType = paramTypes[i]
-		// 			let valueNode = valueNodes[i]
-		// 			let valueStart = valueNode ? valueNode.pos : start
-		// 			let valueLength = valueNode ? valueNode.end - valueStart : length
 
-		// 			if (!paramType) {
-		// 				continue
-		// 			}
+function diagnoseClassUpdateParameter(
+	binding: LuposBinding,
+	start: number,
+	valueNodes: (TS.Expression | null)[],
+	valueTypes: TS.Type[],
+	part: TemplatePart,
+	template: TemplateBasis,
+	modifier: DiagnosticModifier
+) {
+	// `:class.class-name=${...}`
+	if (part.modifiers && part.modifiers.length > 0) {
+		return
+	}
 
-		// 			if (!types.isAssignableTo(valueType, paramType)) {
-		// 				modifier.addNotAssignable(valueStart, valueLength, '"renderer" of "<lu:for ${renderer}>" must return a "TemplateResult".')
-		// 			}
-		// 		}
-		// 	}
-		// }
+	diagnoseOtherUpdateParameter(binding, start, valueNodes, valueTypes, template, modifier)
+}
+
+
+function diagnoseStyleUpdateParameter(
+	binding: LuposBinding,
+	start: number,
+	valueNodes: (TS.Expression | null)[],
+	valueTypes: TS.Type[],
+	part: TemplatePart,
+	template: TemplateBasis,
+	modifier: DiagnosticModifier
+) {
+	let helper = template.helper
+
+	// `:style.style-name=${...}`
+	if (part.modifiers && part.modifiers.length > 0) {
+		let valueType = valueTypes[0]
+		let valueNode = valueNodes[0]
+
+		if (valueType && !helper.types.isValueType(valueType)) {
+			let valueStart = valueNode ? valueNode.pos : start
+			let valueLength = valueNode ? valueNode.end - valueStart : length
+			let fromText = helper.types.getTypeFullText(valueType)
+
+			modifier.add(valueStart, valueLength, DiagnosticCode.NotAssignable, `Value "${fromText}" is not assignable to :style Binding Parameter.`)
+		}
+
+		return 
+	}
+
+	diagnoseOtherUpdateParameter(binding, start, valueNodes, valueTypes, template, modifier)
+}
+
+
+function diagnoseOtherUpdateParameter(
+	binding: LuposBinding,
+	start: number,
+	valueNodes: (TS.Expression | null)[],
+	valueTypes: TS.Type[],
+	template: TemplateBasis,
+	modifier: DiagnosticModifier
+) {
+	let helper = template.helper
+	let method = helper.class.getMethod(binding.declaration, 'update', true)
+
+	if (!method) {
+		return
+	}
+		
+	let paramTypes = method.parameters.map(param => helper.types.typeOf(param))
+
+	for (let i = 0; i < valueTypes.length; i++) {
+		let valueType = valueTypes[i]
+		let paramType = paramTypes[i]
+		let valueNode = valueNodes[i]
+		let valueStart = valueNode ? valueNode.pos : start
+		let valueLength = valueNode ? valueNode.end - valueStart : length
+
+		if (!paramType) {
+			continue
+		}
+
+		if (!helper.types.isAssignableTo(valueType, paramType)) {
+			let fromText = helper.types.getTypeFullText(valueType)
+			let toText = helper.types.getTypeFullText(paramType)
+
+			modifier.add(valueStart, valueLength, DiagnosticCode.NotAssignable, `Value "${fromText}" is not assignable to Binding Parameter "${toText}".`)
+		}
 	}
 }

@@ -3,7 +3,7 @@ import {analyzeLuposComponents, createLuposComponent} from './components'
 import {LuposBinding, LuposComponent, LuposEvent, LuposProperty} from './types'
 import {analyzeLuposBindings, createLuposBinding} from './bindings'
 import {Helper} from '../helper'
-import {ListMap} from '../utils'
+import {ListMap, TwoWayListMap} from '../utils'
 import {TemplateBasis} from '../template'
 import {LuposKnownInternalBindings} from '../complete-data'
 
@@ -16,8 +16,11 @@ export class Analyzer {
 
 	readonly helper: Helper
 
-	/** Latest analyzed source files. */
+	/** Latest analyzed source files, and their text. */
 	protected files: Set<TS.SourceFile> = new Set()
+
+	/** The source file, all source files that it references. */
+	protected references: TwoWayListMap<TS.SourceFile, string> = new TwoWayListMap()
 
 	/** Analyzed components by source file. */
 	protected workspaceComponentsByFile: ListMap<TS.SourceFile, LuposComponent> = new ListMap()
@@ -36,7 +39,11 @@ export class Analyzer {
 	}
 
 	/** Analyze each ts source file. */
-	protected analyzeTSFile(sourceFile: TS.SourceFile) {
+	protected analyzeFile(sourceFile: TS.SourceFile) {
+
+		// Must delete firstly, same file need to re-analyze after reference has changed.
+		this.deleteFile(sourceFile)
+
 		let components = analyzeLuposComponents(sourceFile, this.helper)
 		let bindings = analyzeLuposBindings(sourceFile, this.helper)
 
@@ -45,6 +52,27 @@ export class Analyzer {
 		for (let component of components) {
 			this.workspaceComponentsByName.add(component.name, component)
 			this.workspaceComponentsByFile.add(component.sourceFile, component)
+
+			for (let prop of Object.values(component.properties)) {
+				let refFile = prop.nameNode.getSourceFile()
+				if (refFile !== sourceFile) {
+					this.references.add(sourceFile, refFile.fileName)
+				}
+			}
+
+			for (let event of Object.values(component.events)) {
+				let refFile = event.nameNode.getSourceFile()
+				if (refFile !== sourceFile) {
+					this.references.add(sourceFile, refFile.fileName)
+				}
+			}
+
+			for (let slotEl of Object.values(component.slotElements)) {
+				let refFile = slotEl.nameNode.getSourceFile()
+				if (refFile !== sourceFile) {
+					this.references.add(sourceFile, refFile.fileName)
+				}
+			}
 		}
 	
 		for (let binding of bindings) {
@@ -54,7 +82,10 @@ export class Analyzer {
 	}
 
 	/** Make parsed results in given file expire. */
-	protected makeFileExpire(file: TS.SourceFile) {
+	protected deleteFile(file: TS.SourceFile) {
+		if (!this.files.has(file)) {
+			return
+		}
 
 		// Components expired.
 		for (let component of [...this.workspaceComponentsByFile.get(file) || []]) {
@@ -67,6 +98,8 @@ export class Analyzer {
 			this.workspaceBindingsByName.delete(binding.name, binding)
 			this.workSpaceBindingsByFile.delete(binding.sourceFile, binding)
 		}
+
+		this.references.deleteLeft(file)
 	}
 
 	/** Iterate all components. */
@@ -137,7 +170,7 @@ export class Analyzer {
 
 		// Ensure analyzed source file.
 		if (!this.files.has(sourceFile)) {
-			this.analyzeTSFile(sourceFile)
+			this.analyzeFile(sourceFile)
 		}
 
 		if (declaration.parent !== sourceFile) {
@@ -264,7 +297,7 @@ export class Analyzer {
 
 		// Ensure analyzed source file.
 		if (!this.files.has(sourceFile)) {
-			this.analyzeTSFile(sourceFile)
+			this.analyzeFile(sourceFile)
 		}
 
 		if (declaration.parent !== sourceFile) {

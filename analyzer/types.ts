@@ -12,9 +12,6 @@ export interface LuposItem {
 	/** Description is leading comment of definition. */
 	readonly description: string
 
-	/** Type of item. */
-	readonly type: TS.Type
-
 	/** Source file in. */
 	readonly sourceFile: TS.SourceFile
 }
@@ -38,8 +35,8 @@ export interface LuposComponent extends LuposItem {
 
 	/** Defined class declaration. */
 	readonly declaration: TS.ClassDeclaration
-
 	/** Component public properties, not include properties of super classes. */
+
 	readonly properties: Record<string, LuposProperty>
 
 	/** Component events, include all events even from super classes. */

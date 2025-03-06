@@ -26,21 +26,16 @@ export function diagnoseProperty(
 			return
 		}
 	
-		// Can't compare types well, especially when have generic parameter.
+		// Can't compare types correctly, especially when have generic parameter.
 		if (component && property) {
-			let propertyType = property.type
+			let propertyType = helper.types.typeOf(property.nameNode)
 			let valueType = template.getPartValueType(part)
 
 			if (!helper.types.isAssignableTo(valueType, propertyType)) {
-				let fromTypeSymbol = valueType.symbol
-				let toTypeSymbol = propertyType.symbol
-				
-				// let fromTypeNode = helper.types.typeToTypeNode(valueType)
-				// let ToTypeNode = helper.types.typeToTypeNode(propertyType)
 				let fromText = helper.types.getTypeFullText(valueType)
 				let toText = helper.types.getTypeFullText(propertyType)
 
-				modifier.add(start, length, DiagnosticCode.NotAssignable, `Property type "${fromText}" is not assignable to "${toText}", ${fromTypeSymbol === toTypeSymbol}.`)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `Property value "${fromText}" is not assignable to "${toText}".`)
 				return
 			}
 		}

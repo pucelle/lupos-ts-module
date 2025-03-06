@@ -23,8 +23,8 @@ export function diagnoseEvent(
 	let isComponent = TemplateSlotPlaceholder.isComponent(tagName)
 	let component = isComponent ? analyzer.getComponentByTagName(tagName, template) : null
 	let comEvent = component ? analyzer.getComponentEvent(component, mainName) : null
-	
-	// `@click`, complete event name.
+
+	// Validate component events.
 	if (piece.type === TemplatePartPieceType.Name) {
 		if (component) {
 			if (part.namePrefix === '@@' && !comEvent) {
@@ -32,8 +32,9 @@ export function diagnoseEvent(
 				return
 			}
 
+			// Component Events.
 			if (comEvent) {
-				let eventType = comEvent.type
+				let eventType = helper.types.typeOf(comEvent.nameNode)
 				let handlerType = template.getPartValueType(part)
 
 				if (!helper.types.isAssignableTo(handlerType, eventType)) {
@@ -47,7 +48,7 @@ export function diagnoseEvent(
 		}
 	}
 
-	// `@click.`, complete modifiers.
+	// Validate modifiers, `@click.xxx`.
 	else if (piece.type === TemplatePartPieceType.Modifier) {
 		if (!comEvent && part.namePrefix === '@') {
 			let modifierIndex = piece.modifierIndex!
@@ -66,17 +67,19 @@ export function diagnoseEvent(
 					modifier.add(start, length, DiagnosticCode.NotExistOn, `Modifier "${modifierValue}" is not supported by event "${mainName}".`)
 				}
 			}
+		}
+	}
 
-			// let handlerType = template.getPartValueType(part)
-			// let eventType = 
+	// Validate event handlers `@click=${...}`.
+	else if (piece.type === TemplatePartPieceType.AttrValue) {
+		if (!comEvent) {
+			let handlerType = template.getPartValueType(part)
 
-			// if (!helper.types.isAssignableTo(handlerType, eventType)) {
-			// 	let fromText = helper.types.getTypeFullText(handlerType)
-			// 	let toText = helper.types.getTypeFullText(eventType)
-
-			// 	modifier.add(start, length, DiagnosticCode.NotAssignable, `Property value type "${fromText}" is not assignable to "${toText}".`)
-			// 	return
-			// }
+			if (!helper.types.isFunctionType(handlerType)) {
+				let fromText = helper.types.getTypeFullText(handlerType)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `"${fromText}" is not a event handler.`)
+				return
+			}
 		}
 	}
 }

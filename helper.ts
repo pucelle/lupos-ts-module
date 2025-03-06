@@ -1462,11 +1462,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** Test whether type is function. */
 		isFunctionType(type: TS.Type): boolean {
-			if (type.isUnionOrIntersection()) {
-				return type.types.every(t => types.isObjectType(t))
-			}
-
-			return (type.getFlags() & ts.TypeFlags.Object) > 0
+			return type.getCallSignatures().length > 0
 		},
 
 		/** Whether `from` can be assigned to `to`, which means `from` is narrower. */

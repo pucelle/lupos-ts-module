@@ -155,17 +155,20 @@ function diagnoseFor(
 	}
 
 	
-	// let fnValueNode = template.valueNodes[fnValueIndex]
-	// let fnValueStart = fnValueNode.pos
-	// let fnValueLength = fnValueNode.end - fnValueNode.pos
-	// let decl = helper.isFunctionLike(fnValueNode) ? fnValueNode : helper.symbol.resolveDeclaration(fnValueNode, helper.isFunctionLike)
+	let fnValueNode = template.valueNodes[fnValueIndex]
+	let fnValueType = types.typeOf(fnValueNode)
+
+	if (!types.isFunctionType(fnValueType)) {
+		let fnValueStart = fnValueNode.pos
+		let fnValueLength = fnValueNode.end - fnValueNode.pos
+
+		modifier.add(fnValueStart, fnValueLength, DiagnosticCode.NotAssignable, '"<lu:for>${renderer}</>" must accept a child item renderer as parameter.')
+		return
+	}
+
+
 	// let returnType = decl ? types.getReturnType(decl) : undefined
 	// let parameterTypes = decl ? decl.parameters.map(param => types.typeOf(param)) : undefined
-
-	// if (!decl) {
-	// 	modifier.addNotAssignable(fnValueStart, fnValueLength, '"<lu:for>${renderer}</>" must accept a render function as parameter.')
-	// 	return
-	// }
 
 	// let returnedTypeName = returnType ? types.getTypeReferenceName(returnType) : undefined
 	// if (returnedTypeName && returnedTypeName !== 'TemplateResult' && returnedTypeName !== 'any') {

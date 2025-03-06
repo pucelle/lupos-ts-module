@@ -38,7 +38,6 @@ export function createLuposBinding(node: TS.ClassDeclaration, helper: Helper): L
 		name,
 		nameNode: node.name!,
 		declaration: node,
-		type: helper.types.typeOf(node),
 		description: helper.getNodeDescription(node) || '',
 		sourceFile,
 	}
