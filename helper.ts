@@ -250,6 +250,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		return types.isArrayType(type)
 	}
 
+
 	/** Whether function will instantly run. */
 	function isInstantlyRunFunction(node: TS.Node): node is TS.FunctionLikeDeclaration {
 
@@ -258,6 +259,19 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			&& ts.isCallExpression(node.parent)
 			&& access.isAccess(node.parent.expression)
 			&& isArray(node.parent.expression.expression)
+	}
+
+
+	/** Whether returned `void` or `Promise<void>`. */
+	function isVoidReturning(node: TS.FunctionLikeDeclaration): boolean {
+		let type = types.getReturnTypeOfSignature(node)
+		if (!type) {
+			return false
+		}
+
+		let typeText = types.getTypeFullText(type)
+		
+		return typeText === 'void' || typeText === 'Promise<void>'
 	}
 
 
@@ -1350,25 +1364,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** Get the returned type of a method / function declaration. */
-		getReturnType(node: TS.SignatureDeclaration): TS.Type | undefined {
+		getReturnTypeOfSignature(node: TS.SignatureDeclaration): TS.Type | undefined {
 			let signature = typeCheckerGetter().getSignatureFromDeclaration(node)
 			if (!signature) {
 				return undefined
 			}
 
 			return signature.getReturnType()
-		},
-
-		/** Whether returned `void` or `Promise<void>`. */
-		isVoidReturning(node: TS.FunctionLikeDeclaration): boolean {
-			let type = types.getReturnType(node)
-			if (!type) {
-				return false
-			}
-
-			let typeText = types.getTypeFullText(type)
-			
-			return typeText === 'void' || typeText === 'Promise<void>'
 		},
 
 		/** Test whether type is object. */
@@ -1433,6 +1435,15 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** Test whether type implements `Iterator`. */
 		isIterableType(type: TS.Type): boolean {
 			return !!typeCheckerGetter().getPropertiesOfType(type).find(v => v.getName().startsWith('__@iterator'))
+		},
+
+		/** Test whether type is function. */
+		isFunctionType(type: TS.Type): boolean {
+			if (type.isUnionOrIntersection()) {
+				return type.types.every(t => types.isObjectType(t))
+			}
+
+			return (type.getFlags() & ts.TypeFlags.Object) > 0
 		},
 
 		/** Whether `from` can be assigned to `to`, which means `from` is narrower. */
@@ -2024,6 +2035,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		isMethodLike,
 		isTypeDeclaration,
 		isThis,
+		isVoidReturning,
 		isArray,
 		isInstantlyRunFunction,
 		walkInward,
