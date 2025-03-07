@@ -36,7 +36,7 @@ export function diagnoseProperty(
 			let propertyType = helper.types.typeOf(property.nameNode)
 			let valueType = template.getPartValueType(part)
 
-			if (!helper.types.isAssignableTo(valueType, propertyType)) {
+			if (!helper.types.isAssignableToExtended(valueType, propertyType)) {
 				let fromText = helper.types.getTypeFullText(valueType)
 				let toText = helper.types.getTypeFullText(propertyType)
 

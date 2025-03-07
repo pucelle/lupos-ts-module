@@ -37,7 +37,7 @@ export function diagnoseEvent(
 				let eventType = helper.types.typeOf(comEvent.nameNode)
 				let handlerType = template.getPartValueType(part)
 
-				if (!helper.types.isAssignableTo(handlerType, eventType)) {
+				if (!helper.types.isAssignableToExtended(handlerType, eventType)) {
 					let fromText = helper.types.getTypeFullText(handlerType)
 					let toText = helper.types.getTypeFullText(eventType)
 	

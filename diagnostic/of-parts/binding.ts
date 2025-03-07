@@ -212,7 +212,7 @@ function diagnoseOtherUpdateParameter(
 			continue
 		}
 
-		if (!helper.types.isAssignableTo(valueType, paramType)) {
+		if (!helper.types.isAssignableToExtended(valueType, paramType)) {
 			let fromText = helper.types.getTypeFullText(valueType)
 			let toText = helper.types.getTypeFullText(paramType)
 
