@@ -40,6 +40,8 @@ export function diagnoseProperty(
 				let fromText = helper.types.getTypeFullText(valueType)
 				let toText = helper.types.getTypeFullText(propertyType)
 
+				helper.types.isAssignableToExtended(valueType, propertyType)
+
 				modifier.add(start, length, DiagnosticCode.NotAssignable, `Property type "${fromText}" is not assignable to "${toText}".`)
 				return
 			}

@@ -1492,13 +1492,26 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				return true
 			}
 
-			if (depth === 0) {
+			if (depth <= 0) {
 				return false
 			}
 
 			// Generic type works as any.
 			if (types._isGenericType(from) || types._isGenericType(to)) {
 				return true
+			}
+
+			if (from.isUnionOrIntersection()) {
+				return (from as TS.UnionOrIntersectionType).types.every(ft => {
+					return types._isAssignableToExtended(ft, to, depth - 1)
+				})
+			}
+
+			// Recently can't handle intersection of 'to'.
+			if (to.flags & ts.TypeFlags.Union) {
+				return (to as TS.UnionType).types.some(tt => {
+					return types._isAssignableToExtended(from, tt, depth - 1)
+				})
 			}
 
 			if (from.flags & ts.TypeFlags.Object) {
@@ -1525,12 +1538,22 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 				return types._isReferenceTypeAssignableTo(from as TS.TypeReference, to as TS.TypeReference, depth - 1)
 			}
-			else if (from.objectFlags & ts.ObjectFlags.Anonymous) {
+
+			// Compare functions, they are normally also Anonymous, so must check this before checking Anonymous.
+			if (from.getCallSignatures().length > 0) {
+				if (to.getCallSignatures().length === 0) {
+					return false
+				}
+
+				return types._isCallTypeAssignableTo(from as TS.ObjectType, to as TS.ObjectType, depth - 1)
+			}
+
+			if (from.objectFlags & ts.ObjectFlags.Anonymous) {
 				if (!(to.objectFlags & ts.ObjectFlags.Anonymous)) {
 					return false
 				}
 
-				return types._isAnonymousTypeAssignableTo(from as TS.ObjectType, to as TS.ObjectType, depth - 1)
+				return types._isAnonymousTypeAssignableTo(from, to, depth - 1)
 			}
 
 			return false
@@ -1540,7 +1563,9 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			let fromTarget = from.target
 			let toTarget = to.target
 
-			if (!types._isAssignableToExtended(fromTarget, toTarget, depth - 1)) {
+			if ((fromTarget !== from || toTarget !== to)
+				&& !types._isAssignableToExtended(fromTarget, toTarget, depth - 1)
+			) {
 				return false
 			}
 
@@ -1556,34 +1581,41 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return true
 		},
 
-		_isTypeArgumentsAssignableTo(from: readonly TS.Type[] | undefined, to: readonly TS.Type[] | undefined, depth: number) {
+		_isAnonymousTypeAssignableTo(from: TS.ObjectType, to: TS.ObjectType, depth: number): boolean {
+			let fromTarget = (from as any).target
+			let toTarget = (to as any).target
 
-			// Can provide fewer arguments for 'from'.
-			if (!from) {
-				return true
-			}
-
-			if (!to) {
-				if (from.length === 0) {
-					return true
-				}
-				else {
-					return false
-				}
-			}
-
-			if (to.length < from.length) {
+			if (!fromTarget || !toTarget) {
 				return false
 			}
 
-			for (let i = 0; i < to.length; i++) {
+			if ((fromTarget !== from || toTarget !== to)
+				&& !types._isAssignableToExtended(fromTarget, toTarget, depth - 1)
+			) {
+				return false
+			}
 
-				// From parameter missing, use any.
-				if (i === from.length) {
-					break
-				}
+			// Not validate generic parameter at `aliasTypeArguments`, equals treating them as any.
 
-				if (!types._isAssignableToExtended(from[i], to[i], depth - 1)) {
+			return true
+		},
+
+		_isTypeArgumentsAssignableTo(from: readonly TS.Type[] | undefined, to: readonly TS.Type[] | undefined, depth: number) {
+
+			// Can provide fewer arguments for 'from'.
+			let fromLength = from ? from.length : 0
+			let toLength = to ? to.length : 0
+
+			if (fromLength === 0) {
+				return true
+			}
+
+			if (fromLength > toLength) {
+				return false
+			}
+
+			for (let i = 0; i < from!.length; i++) {
+				if (!types._isAssignableToExtended(from![i], to![i], depth - 1)) {
 					return false
 				}
 			}
@@ -1591,13 +1623,9 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return true
 		},
 
-		_isAnonymousTypeAssignableTo(from: TS.ObjectType, to: TS.ObjectType, depth: number): boolean {
+		_isCallTypeAssignableTo(from: TS.ObjectType, to: TS.ObjectType, depth: number): boolean {
 			let fromSignature = from.getCallSignatures()
 			let toSignature = to.getCallSignatures()
-
-			if (!fromSignature.length || !toSignature.length) {
-				return false
-			}
 
 			for (let fromS of fromSignature) {
 				for (let toS of toSignature) {
@@ -1612,17 +1640,18 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		_isSignatureAssignableTo(from: TS.Signature, to: TS.Signature, depth: number): boolean {
 			let checker = typeCheckerGetter()
-			let fromThis = from.thisParameter ? [checker.getTypeOfSymbol(from.thisParameter)] : undefined
-			let toThis = to.thisParameter ? [checker.getTypeOfSymbol(to.thisParameter)] : undefined
 
-			if (!types._isTypeParametersAssignableTo(fromThis, toThis, depth - 1)) {
-				return false
-			}
+			// let fromThis = from.thisParameter ? [checker.getTypeOfSymbol(from.thisParameter)] : undefined
+			// let toThis = to.thisParameter ? [checker.getTypeOfSymbol(to.thisParameter)] : undefined
+
+			// if (!types._isTypeParametersAssignableTo(fromThis, toThis, depth - 1)) {
+			// 	return false
+			// }
 
 			let fromParameters = from.parameters ? from.parameters.map(p => checker.getTypeOfSymbol(p)) : undefined
 			let toParameters = to.parameters ? to.parameters.map(p => checker.getTypeOfSymbol(p)) : undefined
 
-			if (!types._isTypeParametersAssignableTo(fromParameters, toParameters, depth - 1)) {
+			if (!types._isParameterTypesAssignableTo(fromParameters, toParameters, depth - 1)) {
 				return false
 			}
 
@@ -1636,35 +1665,24 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return true
 		},
 
-		_isTypeParametersAssignableTo(from: readonly TS.Type[] | undefined, to: readonly TS.Type[] | undefined, depth: number) {
+		_isParameterTypesAssignableTo(from: readonly TS.Type[] | undefined, to: readonly TS.Type[] | undefined, depth: number) {
 
 			// Can provide fewer parameters for 'from'.
-			if (!from) {
+			let fromLength = from ? from.length : 0
+			let toLength = to ? to.length : 0
+
+			if (fromLength === 0) {
 				return true
 			}
 
-			if (!to) {
-				if (from.length === 0) {
-					return true
-				}
-				else {
-					return false
-				}
-			}
-
-			if (to.length < from.length) {
+			if (fromLength > toLength) {
 				return false
 			}
 
-			for (let i = 0; i < to.length; i++) {
-
-				// From parameter missing, use any.
-				if (i === from.length) {
-					break
-				}
+			for (let i = 0; i < from!.length; i++) {
 
 				// If 'from' exists, it must be wider.
-				if (!types._isAssignableToExtended(to[i], from[i], depth - 1)) {
+				if (!types._isAssignableToExtended(to![i], from![i], depth - 1)) {
 					return false
 				}
 			}

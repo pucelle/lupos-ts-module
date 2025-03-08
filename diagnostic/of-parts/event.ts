@@ -31,20 +31,6 @@ export function diagnoseEvent(
 				modifier.add(start, length, DiagnosticCode.NotExistOn, `"<${component.name}>" does not support event "${mainName}".`)
 				return
 			}
-
-			// Component Events.
-			if (comEvent) {
-				let eventType = helper.types.typeOf(comEvent.nameNode)
-				let handlerType = template.getPartValueType(part)
-
-				if (!helper.types.isAssignableToExtended(handlerType, eventType)) {
-					let fromText = helper.types.getTypeFullText(handlerType)
-					let toText = helper.types.getTypeFullText(eventType)
-	
-					modifier.add(start, length, DiagnosticCode.NotAssignable, `Property type "${fromText}" is not assignable to type "${toText}".`)
-					return
-				}
-			}
 		}
 	}
 
@@ -72,7 +58,25 @@ export function diagnoseEvent(
 
 	// Validate event handlers `@click=${...}`.
 	else if (piece.type === TemplatePartPieceType.AttrValue) {
-		if (!comEvent) {
+		
+		// Component Events.
+		if (comEvent) {
+			let eventType = helper.types.typeOf(comEvent.nameNode)
+			let handlerType = template.getPartValueType(part)
+
+			if (!helper.types.isAssignableToExtended(handlerType, eventType)) {
+				let fromText = helper.types.getTypeFullText(handlerType)
+				let toText = helper.types.getTypeFullText(eventType)
+
+				helper.types.isAssignableToExtended(handlerType, eventType)
+
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `Property type "${fromText}" is not assignable to type "${toText}".`)
+				return
+			}
+		}
+
+		// Element events.
+		else {
 			let handlerType = template.getPartValueType(part)
 
 			if (!helper.types.isFunctionType(handlerType)) {
