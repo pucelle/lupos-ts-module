@@ -1558,7 +1558,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		_isTypeArgumentsAssignableTo(from: readonly TS.Type[] | undefined, to: readonly TS.Type[] | undefined, depth: number) {
 
-			// Can provide fewer parameters for 'from'.
+			// Can provide fewer arguments for 'from'.
 			if (!from) {
 				return true
 			}
