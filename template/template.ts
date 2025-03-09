@@ -103,7 +103,7 @@ export abstract class TemplateBasis {
 				return
 			}
 
-			let typeNode = this.helper.types.getTypeNode(ref, false, false)
+			let typeNode = this.helper.types.getTypeNode(ref, false)
 			if (typeNode) {
 				yield* this.helper.symbol.resolveInstanceDeclarations(typeNode)
 				return

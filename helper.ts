@@ -910,30 +910,37 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * Otherwise if resolved type is `MethodsObserved`,
 		 * or resolved class implements `MethodsObserved`, returns `true`.
 		 */
-		isExpOfElementsAccess(rawNode: TS.Node): boolean {
+		isOfElementsAccess(rawNode: TS.Node): boolean {
+			let decl = symbol.resolveDeclaration(rawNode, (n: TS.Node) => isMethodLike(n) || isPropertyLike(n))
+			if (!decl) {
+				return false
+			}
 
-			// Array type.
-			let type = types.typeOf(rawNode)
-			if (types.isArrayType(type)) {
+			let classDecl = decl.parent
+			if (!ts.isClassDeclaration(classDecl) && !ts.isInterfaceDeclaration(classDecl)) {
+				return false
+			}
+
+			if (!classDecl.name) {
+				return false
+			}
+
+			let objName = getText(classDecl.name)
+			if (objName === 'Map') {
 				return true
 			}
-			
-			// Map or Set.
-			let typeNode = types.getTypeNode(rawNode, true, true)
-			let objName = typeNode ? types.getTypeNodeReferenceName(typeNode) : undefined
-
-			if (objName === 'Map' || objName === 'Set') {
+			else if (objName === 'Set') {
 				return true
 			}
-		
-			// resolved class implements `MethodsObserved`.
-			if (typeNode) {
-				let classDecl = symbol.resolveDeclaration(typeNode, ts.isClassDeclaration)
-				if (classDecl) {
-					for (let superClass of cls.walkSelfAndSuper(classDecl)) {
-						if (cls.isImplemented(superClass, 'MethodsObserved', '@pucelle/ff')) {
-							return true
-						}
+			else if (objName === 'Array' || objName === 'ReadonlyArray') {
+				return true
+			}
+
+			// Not validate which method.
+			else if (ts.isClassDeclaration(classDecl)) {
+				for (let superClass of cls.walkSelfAndSuper(classDecl)) {
+					if (cls.isImplemented(superClass, 'MethodsObserved', '@pucelle/ff')) {
+						return true
 					}
 				}
 			}
@@ -941,72 +948,91 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return false
 		},
 
-		/** Test whether calls reading process of `Map`, `Set`, `Array`. */
+		/** 
+		 * Test whether calls read methods or properties like `Map.get`, `Set.has`, `Array.length`.
+		 * Otherwise whether calls read type methods of `MethodsObserved`.
+		 */
 		isOfElementsReadAccess(rawNode: AccessNode): boolean {
-			let expType = types.typeOf(rawNode.expression)
-			let expTypeNode = types.getTypeNode(rawNode.expression, true, true)
-			let objName = expTypeNode ? types.getTypeNodeReferenceName(expTypeNode) : undefined
-			let propName = access.getPropertyText(rawNode)
+			let decl = symbol.resolveDeclaration(rawNode, (n: TS.Node) => isMethodLike(n) || isPropertyLike(n))
+			if (!decl) {
+				return false
+			}
 
+			let classDecl = decl.parent
+			if (!ts.isClassDeclaration(classDecl) && !ts.isInterfaceDeclaration(classDecl)) {
+				return false
+			}
+
+			if (!classDecl.name) {
+				return false
+			}
+
+			let objName = getText(classDecl.name)
+			let propName = getText(decl.name)
+	
 			if (objName === 'Map') {
 				return propName === 'has' || propName === 'get' || propName === 'size'
 			}
 			else if (objName === 'Set') {
 				return propName === 'has' || propName === 'size'
 			}
-			else if (types.isArrayType(expType)) {
-				let methodDecl = symbol.resolveDeclaration(rawNode, isMethodLike)
-
-				return !methodDecl || !(
+			else if (objName === 'Array' || objName === 'ReadonlyArray') {
+				return !(
 					propName === 'push'
 					|| propName === 'unshift'
 					|| propName === 'sort'
 					|| propName === 'splice'
 				)
 			}
-			else if (expTypeNode) {
-				return access._isOfMethodsObservable(expTypeNode, propName, 0)
+			else if (ts.isClassDeclaration(classDecl)) {
+				return access._isOfMethodsObservable(classDecl, propName, 0)
 			}
 
 			return false
 		},
 
-		/** Test whether calls `Map.set`, or `Set.set`. */
+		/** 
+		 * Test whether calls write methods like `Map.set` `Set.set`, or `Array.push`.
+		 * Otherwise whether calls write type methods of `MethodsObserved`.
+		 */
 		isOfElementsWriteAccess(rawNode: AccessNode) {
-			let expType = types.typeOf(rawNode.expression)
-			let expTypeNode = types.getTypeNode(rawNode.expression, true, true)
-			let objName = expTypeNode ? types.getTypeNodeReferenceName(expTypeNode) : undefined
-			let propName = access.getPropertyText(rawNode)
+			let decl = symbol.resolveDeclaration(rawNode, isMethodLike)
+			if (!decl) {
+				return false
+			}
 
+			let classDecl = decl.parent
+			if (!ts.isClassDeclaration(classDecl) && !ts.isInterfaceDeclaration(classDecl)) {
+				return false
+			}
+
+			if (!classDecl.name) {
+				return false
+			}
+			
+			let objName = getText(classDecl.name)
+			let propName = getText(decl.name)
+	
 			if (objName === 'Map') {
 				return propName === 'set' || propName === 'delete' || propName === 'clear'
 			}
 			else if (objName === 'Set') {
 				return propName === 'add' || propName === 'delete' || propName === 'clear'
 			}
-			else if (types.isArrayType(expType)) {
-				let methodDecl = symbol.resolveDeclaration(rawNode, isMethodLike)
-
-				return !!methodDecl && (
-					propName === 'push'
+			else if (objName === 'Array' || objName === 'ReadonlyArray') {
+				return propName === 'push'
 					|| propName === 'unshift'
 					|| propName === 'sort'
 					|| propName === 'splice'
-				)
 			}
-			else if (expTypeNode) {
-				return access._isOfMethodsObservable(expTypeNode, propName, 1)
+			else if (ts.isClassDeclaration(classDecl)) {
+				return access._isOfMethodsObservable(classDecl, propName, 1)
 			}
 
 			return false
 		},
 		
-		_isOfMethodsObservable(expTypeNode: TS.TypeNode, propName: string, paramIndex: number) {
-			let classDecl = symbol.resolveDeclaration(expTypeNode, ts.isClassDeclaration)
-			if (!classDecl) {
-				return false
-			}
-
+		_isOfMethodsObservable(classDecl: TS.ClassDeclaration, propName: string, paramIndex: number) {
 			for (let superClass of cls.walkSelfAndSuper(classDecl)) {
 				let implemented = cls.getImplements(superClass)
 				let methodsHalfObservedImplement = implemented.find(im => getText(im.expression) === 'MethodsObserved')
@@ -1210,9 +1236,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * Get type node of a node.
 		 * Will firstly try to get type node when doing declaration,
 		 * If can't find and `makeIfNotExist` is true, make a new type node, but it can't be resolved.
-		 * If `resolveObserved`, resolve `Observed<T>` to get `T`.
 		 */
-		getTypeNode(node: TS.Node, makeIfNotExist: boolean = false, resolveObserved: boolean = false): TS.TypeNode | undefined {
+		getTypeNode(node: TS.Node, makeIfNotExist: boolean = false): TS.TypeNode | undefined {
 			let typeNode: TS.TypeNode | undefined
 
 			// Getting type of source file raise an error.
@@ -1222,19 +1247,19 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			// `(...)`
 			if (ts.isParenthesizedExpression(node)) {
-				return types.getTypeNode(node.expression, makeIfNotExist, resolveObserved)
+				return types.getTypeNode(node.expression, makeIfNotExist)
 			}
 
 			// `...!`
 			if (ts.isNonNullExpression(node)) {
-				return types.getTypeNode(node.expression, makeIfNotExist, resolveObserved)
+				return types.getTypeNode(node.expression, makeIfNotExist)
 			}
 
 			// `class {a: Type = xxx}`
 			if (access.isAccess(node)) {
 				let resolved = symbol.resolveDeclaration(node)
 				if (resolved) {
-					return types.getTypeNode(resolved, makeIfNotExist, resolveObserved)
+					return types.getTypeNode(resolved, makeIfNotExist)
 				}
 			}
 
@@ -1242,7 +1267,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			if (isVariableIdentifier(node)) {
 				let resolved = symbol.resolveDeclaration(node)
 				if (resolved) {
-					return types.getTypeNode(resolved, makeIfNotExist, resolveObserved)
+					return types.getTypeNode(resolved, makeIfNotExist)
 				}
 			}
 
@@ -1251,7 +1276,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				typeNode = node.type
 
 				if (!typeNode && node.initializer) {
-					return types.getTypeNode(node.initializer, makeIfNotExist, resolveObserved)
+					return types.getTypeNode(node.initializer, makeIfNotExist)
 				}
 			}
 
@@ -1260,7 +1285,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				typeNode = node.type
 
 				if (!typeNode && node.initializer) {
-					return types.getTypeNode(node.initializer, makeIfNotExist, resolveObserved)
+					return types.getTypeNode(node.initializer, makeIfNotExist)
 				}
 			}
 
@@ -1279,15 +1304,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				typeNode = node.type
 			}
 
-
-			// `let a: Observed<...>`
-			if (typeNode
-				&& resolveObserved
-				&& ts.isTypeReferenceNode(typeNode)
-				&& symbol.isImportedFrom(typeNode, 'Observed', '@pucelle/ff')
-			) {
-				typeNode = typeNode.typeArguments?.[0]
-			}
 
 			if (typeNode) {
 				return typeNode
