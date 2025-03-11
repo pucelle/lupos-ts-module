@@ -1,4 +1,5 @@
 import type * as TS from 'typescript'
+import {assignableChecker} from './assignable-checker'
 
 
 /** Property or element access types. */
@@ -32,6 +33,7 @@ export type Helper = ReturnType<typeof helperOfContext>
 /** Help to get and check. */
 export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeChecker) {
 	let printer = ts.createPrinter()
+	let theAssignableChecker = assignableChecker(ts, typeCheckerGetter)
 
 	
 	//// Global
@@ -1418,7 +1420,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				return type.types.every(t => types.isObjectType(t))
 			}
 
-			return (type.getFlags() & ts.TypeFlags.Object) > 0
+			return (type.flags & ts.TypeFlags.Object) > 0
 		},
 
 		/** Test whether type represents a value. */
@@ -1427,7 +1429,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				return type.types.every(t => types.isValueType(t))
 			}
 
-			return (type.getFlags() & (
+			return (type.flags & (
 				ts.TypeFlags.StringLike
 					| ts.TypeFlags.NumberLike
 					| ts.TypeFlags.BigIntLike
@@ -1440,12 +1442,12 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** Test whether type represents a string. */
 		isStringType(type: TS.Type): boolean {
-			return (type.getFlags() & ts.TypeFlags.StringLike) > 0
+			return (type.flags & ts.TypeFlags.StringLike) > 0
 		},
 
 		/** Test whether type represents a number. */
 		isNumericType(type: TS.Type): boolean {
-			return (type.getFlags() & ts.TypeFlags.NumberLike) > 0
+			return (type.flags & ts.TypeFlags.NumberLike) > 0
 		},
 
 		/** Test whether type represents a value, and not null or undefined. */
@@ -1454,7 +1456,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				return type.types.every(t => types.isNonNullableValueType(t))
 			}
 
-			return (type.getFlags() & (
+			return (type.flags & (
 				ts.TypeFlags.StringLike
 					| ts.TypeFlags.NumberLike
 					| ts.TypeFlags.BigIntLike
@@ -1499,211 +1501,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				return true
 			}
 
-			return types._isAssignableToExtended(from, to, 10)
-		},
-
-		/** Normally use this to test generic assignable. */
-		_isAssignableToExtended(from: TS.Type, to: TS.Type, depth: number): boolean {
-			if (from === to) {
-				return true
-			}
-
-			if (depth <= 0) {
-				return false
-			}
-
-			// Generic type works as any.
-			if (types._isGenericType(from) || types._isGenericType(to)) {
-				return true
-			}
-
-			if (from.isUnionOrIntersection()) {
-				return (from as TS.UnionOrIntersectionType).types.every(ft => {
-					return types._isAssignableToExtended(ft, to, depth - 1)
-				})
-			}
-
-			// Recently can't handle intersection of 'to'.
-			if (to.flags & ts.TypeFlags.Union) {
-				return (to as TS.UnionType).types.some(tt => {
-					return types._isAssignableToExtended(from, tt, depth - 1)
-				})
-			}
-
-			if (from.flags & ts.TypeFlags.Object) {
-				if (to.flags & ts.TypeFlags.Object) {
-					return types._isObjectTypeAssignableTo(from as TS.ObjectType, to as TS.ObjectType, depth - 1)
-				}
-				else {
-					return false
-				}
-			}
-
-			return false
-		},
-
-		_isGenericType(from: TS.Type): boolean {
-			return (from.flags & ts.TypeFlags.TypeParameter) > 0
-		},
-
-		_isObjectTypeAssignableTo(from: TS.ObjectType, to: TS.ObjectType, depth: number): boolean {
-			if (from.objectFlags & ts.ObjectFlags.Reference) {
-				if (!(to.objectFlags & ts.ObjectFlags.Reference)) {
-					return false
-				}
-
-				return types._isReferenceTypeAssignableTo(from as TS.TypeReference, to as TS.TypeReference, depth - 1)
-			}
-
-			// Compare functions, they are normally also Anonymous, so must check this before checking Anonymous.
-			if (from.getCallSignatures().length > 0) {
-				if (to.getCallSignatures().length === 0) {
-					return false
-				}
-
-				return types._isCallTypeAssignableTo(from as TS.ObjectType, to as TS.ObjectType, depth - 1)
-			}
-
-			if (from.objectFlags & ts.ObjectFlags.Anonymous) {
-				if (!(to.objectFlags & ts.ObjectFlags.Anonymous)) {
-					return false
-				}
-
-				return types._isAnonymousTypeAssignableTo(from, to, depth - 1)
-			}
-
-			return false
-		},
-
-		_isReferenceTypeAssignableTo(from: TS.TypeReference, to: TS.TypeReference, depth: number): boolean {
-			let fromTarget = from.target
-			let toTarget = to.target
-
-			if ((fromTarget !== from || toTarget !== to)
-				&& !types._isAssignableToExtended(fromTarget, toTarget, depth - 1)
-			) {
-				return false
-			}
-
-			let fromArguments = from.typeArguments ?? []
-			let toArguments = to.typeArguments ?? []
-
-			if (!types._isTypeArgumentsAssignableTo(fromArguments, toArguments, depth - 1)) {
-				return false
-			}
-
-			// Not validate generic parameter at `aliasTypeArguments`, equals treating them as any.
-
-			return true
-		},
-
-		_isAnonymousTypeAssignableTo(from: TS.ObjectType, to: TS.ObjectType, depth: number): boolean {
-			let fromTarget = (from as any).target
-			let toTarget = (to as any).target
-
-			if (!fromTarget || !toTarget) {
-				return false
-			}
-
-			if ((fromTarget !== from || toTarget !== to)
-				&& !types._isAssignableToExtended(fromTarget, toTarget, depth - 1)
-			) {
-				return false
-			}
-
-			// Not validate generic parameter at `aliasTypeArguments`, equals treating them as any.
-
-			return true
-		},
-
-		_isTypeArgumentsAssignableTo(from: readonly TS.Type[] | undefined, to: readonly TS.Type[] | undefined, depth: number) {
-
-			// Can provide fewer arguments for 'from'.
-			let fromLength = from ? from.length : 0
-			let toLength = to ? to.length : 0
-
-			if (fromLength === 0) {
-				return true
-			}
-
-			if (fromLength > toLength) {
-				return false
-			}
-
-			for (let i = 0; i < from!.length; i++) {
-				if (!types._isAssignableToExtended(from![i], to![i], depth - 1)) {
-					return false
-				}
-			}
-
-			return true
-		},
-
-		_isCallTypeAssignableTo(from: TS.ObjectType, to: TS.ObjectType, depth: number): boolean {
-			let fromSignature = from.getCallSignatures()
-			let toSignature = to.getCallSignatures()
-
-			for (let fromS of fromSignature) {
-				for (let toS of toSignature) {
-					if (types._isSignatureAssignableTo(fromS, toS, depth - 1)) {
-						return true
-					}
-				}
-			}
-
-			return false
-		},
-
-		_isSignatureAssignableTo(from: TS.Signature, to: TS.Signature, depth: number): boolean {
-			let checker = typeCheckerGetter()
-
-			// let fromThis = from.thisParameter ? [checker.getTypeOfSymbol(from.thisParameter)] : undefined
-			// let toThis = to.thisParameter ? [checker.getTypeOfSymbol(to.thisParameter)] : undefined
-
-			// if (!types._isTypeParametersAssignableTo(fromThis, toThis, depth - 1)) {
-			// 	return false
-			// }
-
-			let fromParameters = from.parameters ? from.parameters.map(p => checker.getTypeOfSymbol(p)) : undefined
-			let toParameters = to.parameters ? to.parameters.map(p => checker.getTypeOfSymbol(p)) : undefined
-
-			if (!types._isParameterTypesAssignableTo(fromParameters, toParameters, depth - 1)) {
-				return false
-			}
-
-			let fromReturned = from.getReturnType()
-			let toReturned = to.getReturnType()
-
-			if (!types._isAssignableToExtended(fromReturned, toReturned, depth - 1)) {
-				return false
-			}
-
-			return true
-		},
-
-		_isParameterTypesAssignableTo(from: readonly TS.Type[] | undefined, to: readonly TS.Type[] | undefined, depth: number) {
-
-			// Can provide fewer parameters for 'from'.
-			let fromLength = from ? from.length : 0
-			let toLength = to ? to.length : 0
-
-			if (fromLength === 0) {
-				return true
-			}
-
-			if (fromLength > toLength) {
-				return false
-			}
-
-			for (let i = 0; i < from!.length; i++) {
-
-				// If 'from' exists, it must be wider.
-				if (!types._isAssignableToExtended(to![i], from![i], depth - 1)) {
-					return false
-				}
-			}
-
-			return true
+			// About each object literal cost 8~10 depth.
+			return theAssignableChecker.isAssignableTo(from, to, 40)
 		},
 
 		/** Analysis whether the property declaration resolve from a node is readonly. */

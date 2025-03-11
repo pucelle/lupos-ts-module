@@ -68,8 +68,6 @@ export function diagnoseEvent(
 				let fromText = helper.types.getTypeFullText(handlerType)
 				let toText = helper.types.getTypeFullText(eventType)
 
-				helper.types.isAssignableToExtended(handlerType, eventType)
-
 				modifier.add(start, length, DiagnosticCode.NotAssignable, `Property type "${fromText}" is not assignable to type "${toText}".`)
 				return
 			}
