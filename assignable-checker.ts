@@ -52,13 +52,12 @@ export function assignableChecker(ts: typeof TS, typeCheckerGetter: () => TS.Typ
 			})
 		}
 
-		// If `to` is conditional, if true or false brach match, then match.
+		// If one is conditional, if it's true or false brach match, then match.
+		if (from.flags & ts.TypeFlags.Conditional) {
+			return isConditionalTypeMatch(from as TS.ConditionalType, to, depth - 1)
+		}
 		if (to.flags & ts.TypeFlags.Conditional) {
-			let trueType = (to as TS.ConditionalType).resolvedTrueType
-			let falseType = (to as TS.ConditionalType).resolvedFalseType
-
-			return !!trueType && isAssignableTo(from, trueType, depth - 1)
-				|| !!falseType && isAssignableTo(from, falseType, depth - 1)
+			return isConditionalTypeMatch(to as TS.ConditionalType, from, depth - 1)
 		}
 
 		// Compare object types.
@@ -97,6 +96,14 @@ export function assignableChecker(ts: typeof TS, typeCheckerGetter: () => TS.Typ
 
 	function isGenericType(from: TS.Type): boolean {
 		return (from.flags & ts.TypeFlags.TypeParameter) > 0
+	}
+
+	function isConditionalTypeMatch(conditional: TS.ConditionalType, type: TS.Type, depth: number): boolean {
+		let trueType = conditional.resolvedTrueType
+			let falseType = conditional.resolvedFalseType
+
+		return !!trueType && isAssignableTo(type, trueType, depth - 1)
+			|| !!falseType && isAssignableTo(type, falseType, depth - 1)
 	}
 
 	function isObjectTypeAssignableTo(from: TS.ObjectType, to: TS.ObjectType, depth: number): boolean {
