@@ -24,6 +24,16 @@ export function assignableChecker(ts: typeof TS, typeCheckerGetter: () => TS.Typ
 			return false
 		}
 
+		/** `any` can assign to any. */
+		if (from.flags & ts.TypeFlags.Any) {
+			return true
+		}
+
+		/** `never` can assign to nothing. */
+		if (from.flags & ts.TypeFlags.Never) {
+			return false
+		}
+
 		// Generic type works as any.
 		if (isGenericType(from) || isGenericType(to)) {
 			return true
