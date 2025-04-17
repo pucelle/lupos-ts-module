@@ -1923,17 +1923,15 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 					break
 				}
 
-				// `D & B`
+				// `D & B`, may have no parameter, but super have.
 				let superParameters = extendsNode.typeArguments
-				if (!superParameters) {
-					break
-				}
+				if (superParameters) {
+					refedTypeParameters = symbol._remapRefedTypeParameters(refedTypeParameters, selfParameters, superParameters)
 
-				refedTypeParameters = symbol._remapRefedTypeParameters(refedTypeParameters, selfParameters, superParameters)
-
-				// `C`
-				if (getFullText(extendsNode.expression) === finalHeritageName) {
-					return refedTypeParameters[finalHeritageTypeParameterIndex]
+					// `C`
+					if (getFullText(extendsNode.expression) === finalHeritageName) {
+						return refedTypeParameters[finalHeritageTypeParameterIndex]
+					}
 				}
 
 				classDecl = cls.getSuper(classDecl)
