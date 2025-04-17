@@ -45,8 +45,9 @@ export function assignableChecker(ts: typeof TS, typeCheckerGetter: () => TS.Typ
 				return isAssignableTo(from, tt, depth - 1)
 			})
 		}
+
 		// Recently can't rightly handle intersection of 'to'.
-		else if (to.isIntersection()) {
+		if (to.isIntersection()) {
 			return (to as TS.IntersectionType).types.every(tt => {
 				return isAssignableTo(from, tt, depth - 1)
 			})
@@ -56,6 +57,7 @@ export function assignableChecker(ts: typeof TS, typeCheckerGetter: () => TS.Typ
 		if (from.flags & ts.TypeFlags.Conditional) {
 			return isConditionalTypeMatch(from as TS.ConditionalType, to, depth - 1)
 		}
+
 		if (to.flags & ts.TypeFlags.Conditional) {
 			return isConditionalTypeMatch(to as TS.ConditionalType, from, depth - 1)
 		}
@@ -76,14 +78,26 @@ export function assignableChecker(ts: typeof TS, typeCheckerGetter: () => TS.Typ
 	/** Value types, check whether they have intersection with value type flags. */
 	function isValueTypeAssignable(from: TS.Type, to: TS.Type) {
 		if (from.flags & ts.TypeFlags.StringLike && to.flags & ts.TypeFlags.StringLike) {
+			if (from.flags & ts.TypeFlags.StringLiteral && to.flags & ts.TypeFlags.StringLiteral) {
+				return (from as TS.StringLiteralType).value === (to as TS.StringLiteralType).value
+			}
+
 			return true
 		}
 
 		if (from.flags & ts.TypeFlags.NumberLike && to.flags & ts.TypeFlags.NumberLike) {
+			if (from.flags & ts.TypeFlags.NumberLiteral && to.flags & ts.TypeFlags.NumberLiteral) {
+				return (from as TS.NumberLiteralType).value === (to as TS.NumberLiteralType).value
+			}
+
 			return true
 		}
 
 		if (from.flags & ts.TypeFlags.BooleanLike && to.flags & ts.TypeFlags.BooleanLike) {
+			if (from.flags & ts.TypeFlags.BooleanLiteral && to.flags & ts.TypeFlags.BooleanLiteral) {
+				return from === to
+			}
+
 			return true
 		}
 
