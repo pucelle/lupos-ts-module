@@ -89,38 +89,38 @@ export function assignableChecker(ts: typeof TS, typeCheckerGetter: () => TS.Typ
 	function isValueTypeAssignable(from: TS.Type, to: TS.Type) {
 		if (from.flags & ts.TypeFlags.StringLike && to.flags & ts.TypeFlags.StringLike) {
 
-			// Problem here is when having to type restrict, 'a' will be inferred as string, not 'a' literal.
-			// if (from.flags & ts.TypeFlags.StringLiteral && to.flags & ts.TypeFlags.StringLiteral) {
-			// 	return (from as TS.StringLiteralType).value === (to as TS.StringLiteralType).value
-			// }
+			// One problem here is when having to type restrict, 'a' will be inferred as string, not 'a' literal.
+			if (from.flags & ts.TypeFlags.StringLiteral && to.flags & ts.TypeFlags.StringLiteral) {
+				return (from as TS.StringLiteralType).value === (to as TS.StringLiteralType).value
+			}
 
-			// if (to.flags & ts.TypeFlags.String) {
-			// 	return true
-			// }
+			if (to.flags & ts.TypeFlags.String) {
+				return true
+			}
 
 			return true
 		}
 
 		if (from.flags & ts.TypeFlags.NumberLike && to.flags & ts.TypeFlags.NumberLike) {
-			// if (from.flags & ts.TypeFlags.NumberLiteral && to.flags & ts.TypeFlags.NumberLiteral) {
-			// 	return (from as TS.NumberLiteralType).value === (to as TS.NumberLiteralType).value
-			// }
+			if (from.flags & ts.TypeFlags.NumberLiteral && to.flags & ts.TypeFlags.NumberLiteral) {
+				return (from as TS.NumberLiteralType).value === (to as TS.NumberLiteralType).value
+			}
 
-			// if (to.flags & ts.TypeFlags.Number) {
-			// 	return true
-			// }
+			if (to.flags & ts.TypeFlags.Number) {
+				return true
+			}
 
 			return true
 		}
 
 		if (from.flags & ts.TypeFlags.BooleanLike && to.flags & ts.TypeFlags.BooleanLike) {
-			// if (from.flags & ts.TypeFlags.BooleanLiteral && to.flags & ts.TypeFlags.BooleanLiteral) {
-			// 	return from === to
-			// }
+			if (from.flags & ts.TypeFlags.BooleanLiteral && to.flags & ts.TypeFlags.BooleanLiteral) {
+				return from === to
+			}
 
-			// if (to.flags & ts.TypeFlags.Boolean) {
-			// 	return true
-			// }
+			if (to.flags & ts.TypeFlags.Boolean) {
+				return true
+			}
 
 			return true
 		}

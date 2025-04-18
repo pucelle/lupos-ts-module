@@ -77,7 +77,7 @@ export function diagnoseEvent(
 		else {
 			let handlerType = template.getPartValueType(part)
 
-			if (!helper.types.isFunctionType(handlerType)) {
+			if (!helper.types.isFunctionType(handlerType) && !helper.types.isAnyType(handlerType)) {
 				let fromText = helper.types.getTypeFullText(handlerType)
 				modifier.add(start, length, DiagnosticCode.NotAssignable, `"${fromText}" is not a event handler.`)
 				return
