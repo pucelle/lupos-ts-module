@@ -91,15 +91,15 @@ export class ScopeTree<S extends Scope = Scope> {
 	}
 		
 	/** Check at which scope the specified named variable or this declared. */
-	findDeclared(rawNode: TS.Identifier | TS.ThisExpression, fromScope: S = this.findClosest(rawNode)): S | null {
-		if (this.helper.isThis(rawNode)) {
+	findDeclared(node: TS.Identifier | TS.ThisExpression, fromScope: S = this.findClosest(node)): S | null {
+		if (this.helper.isThis(node)) {
 			return fromScope.findClosestThisScope() as S
 		}
-		else if (fromScope.hasLocalVariable(rawNode.text)) {
+		else if (fromScope.hasLocalVariable(node.text)) {
 			return fromScope
 		}
 		else if (fromScope.parent) {
-			return this.findDeclared(rawNode, fromScope.parent as S)
+			return this.findDeclared(node, fromScope.parent as S)
 		}
 		else {
 			return null

@@ -160,14 +160,16 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		}
 
 		// Identifier of type query node.
-		if (ts.isTypeQueryNode(node.parent)
+		if (node.parent
+			&& ts.isTypeQueryNode(node.parent)
 			&& node === node.parent.exprName
 		) {
 			return false
 		}
 
 		// Name of declaration of a class or interface, property, method, function name, get or set name.
-		if ((ts.isClassDeclaration(node.parent)
+		if (node.parent
+			&& (ts.isClassDeclaration(node.parent)
 				|| ts.isInterfaceDeclaration(node.parent)
 				|| ts.isVariableDeclaration(node.parent)
 				|| ts.isMethodDeclaration(node.parent)
