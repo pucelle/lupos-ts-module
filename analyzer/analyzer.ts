@@ -165,7 +165,7 @@ export class Analyzer {
 	 * Get component by it's class declaration, use it for completion.
 	 * `declaration` can also be a any level local declaration.
 	 */
-	getComponentByDeclaration(declaration: TS.ClassDeclaration): LuposComponent | undefined {
+	getComponentByDeclaration(declaration: TS.ClassDeclaration | TS.InterfaceDeclaration): LuposComponent | undefined {
 		let sourceFile = declaration.getSourceFile()
 
 		// Ensure analyzed source file.

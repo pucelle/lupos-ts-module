@@ -479,14 +479,14 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 
 
-	/** Class part */
+	/** Class part, can also works on interface. */
 	const cls = {
 
 		/** 
 		 * Get name of a class member.
 		 * For a constructor function, it returns `constructor`
 		 */
-		getMemberName(node: TS.ClassElement): string {
+		getMemberName(node: TS.ClassElement | TS.TypeElement): string {
 			if (ts.isConstructorDeclaration(node)) {
 				return 'constructor'
 			}
@@ -499,7 +499,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * Get one class member declaration by it's name.
 		 * `resolveExtend` specifies whether will look at extended class.
 		 */
-		getMember(node: TS.ClassLikeDeclaration, memberName: string, resolveExtend: boolean = false): TS.ClassElement | undefined {
+		getMember(
+			node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration,
+			memberName: string,
+			resolveExtend: boolean = false
+		): TS.ClassElement | undefined {
 			if (resolveExtend) {
 				let prop = cls.getMember(node, memberName, false)
 				if (prop) {
@@ -524,7 +528,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * Get one class property declaration by it's name.
 		 * `resolveExtend` specifies whether will look at extended class.
 		 */
-		getProperty(node: TS.ClassLikeDeclaration, propertyName: string, resolveExtend: boolean = false): TS.PropertyDeclaration | undefined {
+		getProperty(
+			node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration,
+			propertyName: string,
+			resolveExtend: boolean = false
+		): TS.PropertyDeclaration | undefined {
 			if (resolveExtend) {
 				let prop = cls.getProperty(node, propertyName, false)
 				if (prop) {
@@ -550,7 +558,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * Get one class method declaration by it's name.
 		 * `resolveExtend` specifies whether will look at extended class.
 		 */
-		getMethod(node: TS.ClassLikeDeclaration, methodName: string, resolveExtend: boolean = false): TS.MethodDeclaration | undefined {
+		getMethod(
+			node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration,
+			methodName: string,
+			resolveExtend: boolean = false
+		): TS.MethodDeclaration | undefined {
 			if (resolveExtend) {
 				let prop = cls.getMethod(node, methodName, false)
 				if (prop) {
@@ -573,7 +585,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** Get extends expression. */
-		getExtends(node: TS.ClassLikeDeclaration): TS.ExpressionWithTypeArguments | undefined {
+		getExtends(node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration): TS.ExpressionWithTypeArguments | undefined {
 			let extendHeritageClause = node.heritageClauses?.find(hc => {
 				return hc.token === ts.SyntaxKind.ExtendsKeyword
 			})
@@ -604,7 +616,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** Get super class declaration. */
-		getSuper(node: TS.ClassLikeDeclaration): TS.ClassDeclaration | undefined {
+		getSuper<T extends TS.ClassLikeDeclaration | TS.InterfaceDeclaration>(node: T): T | undefined {
 			let extendsNode = cls.getExtends(node)
 			if (!extendsNode) {
 				return undefined
@@ -613,11 +625,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			let exp = extendsNode.expression
 			let superClass = symbol.resolveDeclaration(exp, ts.isClassDeclaration)
 
-			return superClass as TS.ClassDeclaration | undefined
+			return superClass as T | undefined
 		},
 
 		/** Walk super class declarations, not include current. */
-		*walkSuper(node: TS.ClassLikeDeclaration): Iterable<TS.ClassDeclaration> {
+		*walkSuper<T extends TS.ClassLikeDeclaration | TS.InterfaceDeclaration>(node: T): Iterable<T> {
 			let superClass = cls.getSuper(node)
 			if (superClass) {
 				yield superClass
@@ -626,13 +638,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** Walk `node` and super class declarations, not include current. */
-		*walkSelfAndSuper(node: TS.ClassDeclaration): Iterable<TS.ClassDeclaration> {
+		*walkSelfAndSuper<T extends TS.ClassLikeDeclaration | TS.InterfaceDeclaration>(node: T): Iterable<T> {
 			yield node
 			yield* cls.walkSuper(node)
 		},
 
 		/** Test whether is derived class of a specified named class, and of specified module. */
-		isDerivedOf(node: TS.ClassLikeDeclaration, declName: string, moduleName: string): boolean {
+		isDerivedOf(node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration, declName: string, moduleName: string): boolean {
 			let extendHeritageClause = node.heritageClauses?.find(hc => {
 				return hc.token === ts.SyntaxKind.ExtendsKeyword
 			})
@@ -674,7 +686,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * Test whether class or super class implements a type with specified name and located at specified module.
 		 * If `outerModuleName` specified, and importing from a relative path, it implies import from this module.
 		 */
-		isImplemented(node: TS.ClassLikeDeclaration, typeName: string, moduleName: string): boolean {
+		isImplemented(node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration, typeName: string, moduleName: string): boolean {
 			let implementClauses = node.heritageClauses?.find(h => {
 				return h.token === ts.SyntaxKind.ImplementsKeyword
 			})
@@ -1910,22 +1922,24 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * and are interface like or type literal like.
 		 */
 		resolveExtendedInterfaceLikeTypeParameters(
-			node: TS.ClassLikeDeclaration, finalHeritageName: string, finalHeritageTypeParameterIndex: number
+			node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration,
+			finalHeritageName: string,
+			finalHeritageTypeParameterIndex: number
 		): (TS.InterfaceDeclaration | TS.TypeLiteralNode)[] {
 
-			let classDecl: TS.ClassLikeDeclaration | undefined = node
+			let decl: TS.ClassLikeDeclaration | TS.InterfaceDeclaration | undefined = node
 
 			// <A & B, C> -> [[A, B], [C]]
 			let refedTypeParameters: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][] = []
 			
 			// Assumes `A<B> extends C<D & B>`
-			while (classDecl) {
+			while (decl) {
 
 				// `B`
-				let selfParameters = classDecl.typeParameters
+				let selfParameters = decl.typeParameters
 
 				// `C<D & B>`
-				let extendsNode = cls.getExtends(classDecl)
+				let extendsNode = cls.getExtends(decl)
 				if (!extendsNode) {
 					break
 				}
@@ -1941,7 +1955,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 					}
 				}
 
-				classDecl = cls.getSuper(classDecl)
+				decl = ts.isClassDeclaration(decl) ? cls.getSuper(decl) : undefined
 			}
 			
 			return []
