@@ -34,7 +34,7 @@ export interface LuposBinding extends LuposItem {
 export interface LuposComponent extends LuposItem {
 
 	/** Defined class declaration. */
-	readonly declaration: TS.ClassDeclaration | TS.InterfaceDeclaration
+	readonly declaration: TS.ClassLikeDeclaration
 
 	/** Component public properties, not include properties of super classes. */
 	readonly properties: Record<string, LuposProperty>

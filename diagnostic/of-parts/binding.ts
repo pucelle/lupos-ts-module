@@ -64,7 +64,7 @@ export function diagnoseBinding(
 		else {
 			let binding = analyzer.getBindingByName(mainName, template)
 			if (binding) {
-				let bindingClassParams = helper.class.getConstructorParameters(binding.declaration)
+				let bindingClassParams = helper.class.getConstructorParameters(binding.declaration, true)
 				let modifiersParamType = bindingClassParams && bindingClassParams.length === 3 ? bindingClassParams[2].type : null
 				
 				let availableModifiers = modifiersParamType ?

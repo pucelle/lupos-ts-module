@@ -48,6 +48,7 @@ export class DiagnosticModifier {
 	 * It will try to extend node and test if diagnostic located on whole import statement.
 	 */
 	deleteNeverReadFromNodeExtended(node: TS.Node) {
+		let ts = this.helper.ts
 
 		// If all imported members are not read,
 		// diagnostic located at import declaration.
@@ -63,9 +64,22 @@ export class DiagnosticModifier {
 		}
 
 		// Diagnostic normally locate at declaration identifier.
-		node = this.helper.getIdentifier(node) ?? node
+		let decl = this.helper.getIdentifier(node) ?? node
 
-		this.deleteOfNode(node, [DiagnosticCode.ValueNeverRead, DiagnosticCode.NeverRead])
+		// Also delete same named interfaces for class declaration, must locate in same source file.
+		if (ts.isClassDeclaration(node)) {
+			let interfaces = this.helper.symbol.resolveDeclarations(decl, ts.isInterfaceDeclaration)
+			if (interfaces) {
+				let sameFileInterfaces = interfaces.filter(i => i.getSourceFile() === node.getSourceFile())
+				
+				for (let i of sameFileInterfaces) {
+					let iName = this.helper.getIdentifier(i) ?? node
+					this.deleteOfNode(iName, [DiagnosticCode.ValueNeverRead, DiagnosticCode.NeverRead])
+				}
+			}
+		}
+
+		this.deleteOfNode(decl, [DiagnosticCode.ValueNeverRead, DiagnosticCode.NeverRead])
 	}
 
 	/** For binding multiple parameters `:bind=${a, b}`. */

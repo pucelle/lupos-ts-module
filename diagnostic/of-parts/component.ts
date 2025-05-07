@@ -29,7 +29,7 @@ export function diagnoseComponent(
 			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Component "<${tagName}>" is not imported or declared.`)
 			return
 		}
-		else if (!helper.class.isDerivedOf(component.declaration, 'Component', '@pucelle/lupos.js')) {
+		else if (!helper.objectLike.isDerivedOf(component.declaration, 'Component', '@pucelle/lupos.js')) {
 			modifier.add(start, length, DiagnosticCode.NotAssignable, `"<${tagName}>" is not a component.`)
 			return
 		}
@@ -44,7 +44,7 @@ export function diagnoseComponent(
 			let valueNode = template.valueNodes[valueIndex]
 
 			let decl = helper.symbol.resolveDeclaration(valueNode, ts.isClassDeclaration)
-			if (!decl || !helper.class.isDerivedOf(decl, 'Component', '@pucelle/lupos.js')) {
+			if (!decl || !helper.objectLike.isDerivedOf(decl, 'Component', '@pucelle/lupos.js')) {
 				modifier.add(start, length, DiagnosticCode.NotAssignable, `"${helper.getFullText(valueNode)}" is not a component.`)
 				return
 			}

@@ -165,7 +165,7 @@ export class Analyzer {
 	 * Get component by it's class declaration, use it for completion.
 	 * `declaration` can also be a any level local declaration.
 	 */
-	getComponentByDeclaration(declaration: TS.ClassDeclaration | TS.InterfaceDeclaration): LuposComponent | undefined {
+	getComponentByDeclaration(declaration: TS.ClassLikeDeclaration): LuposComponent | undefined {
 		let sourceFile = declaration.getSourceFile()
 
 		// Ensure analyzed source file.
@@ -189,7 +189,7 @@ export class Analyzer {
 	protected *walkComponents(component: LuposComponent, deep = 0): Generator<LuposComponent> {
 		yield component
 
-		for (let superClass of this.helper.class.walkSuper(component.declaration)) {
+		for (let superClass of this.helper.class.walkChainedSuper(component.declaration)) {
 			let superComponent = this.getComponentByDeclaration(superClass)
 			if (!superComponent) {
 				continue

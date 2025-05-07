@@ -8,6 +8,9 @@ export type AccessNode = TS.PropertyAccessExpression | TS.ElementAccessExpressio
 /** Property access types. */
 export type AssignmentNode = TS.BinaryExpression | TS.PostfixUnaryExpression | TS.PrefixUnaryExpression | TS.DeleteExpression
 
+/** Class, interface, or object like. */
+export type ObjectLike = TS.InterfaceDeclaration | TS.TypeLiteralNode | TS.ClassLikeDeclaration
+
 /** Resolved names after resolve importing of a node. */
 export interface ResolvedImportNames {
 	memberName: string
@@ -206,6 +209,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			|| ts.isFunctionExpression(node)
 			|| ts.isGetAccessorDeclaration(node)
 			|| ts.isConstructorDeclaration(node)
+	}
+
+	/** Test whether be class, interface, or object like. */
+	function isObjectLike(node: TS.Node): node is ObjectLike {
+		return ts.isClassLike(node)
+			|| ts.isInterfaceDeclaration(node)
+			|| ts.isTypeLiteralNode(node)
 	}
 
 	/** Whether be a property declaration or signature. */
@@ -479,127 +489,118 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 
 
-	/** Class part, can also works on interface. */
+	/** Class part. */
 	const cls = {
 
 		/** 
-		 * Get name of a class member.
-		 * For a constructor function, it returns `constructor`
-		 */
-		getMemberName(node: TS.ClassElement | TS.TypeElement): string {
-			if (ts.isConstructorDeclaration(node)) {
-				return 'constructor'
-			}
-			else {
-				return getFullText(node.name!)
-			}
-		},
-
-		/** 
-		 * Get one class member declaration by it's name.
-		 * `resolveExtend` specifies whether will look at extended class.
-		 */
-		getMember(
-			node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration,
-			memberName: string,
-			resolveExtend: boolean = false
-		): TS.ClassElement | undefined {
-			if (resolveExtend) {
-				let prop = cls.getMember(node, memberName, false)
-				if (prop) {
-					return prop
-				}
-
-				let superClass = cls.getSuper(node)
-				if (superClass) {
-					return cls.getMember(superClass, memberName, resolveExtend)
-				}
-
-				return undefined
-			}
-			else {
-				return node.members.find(m => {
-					return cls.getMemberName(m) === memberName
-				}) as TS.PropertyDeclaration | undefined
-			}
-		},
-
-		/** 
-		 * Get one class property declaration by it's name.
-		 * `resolveExtend` specifies whether will look at extended class.
+		 * Get one property declaration by it's name.
+		 * `resolveChained` specifies whether will look at extended class or interfaces.
 		 */
 		getProperty(
-			node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration,
+			node: ObjectLike,
 			propertyName: string,
-			resolveExtend: boolean = false
+			resolveChained: boolean,
+			resolveAllPossible: boolean = false
 		): TS.PropertyDeclaration | undefined {
-			if (resolveExtend) {
-				let prop = cls.getProperty(node, propertyName, false)
-				if (prop) {
-					return prop
+			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+				if (objectLike.getMemberName(member) === propertyName
+					&& ts.isPropertyDeclaration(member)
+				) {
+					return member
 				}
-
-				let superClass = cls.getSuper(node)
-				if (superClass) {
-					return cls.getProperty(superClass, propertyName, resolveExtend)
-				}
-
-				return undefined
 			}
-			else {
-				return node.members.find(m => {
-					return ts.isPropertyDeclaration(m)
-						&& cls.getMemberName(m) === propertyName
-				}) as TS.PropertyDeclaration | undefined
-			}
+			
+			return undefined
 		},
 
 		/** 
-		 * Get one class method declaration by it's name.
-		 * `resolveExtend` specifies whether will look at extended class.
+		 * Get method declaration by it's name, and which will always have body.
+		 * `resolveChained` specifies whether will look at extended classes or interfaces.
 		 */
 		getMethod(
-			node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration,
+			node: TS.ClassLikeDeclaration,
 			methodName: string,
-			resolveExtend: boolean = false
+			resolveChained: boolean,
+			resolveAllPossible: boolean = false
 		): TS.MethodDeclaration | undefined {
-			if (resolveExtend) {
-				let prop = cls.getMethod(node, methodName, false)
-				if (prop) {
-					return prop
+			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+				if (objectLike.getMemberName(member) === methodName
+					&& ts.isMethodDeclaration(member)
+					&& member.body
+				) {
+					return member
 				}
+			}
 
-				let superClass = cls.getSuper(node)
-				if (superClass) {
-					return cls.getMethod(superClass, methodName, resolveExtend)
+			return undefined
+		},
+
+		/** 
+		 * Get constructor declaration.
+		 * `resolveChained` specifies whether will look at extended classes or interfaces.
+		 */
+		getConstructor(
+			node: ObjectLike,
+			resolveChained: boolean,
+			resolveAllPossible: boolean = false
+		): TS.ConstructorDeclaration | undefined {
+			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+				if (ts.isConstructorDeclaration(member)) {
+					return member
 				}
+			}
 
+			return undefined
+		},
+
+		/** Get constructor parameter list, even from super class. */
+		getConstructorParameters(
+			node: ObjectLike,
+			resolveChained: boolean,
+			resolveAllPossible: boolean = false
+		): TS.ParameterDeclaration[] | undefined {
+			let constructor = cls.getConstructor(node, resolveChained, resolveAllPossible)
+			if (constructor) {
+				return [...constructor.parameters]
+			}
+
+			return undefined
+		},
+
+		/** 
+		 * Get super class declaration.
+		 * Note it can't resolve unions of object literals.
+		 */
+		getSuper(node: TS.ClassLikeDeclaration): TS.ClassLikeDeclaration | undefined {
+			let extendsNodes = objectLike.getExtends(node)
+			if (!extendsNodes) {
 				return undefined
 			}
-			else {
-				return node.members.find(m => {
-					return ts.isMethodDeclaration(m)
-						&& cls.getMemberName(m) === methodName
-				}) as TS.MethodDeclaration | undefined
+
+			let extendsNode = extendsNodes.length > 0 ? extendsNodes[0] : undefined
+			if (!extendsNode) {
+				return undefined
+			}
+
+			return extendsNode
+		},
+
+		/** 
+		 * Walk chained super class, not include current.
+		 * Note it doesn't include
+		 */
+		*walkChainedSuper(node: TS.ClassLikeDeclaration):Iterable<TS.ClassLikeDeclaration> {
+			let superClass = cls.getSuper(node)
+			if (superClass) {
+				yield superClass
+				yield *cls.walkChainedSuper(superClass)
 			}
 		},
 
-		/** Get extends expression. */
-		getExtends(node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration): TS.ExpressionWithTypeArguments | undefined {
-			let extendHeritageClause = node.heritageClauses?.find(hc => {
-				return hc.token === ts.SyntaxKind.ExtendsKeyword
-			})
-
-			if (!extendHeritageClause) {
-				return undefined
-			}
-
-			let firstType = extendHeritageClause.types[0]
-			if (!firstType) {
-				return undefined
-			}
-
-			return firstType
+		/** Walk `node` and chained super class declarations, not include current. */
+		*walkSelfAndChainedSuper(node: TS.ClassLikeDeclaration): Iterable<TS.ClassLikeDeclaration> {
+			yield node
+			yield* cls.walkChainedSuper(node)
 		},
 
 		/** Get implements expression. */
@@ -615,78 +616,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return Array.from(extendHeritageClause.types)
 		},
 
-		/** Get super class declaration. */
-		getSuper<T extends TS.ClassLikeDeclaration | TS.InterfaceDeclaration>(node: T): T | undefined {
-			let extendsNode = cls.getExtends(node)
-			if (!extendsNode) {
-				return undefined
-			}
-
-			let exp = extendsNode.expression
-			let superClass = symbol.resolveDeclaration(exp, ts.isClassDeclaration)
-
-			return superClass as T | undefined
-		},
-
-		/** Walk super class declarations, not include current. */
-		*walkSuper<T extends TS.ClassLikeDeclaration | TS.InterfaceDeclaration>(node: T): Iterable<T> {
-			let superClass = cls.getSuper(node)
-			if (superClass) {
-				yield superClass
-				yield *cls.walkSuper(superClass)
-			}
-		},
-
-		/** Walk `node` and super class declarations, not include current. */
-		*walkSelfAndSuper<T extends TS.ClassLikeDeclaration | TS.InterfaceDeclaration>(node: T): Iterable<T> {
-			yield node
-			yield* cls.walkSuper(node)
-		},
-
-		/** Test whether is derived class of a specified named class, and of specified module. */
-		isDerivedOf(node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration, declName: string, moduleName: string): boolean {
-			let extendHeritageClause = node.heritageClauses?.find(hc => {
-				return hc.token === ts.SyntaxKind.ExtendsKeyword
-			})
-
-			if (!extendHeritageClause) {
-				return false
-			}
-
-			let firstType = extendHeritageClause.types[0]
-			if (!firstType || !ts.isExpressionWithTypeArguments(firstType)) {
-				return false
-			}
-
-			let exp = firstType.expression
-
-			let resolved = symbol.resolveImport(exp)
-			if (resolved) {
-				if (resolved.moduleName === moduleName && resolved.memberName === declName) {
-					return true
-				}
-
-				// Import relative module, try match file path.
-				if (resolved.moduleName.startsWith('.')
-					&& node.getSourceFile().fileName.includes('/' + moduleName + '/')
-				) {
-					return true
-				}
-			}
-
-			let superClass = symbol.resolveDeclaration(exp, ts.isClassDeclaration)
-			if (superClass) {
-				return cls.isDerivedOf(superClass, declName, moduleName)
-			}
-
-			return false
-		},
-
 		/** 
 		 * Test whether class or super class implements a type with specified name and located at specified module.
 		 * If `outerModuleName` specified, and importing from a relative path, it implies import from this module.
 		 */
-		isImplemented(node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration, typeName: string, moduleName: string): boolean {
+		isImplementedOf(node: TS.ClassLikeDeclaration, typeName: string, moduleName: string): boolean {
 			let implementClauses = node.heritageClauses?.find(h => {
 				return h.token === ts.SyntaxKind.ImplementsKeyword
 			})
@@ -727,38 +661,56 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				return false
 			}
 
-			return cls.isImplemented(superClass, typeName, moduleName)
+			return cls.isImplementedOf(superClass, typeName, moduleName)
 		},
+	}
 
-		/** Get constructor. */
-		getConstructor(node: TS.ClassLikeDeclaration, resolveExtend: boolean = false): TS.ConstructorDeclaration | undefined {
-			let cons = node.members.find(v => ts.isConstructorDeclaration(v)) as TS.ConstructorDeclaration | undefined
-			if (cons) {
-				return cons
+
+
+	/** Member of classes, interfaces, or object like. */
+	const objectLike = {
+
+		/** Test whether is derived class of a specified named class, and of specified module. */
+		isDerivedOf(node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration, declName: string, moduleName: string): boolean {
+			let extendHeritageClause = node.heritageClauses?.find(hc => {
+				return hc.token === ts.SyntaxKind.ExtendsKeyword
+			})
+
+			if (!extendHeritageClause) {
+				return false
 			}
 
-			if (resolveExtend) {
-				let superClass = cls.getSuper(node)
-				if (superClass) {
-					return cls.getConstructor(superClass, resolveExtend)
+			let firstType = extendHeritageClause.types[0]
+			if (!firstType || !ts.isExpressionWithTypeArguments(firstType)) {
+				return false
+			}
+
+			let exp = firstType.expression
+
+			let resolved = symbol.resolveImport(exp)
+			if (resolved) {
+				if (resolved.moduleName === moduleName && resolved.memberName === declName) {
+					return true
+				}
+
+				// Import relative module, try match file path.
+				if (resolved.moduleName.startsWith('.')
+					&& node.getSourceFile().fileName.includes('/' + moduleName + '/')
+				) {
+					return true
 				}
 			}
 
-			return undefined
-		},
-
-		/** Get constructor parameter list, even from super class. */
-		getConstructorParameters(node: TS.ClassLikeDeclaration): TS.ParameterDeclaration[] | undefined {
-			let constructor = cls.getConstructor(node, true)
-			if (constructor) {
-				return [...constructor.parameters]
+			let superDecl = symbol.resolveDeclaration(exp, ts.isClassDeclaration)
+			if (superDecl) {
+				return objectLike.isDerivedOf(superDecl, declName, moduleName)
 			}
-	
-			return undefined
+
+			return false
 		},
 
 		/** Whether property or method has specified modifier. */
-		hasModifier(node: TS.PropertyDeclaration | TS.PropertySignature | TS.AccessorDeclaration | TS.MethodDeclaration, name: 'readonly' | 'static' | 'protected' | 'private' | 'public'): boolean {
+		hasModifier(node: TS.PropertyDeclaration | TS.PropertySignature | TS.AccessorDeclaration | TS.MethodDeclaration | TS.MethodSignature, name: 'readonly' | 'static' | 'protected' | 'private' | 'public'): boolean {
 			for (let modifier of node.modifiers || []) {
 				if (modifier.kind === ts.SyntaxKind.ReadonlyKeyword && name === 'readonly') {
 					return true
@@ -779,19 +731,268 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			return false
 		},
-		
-		/** Returns the visibility of given node. */
-		getVisibility(node: TS.PropertyDeclaration | TS.PropertySignature | TS.AccessorDeclaration | TS.MethodDeclaration): 'public' | 'protected' | 'private' {
-			if (cls.hasModifier(node, 'private') || node.name.getText().startsWith('$')) {
+	
+		/** Returns the visibility modifier of given node. */
+		getVisibilityModifier(node: TS.PropertyDeclaration | TS.PropertySignature | TS.AccessorDeclaration | TS.MethodDeclaration | TS.MethodSignature): 'public' | 'protected' | 'private' {
+			if (objectLike.hasModifier(node, 'private') || node.name.getText().startsWith('$')) {
 				return 'private'
 			}
-			else if (cls.hasModifier(node, 'protected')) {
+			else if (objectLike.hasModifier(node, 'protected')) {
 				return 'protected'
 			}
 			else {
 				return 'public'
 			}
-		}
+		},
+
+		/** 
+		 * Get name of an object like member.
+		 * For a constructor function, it returns `constructor`
+		 */
+		getMemberName(node: TS.ClassElement | TS.TypeElement): string {
+			if (ts.isConstructorDeclaration(node)) {
+				return 'constructor'
+			}
+			else {
+				return getFullText(node.name!)
+			}
+		},
+
+		/** 
+		 * Get one object like member declaration or signature by it's name.
+		 * `resolveChained` specifies whether will look at extended classes or interfaces.
+		 */
+		getMember(
+			node: ObjectLike,
+			memberName: string,
+			resolveChained: boolean,
+			resolveAllPossible: boolean = false
+		): TS.ClassElement | TS.TypeElement | undefined {
+			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+				if (objectLike.getMemberName(member) === memberName) {
+					return member
+				}
+			}
+
+			return undefined
+		},
+
+		/** 
+		 * Get one property declaration or signature by it's name.
+		 * `resolveChained` specifies whether will look at extended class or interfaces.
+		 */
+		getProperty(
+			node: ObjectLike,
+			propertyName: string,
+			resolveChained: boolean,
+			resolveAllPossible: boolean = false
+		): TS.PropertyDeclaration | TS.PropertySignature | undefined {
+			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+				if (objectLike.getMemberName(member) === propertyName
+					&& (ts.isPropertyDeclaration(member) || ts.isPropertySignature(member))
+				) {
+					return member
+				}
+			}
+			
+			return undefined
+		},
+
+		/** 
+		 * Get method declaration or signature by it's name.
+		 * `resolveChained` specifies whether will look at extended classes or interfaces.
+		 */
+		getMethod(
+			node: TS.ClassLikeDeclaration,
+			methodName: string,
+			resolveChained: boolean,
+			resolveAllPossible: boolean = false
+		): TS.MethodDeclaration | TS.MethodSignature | undefined {
+			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+				if (objectLike.getMemberName(member) === methodName
+					&& (ts.isMethodDeclaration(member) || ts.isMethodSignature(member))
+				) {
+					return member
+				}
+			}
+
+			return undefined
+		},
+
+		/** 
+		 * Get constructor declaration or signature.
+		 * `resolveChained` specifies whether will look at extended classes or interfaces.
+		 */
+		getConstructor(
+			node: ObjectLike,
+			resolveChained: boolean,
+			resolveAllPossible: boolean = false
+		): TS.ConstructorDeclaration | TS.ConstructSignatureDeclaration | undefined {
+			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+				if (ts.isConstructorDeclaration(member) || ts.isConstructSignatureDeclaration(member)) {
+					return member
+				}
+			}
+
+			return undefined
+		},
+
+		/** Get constructor parameter list, even from super class. */
+		getConstructorParameters(
+			node: ObjectLike,
+			resolveChained: boolean,
+			resolveAllPossible: boolean = false
+		): TS.ParameterDeclaration[] | undefined {
+			let constructor = objectLike.getConstructor(node, resolveChained, resolveAllPossible)
+			if (constructor) {
+				return [...constructor.parameters]
+			}
+
+			return undefined
+		},
+
+		/** 
+		 * Get the directly extended class or interface declarations.
+		 * Note it can't be used to resolve unioned object literals.
+		 */
+		getExtends<T extends TS.ClassLikeDeclaration | TS.InterfaceDeclaration>(node: T):
+			Array<T extends TS.ClassLikeDeclaration ? T : ObjectLike> | undefined
+		{
+			let extendExps = objectLike.getExtendExpressions(node)
+			if (!extendExps) {
+				return undefined
+			}
+
+			return extendExps.map(extendExp => {
+				let exp = extendExp.expression
+				let superDecl = symbol.resolveDeclaration(exp, isObjectLike)
+
+				return superDecl as T extends TS.ClassLikeDeclaration ? T : ObjectLike
+			})
+		},
+
+		/** Get extend expressions, the expressions which after `extends` keyword. */
+		getExtendExpressions(node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration):
+			Array<TS.ExpressionWithTypeArguments> | undefined
+		{
+			let extendHeritageClause = node.heritageClauses?.find(hc => {
+				return hc.token === ts.SyntaxKind.ExtendsKeyword
+			})
+
+			if (!extendHeritageClause) {
+				return undefined
+			}
+
+			return [...extendHeritageClause.types]
+		},
+
+		/** 
+		 * Resolve class or interface or object literal and all it's extended interfaces,
+		 * and walk their members.
+		 * If `resolveAllPossible`, will try resolve all type parameters as unioned.
+		 */
+		*walkMembers(
+			node: ObjectLike,
+			resolveChained: boolean,
+			resolveAllPossible: boolean = false
+		): Iterable<TS.ClassElement | TS.TypeElement> {
+			if (resolveChained) {
+				for (let chained of objectLike.walkChained(node, resolveAllPossible)) {
+					yield* chained.members
+				}
+			}
+			else {
+				yield* node.members
+			}
+		},
+
+		/** 
+		 * Resolve class or interface or object literal, and all it's extended interfaces,
+		 * and all the object literal chain like:
+		 * `type A = {...}`
+		 * `type B = A & {...}`
+		 * Will sort chained result by depth.
+		 * If `resolveAllPossible`, will try resolve all type parameters as unioned.
+		 */
+		*walkChained(node: ObjectLike, resolveAllPossible: boolean = false): Iterable<ObjectLike> {
+			let os = [...objectLike._resolveAndWalkChainedNodesRecursively(node, resolveAllPossible, 0, new Set())]
+			os.sort((a, b) => a.depth - b.depth)
+
+			yield* os.map(o => o.o)
+		},
+
+		/** Resolves and iterates all chained nodes. */
+		*_resolveAndWalkChainedNodesRecursively(
+			node: TS.Node,
+			resolveAllPossible: boolean,
+			depth: number,
+			walked: Set<TS.Node>
+		): Iterable<{o: ObjectLike, depth: number}> {
+			if (walked.has(node)) {
+				return
+			}
+
+			walked.add(node)
+	
+			// `interface A {...}`, `class A {...}`
+			if (ts.isInterfaceDeclaration(node) || ts.isClassLike(node)) {
+				yield {o: node, depth}
+
+				let extended = objectLike.getExtends(node)
+				if (extended) {
+					for (let n of extended) {
+						yield* objectLike._resolveAndWalkChainedNodesRecursively(n, resolveAllPossible, depth + 1, walked)
+					}
+				}
+
+				let sameNameResolved = symbol.resolveDeclarations(node, ts.isInterfaceDeclaration)
+				if (sameNameResolved) {
+					for (let res of sameNameResolved) {
+						yield* objectLike._resolveAndWalkChainedNodesRecursively(res, resolveAllPossible, depth, walked)
+					}
+				}
+			}
+		
+			// `{...}`
+			else if (ts.isTypeLiteralNode(node)) {
+				yield {o: node, depth}
+			}
+
+			// `type B = A`, resolve A.
+			else if (ts.isTypeAliasDeclaration(node)) {
+
+				// Resolve all type parameters.
+				if (resolveAllPossible) {
+					for (let typeNode of types.destructTypeNode(node.type)) {
+						yield* objectLike._resolveAndWalkChainedNodesRecursively(typeNode, resolveAllPossible, depth + 1, walked)
+					}
+				}
+
+				// Resolve only unioned type parameters.
+				else {
+					if (ts.isIntersectionTypeNode(node.type)) {
+						for (let type of node.type.types) {
+							yield* objectLike._resolveAndWalkChainedNodesRecursively(type, resolveAllPossible, depth + 1, walked)
+						}
+					}
+				}
+			}
+
+			// Reference like `A`, resolve `A`.
+			else if (ts.isTypeReferenceNode(node)) {
+				yield* objectLike._resolveAndWalkChainedNodesRecursively(node.typeName, resolveAllPossible, depth + 1, walked)
+			}
+
+			// Resolve and continue.
+			else {
+				let resolved = symbol.resolveDeclarations(node)
+				if (resolved) {
+					for (let res of resolved) {
+						yield* objectLike._resolveAndWalkChainedNodesRecursively(res, resolveAllPossible, depth + 1, walked)
+					}
+				}
+			}
+		},
 	}
 
 
@@ -954,8 +1155,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			// Not validate which method.
 			else if (ts.isClassDeclaration(classDecl)) {
-				for (let superClass of cls.walkSelfAndSuper(classDecl)) {
-					if (cls.isImplemented(superClass, 'MethodsObserved', '@pucelle/ff')) {
+				for (let superDecl of cls.walkSelfAndChainedSuper(classDecl)) {
+					if (cls.isImplementedOf(superDecl, 'MethodsObserved', '@pucelle/ff')) {
 						return true
 					}
 				}
@@ -1049,8 +1250,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 		
 		_isOfMethodsObservable(classDecl: TS.ClassDeclaration, propName: string, paramIndex: number) {
-			for (let superClass of cls.walkSelfAndSuper(classDecl)) {
-				let implemented = cls.getImplements(superClass)
+			for (let superDecl of cls.walkSelfAndChainedSuper(classDecl)) {
+				let implemented = cls.getImplements(superDecl)
 				let methodsHalfObservedImplement = implemented.find(im => getText(im.expression) === 'MethodsObserved')
 				if (!methodsHalfObservedImplement) {
 					continue
@@ -1380,6 +1581,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** 
+		 * Resolve all type parameters.
 		 * `A & B` -> `[A, B]`
 		 * `Omit<A, B>` -> `[A, B]`
 		 */
@@ -1598,6 +1800,19 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 	 */
 	const symbol = {
 
+		/** Check whether node resolve result declared in typescript library. */
+		isOfTypescriptLib(rawNode: TS.Node): boolean {
+
+			// Like `this.el.style.display`
+			let decl = symbol.resolveDeclaration(rawNode)
+			if (!decl) {
+				return false
+			}
+
+			let fileName = decl.getSourceFile().fileName
+			return /\/typescript\/lib\//.test(fileName)
+		},
+
 		/** Test whether a node has an import name and located at a module. */
 		isImportedFrom(node: TS.Node, memberName: string, moduleName: string): boolean {
 			let nm = symbol.resolveImport(node)
@@ -1722,149 +1937,25 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return (test ? decls?.find(test) : decls?.[0]) as T | undefined
 		},
 
-
-		/** 
-		 * Resolve interface and all it's extended interfaces,
-		 * and all the interface like type literals: `type A = {...}`.
-		 */
-		*resolveChainedInterfaces(node: TS.Node): Iterable<TS.InterfaceDeclaration | TS.TypeLiteralNode> {
-			
-			// `{...}`
-			if (ts.isTypeLiteralNode(node)) {
-				yield node
+		/** Resolve for chained object like: classes, interfaces, or object types. */
+		*resolveChainedObjectLike(node: TS.Node, resolveAllPossible: boolean = false): Iterable<ObjectLike> {
+			let objectLikeDecls = symbol.resolveDeclarations(node, isObjectLike)
+			if (!objectLikeDecls) {
+				return undefined
 			}
 
-			// `interface A {...}`
-			else if (ts.isInterfaceDeclaration(node)) {
-				yield node
-
-				let extendHeritageClause = node.heritageClauses?.find(hc => {
-					return hc.token === ts.SyntaxKind.ExtendsKeyword
-				})
-	
-				if (!extendHeritageClause) {
-					return
-				}
-				
-				for (let type of extendHeritageClause.types) {
-					yield* symbol.resolveChainedInterfaces(type.expression)
-				}
-			}
-
-			// `type B = A`
-			else if (ts.isTypeAliasDeclaration(node)) {
-				for (let typeNode of types.destructTypeNode(node.type)) {
-					yield* symbol.resolveChainedInterfaces(typeNode)
-				}
-			}
-
-			// Identifier of type reference.
-			else if (ts.isTypeReferenceNode(node)) {
-				yield* symbol.resolveChainedInterfaces(node.typeName)
-			}
-
-			// Resolve and continue.
-			else {
-				let test = (n: TS.Node): n is TS.InterfaceDeclaration | TS.TypeAliasDeclaration => {
-					return ts.isInterfaceDeclaration(n) || ts.isTypeAliasDeclaration(n)
-				}
-
-				let resolved = symbol.resolveDeclarations(node, test)
-				if (resolved) {
-					for (let res of resolved) {
-						yield* symbol.resolveChainedInterfaces(res)
-					}
-				}
+			for (let decl of objectLikeDecls) {
+				yield* objectLike.walkChained(decl, resolveAllPossible)
 			}
 		},
-
-
-		/** 
-		 * Resolve class declarations and interface and all it's extended,
-		 * and all the interface like type literals: `type A = {...}`.
-		 */
-		*resolveChainedClassesAndInterfaces(node: TS.Node):
-			Iterable<TS.InterfaceDeclaration | TS.TypeLiteralNode | TS.ClassLikeDeclaration | TS.ClassExpression>
-		{
-			
-			// `{...}`
-			if (ts.isTypeLiteralNode(node)) {
-				yield node
-			}
-
-			// `interface A {...}`
-			else if (ts.isInterfaceDeclaration(node)) {
-				yield node
-
-				let extendHeritageClause = node.heritageClauses?.find(hc => {
-					return hc.token === ts.SyntaxKind.ExtendsKeyword
-				})
-	
-				if (!extendHeritageClause) {
-					return
-				}
-				
-				for (let type of extendHeritageClause.types) {
-					yield* symbol.resolveChainedClassesAndInterfaces(type.expression)
-				}
-			}
-
-			// `class A {...}` or `class {...}`
-			else if (ts.isClassLike(node)) {
-				yield node
-
-				let extendHeritageClause = node.heritageClauses?.find(hc => {
-					return hc.token === ts.SyntaxKind.ExtendsKeyword
-						|| hc.token === ts.SyntaxKind.ImplementsKeyword
-				})
-	
-				if (!extendHeritageClause) {
-					return
-				}
-				
-				for (let type of extendHeritageClause.types) {
-					yield* symbol.resolveChainedClassesAndInterfaces(type.expression)
-				}
-			}
-
-			// `type B = A`
-			else if (ts.isTypeAliasDeclaration(node)) {
-				for (let typeNode of types.destructTypeNode(node.type)) {
-					yield* symbol.resolveChainedClassesAndInterfaces(typeNode)
-				}
-			}
-
-			// Identifier of type reference.
-			else if (ts.isTypeReferenceNode(node)) {
-				yield* symbol.resolveChainedClassesAndInterfaces(node.typeName)
-			}
-
-			// Resolve and continue.
-			else {
-				let test = (n: TS.Node): n is TS.InterfaceDeclaration | TS.TypeAliasDeclaration | TS.ClassLikeDeclaration => {
-					return ts.isInterfaceDeclaration(n)
-						|| ts.isTypeAliasDeclaration(n)
-						|| ts.isClassLike(n)
-				}
-
-				let resolved = symbol.resolveDeclarations(node, test)
-				
-				if (resolved) {
-					for (let res of resolved) {
-						yield* symbol.resolveChainedClassesAndInterfaces(res)
-					}
-				}
-			}
-		},
-
-
+		
 		/** 
 		 * Resolve class declarations from type nodes like:
 		 * - `typeof Cls`
 		 * - `{new(): Cls}`
 		 */
-		*resolveInstanceDeclarations(typeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
-			let typeNodes = types.destructTypeNode(typeNode)
+		*resolveInstanceDeclarations(fromTypeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
+			let typeNodes = types.destructTypeNode(fromTypeNode)
 			if (typeNodes.length === 0) {
 				return
 			}
@@ -1881,89 +1972,101 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 	
 				// Resolve returned type of constructor `{new()...}`.
 				else {
-					for (let decl of symbol.resolveChainedInterfaces(typeNode)) {
-						let newCons = decl.members.find(m => ts.isConstructSignatureDeclaration(m) || ts.isConstructorDeclaration(m)) as
-						TS.ConstructSignatureDeclaration | TS.ConstructorDeclaration | undefined
+					let objects = symbol.resolveDeclarations(typeNode, isObjectLike)
+					if (!objects) {
+						continue
+					}
 
+					for (let item of objects) {
+						let newCons = objectLike.getConstructor(item, true)
 						if (!newCons) {
 							continue
 						}
-	
+
 						let newTypeNode = newCons.type
 						if (!newTypeNode) {
 							continue
 						}
-	
-						yield* symbol._resolveInstanceDeclarationsOfTypeNodeNormally(newTypeNode)
+		
+						// Try resolve all type parameters and get all possible.
+						let instanceTypeNodes = types.destructTypeNode(newTypeNode)
+						if (instanceTypeNodes.length === 0) {
+							return
+						}
+
+						for (let instanceTypeNode of instanceTypeNodes) {
+							let decls = symbol.resolveDeclarations(instanceTypeNode, ts.isClassDeclaration)
+							if (decls) {
+								yield* decls
+							}
+						}
 					}
 				}
 			}
 		},
-	
-		/** Destruct type node, and resolve class declarations of each. */
-		*_resolveInstanceDeclarationsOfTypeNodeNormally(typeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
-			let typeNodes = types.destructTypeNode(typeNode)
-			if (typeNodes.length === 0) {
-				return
-			}
-
-			for (let typeNode of typeNodes) {
-				let decls = symbol.resolveDeclarations(typeNode, ts.isClassDeclaration)
-				if (decls) {
-					yield* decls
-				}
-			}
-		},
-
 
 		/** 
-		 * Resolve all the class type parameters,
-		 * which are the extended parameters of a final heritage class,
-		 * and are interface like or type literal like.
+		 * Resolve for the specified class or interface type parameters,
+		 * which are the extended parameters of a final heritage class and a type parameter.
+		 * E.g., want to resolve all event interfaces which finally passes to `EventFirer<E>`.
 		 */
-		resolveExtendedInterfaceLikeTypeParameters(
+		*resolveSpecifiedTypeParameter(
 			node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration,
 			finalHeritageName: string,
 			finalHeritageTypeParameterIndex: number
-		): (TS.InterfaceDeclaration | TS.TypeLiteralNode)[] {
+		): Iterable<TS.InterfaceDeclaration | TS.TypeLiteralNode> {
+			yield* symbol._resolveSpecifiedTypeParameterRecursively(node, [], finalHeritageName, finalHeritageTypeParameterIndex)
+		},
 
-			let decl: TS.ClassLikeDeclaration | TS.InterfaceDeclaration | undefined = node
+		/** Resolve for the specified class or interface type parameters recursively. */
+		*_resolveSpecifiedTypeParameterRecursively(
+			node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration,
+			refedTypeParameters: ReadonlyArray<(TS.InterfaceDeclaration | TS.TypeLiteralNode)[]>,
+			finalHeritageName: string,
+			finalHeritageTypeParameterIndex: number
+		): Iterable<TS.InterfaceDeclaration | TS.TypeLiteralNode> {
 
-			// <A & B, C> -> [[A, B], [C]]
-			let refedTypeParameters: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][] = []
-			
 			// Assumes `A<B> extends C<D & B>`
-			while (decl) {
 
-				// `B`
-				let selfParameters = decl.typeParameters
+			// `B`
+			let selfParameters = node.typeParameters
 
-				// `C<D & B>`
-				let extendsNode = cls.getExtends(decl)
-				if (!extendsNode) {
-					break
-				}
+			// `C<D & B>`
+			let extendExps = objectLike.getExtendExpressions(node)
+			if (!extendExps) {
+				return
+			}
+
+			for (let extendExp of extendExps) {
+				let extendedRefedTypeParameters: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][] = []
 
 				// `D & B`, may have no parameter, but super have.
-				let superParameters = extendsNode.typeArguments
-				if (superParameters) {
-					refedTypeParameters = symbol._remapRefedTypeParameters(refedTypeParameters, selfParameters, superParameters)
+				let extendParameters = extendExp.typeArguments
+				if (extendParameters) {
+					extendedRefedTypeParameters = symbol._remapRefedTypeParameters(refedTypeParameters, selfParameters, extendParameters)
 
 					// `C`
-					if (getFullText(extendsNode.expression) === finalHeritageName) {
-						return refedTypeParameters[finalHeritageTypeParameterIndex]
+					if (getFullText(extendExp.expression) === finalHeritageName) {
+						yield* extendedRefedTypeParameters[finalHeritageTypeParameterIndex]
+						continue
 					}
 				}
 
-				decl = ts.isClassDeclaration(decl) ? cls.getSuper(decl) : undefined
+				// `C<D & B>`
+				let exp = extendExp.expression
+				let superDecl = symbol.resolveDeclaration(exp, isObjectLike)
+
+				if (!superDecl || !(ts.isClassLike(superDecl) || ts.isInterfaceDeclaration(superDecl))) {
+					continue
+				}
+
+				yield* symbol._resolveSpecifiedTypeParameterRecursively(superDecl, extendedRefedTypeParameters, finalHeritageName, finalHeritageTypeParameterIndex)
 			}
-			
-			return []
 		},
 
-		/** Analysis type references, and remap type reference from input parameters to super parameters. */
+		/** Analysis type references, and remap type references from input parameters to super parameters. */
 		_remapRefedTypeParameters(
-			refed: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][],
+			refed: ReadonlyArray<(TS.InterfaceDeclaration | TS.TypeLiteralNode)[]>,
 			selfParameters: TS.NodeArray<TS.TypeParameterDeclaration> | undefined,
 			extendsParameters: TS.NodeArray<TS.TypeNode>
 		): (TS.InterfaceDeclaration | TS.TypeLiteralNode)[][] {
@@ -2000,8 +2103,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 						// Use declared interface, or type literal.
 						else {
-							let chain = symbol.resolveChainedInterfaces(ref)
-							paramRefed.push(...chain)
+							let resolved = [...symbol.resolveChainedObjectLike(ref)]
+								.filter(n => ts.isInterfaceDeclaration(n) || ts.isTypeLiteralNode(n))
+
+							paramRefed.push(...resolved)
 						}
 					}
 				}
@@ -2011,20 +2116,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			return remapped
 		},
-
-
-		/** Check whether node resolve result declared in typescript library. */
-		isOfTypescriptLib(rawNode: TS.Node): boolean {
-
-			// Like `this.el.style.display`
-			let decl = symbol.resolveDeclaration(rawNode)
-			if (!decl) {
-				return false
-			}
-
-			let fileName = decl.getSourceFile().fileName
-			return /\/typescript\/lib\//.test(fileName)
-		}
 	}
 
 	
@@ -2081,6 +2172,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		isVariableIdentifier,
 		isFunctionLike,
 		isNonArrowFunctionLike,
+		isObjectLike,
 		isPropertyLike,
 		isPropertyOrGetAccessor,
 		isPropertyOrGetSetAccessor,
@@ -2101,6 +2193,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		getNodeDescription,
 		deco,
 		class: cls,
+		objectLike,
 		access,
 		assign,
 		variable,
