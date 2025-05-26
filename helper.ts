@@ -1127,7 +1127,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * Otherwise if resolved type is `MethodsObserved`,
 		 * or resolved class implements `MethodsObserved`, returns `true`.
 		 */
-		isOfElementsAccess(rawNode: TS.Node): boolean {
+		isOfElementsAccess(rawNode: AccessNode): boolean {
 			let decl = symbol.resolveDeclaration(rawNode, (n: TS.Node) => isMethodLike(n) || isPropertyLike(n))
 			if (!decl) {
 				return false
@@ -1203,6 +1203,35 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			}
 			else if (ts.isClassDeclaration(classDecl)) {
 				return access._isOfMethodsObservable(classDecl, propName, 0)
+			}
+
+			return false
+		},
+
+		/** Test whether calls single element read methods or properties like `Map.get`, `Array.find`. */
+		isOfSingleElementReadAccess(rawNode: AccessNode): boolean {
+			let decl = symbol.resolveDeclaration(rawNode, (n: TS.Node) => isMethodLike(n) || isPropertyLike(n))
+			if (!decl) {
+				return false
+			}
+
+			let classDecl = decl.parent
+			if (!ts.isClassDeclaration(classDecl) && !ts.isInterfaceDeclaration(classDecl)) {
+				return false
+			}
+
+			if (!classDecl.name) {
+				return false
+			}
+
+			let objName = getText(classDecl.name)
+			let propName = getText(decl.name)
+	
+			if (objName === 'Map') {
+				return propName === 'get'
+			}
+			else if (objName === 'Array' || objName === 'ReadonlyArray') {
+				return propName === 'find'
 			}
 
 			return false
