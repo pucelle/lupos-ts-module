@@ -134,7 +134,7 @@ export class Analyzer {
 	}
 
 	/** 
-	 * Get component by template part, the and template.
+	 * Get component by template part tag name, and the template.
 	 * `tagName` can be dynamic component interpolation.
 	 * Component must be imported.
 	 */

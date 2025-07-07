@@ -70,8 +70,8 @@ export abstract class TemplateBasis {
 	}
 
 	/** 
-	 * Try resolve component declarations by part.
-	 * `tagName` can be dynamic component interpolation.
+	 * Try resolve component declarations by component tag name.
+	 * `tagName` can be a dynamic component interpolation.
 	 */
 	*resolveComponentDeclarations(tagName: string): Iterable<TS.ClassDeclaration> {
 		let isNamedComponent = TemplateSlotPlaceholder.isNamedComponent(tagName)

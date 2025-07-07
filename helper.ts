@@ -1880,7 +1880,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			// Compile codes within `lupos.js` library.
 			if (moduleName && moduleName.startsWith('.')
-				&& node.getSourceFile().fileName.includes('/lupos.js/tests/')
+				&& (
+					node.getSourceFile().fileName.includes('/lupos.js/tests/')
+					|| node.getSourceFile().fileName.includes('/lupos.js/out/')
+				)
 			) {
 				moduleName = '@pucelle/lupos.js'
 			}
