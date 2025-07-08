@@ -1156,7 +1156,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			// Not validate which method.
 			else if (ts.isClassDeclaration(classDecl)) {
 				for (let superDecl of cls.walkSelfAndChainedSuper(classDecl)) {
-					if (cls.isImplementedOf(superDecl, 'MethodsObserved', '@pucelle/ff')) {
+					if (cls.isImplementedOf(superDecl, 'MethodsObserved', '@pucelle/lupos')) {
 						return true
 					}
 				}
