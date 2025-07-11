@@ -257,12 +257,21 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		return node.kind === ts.SyntaxKind.ThisKeyword
 	}
 
+	/** Test whether be string, number, boolean, null, undefined. */
+	function isLiteralLike(node: TS.Node): boolean {
+		return node.kind === ts.SyntaxKind.TrueKeyword
+        	|| node.kind === ts.SyntaxKind.FalseKeyword
+			|| ts.isNumericLiteral(node)
+			|| ts.isStringLiteralLike(node)
+			|| node.kind === ts.SyntaxKind.NullKeyword
+			|| ts.isIdentifier(node) && getText(node) === 'undefined'
+	}
+
 	/** Test whether of `Array` type. */
 	function isArray(rawNode: TS.Node): boolean {
 		let type = types.typeOf(rawNode)
 		return types.isArrayType(type)
 	}
-
 
 	/** Whether function will instantly run. */
 	function isInstantlyRunFunction(node: TS.Node): node is TS.FunctionLikeDeclaration {
@@ -621,47 +630,49 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * If `outerModuleName` specified, and importing from a relative path, it implies import from this module.
 		 */
 		isImplementedOf(node: TS.ClassLikeDeclaration, typeName: string, moduleName: string): boolean {
+			return !!cls.getFirstImplementedOf(node, [typeName], moduleName)
+		},
+
+		/** 
+		 * Get first of the class or super class implemented types with specified name and located at specified module.
+		 * If `outerModuleName` specified, and importing from a relative path, it implies import from this module.
+		 */
+		getFirstImplementedOf(node: TS.ClassLikeDeclaration, typeNames: string[], moduleName: string): string | null {
 			let implementClauses = node.heritageClauses?.find(h => {
 				return h.token === ts.SyntaxKind.ImplementsKeyword
 			})
 
 			if (implementClauses) {
-				let implementModules = implementClauses.types.find(type => {
+				for (let type of implementClauses.types) {
 					let resolved = symbol.resolveImport(type.expression)
 
 					if (!resolved) {
-						return false
+						continue
 					}
 
-					if (resolved.memberName !== typeName) {
-						return false
+					if (!typeNames.includes(resolved.memberName)) {
+						continue
 					}
 					
 					if (resolved.moduleName === moduleName) {
-						return true
+						return resolved.memberName
 					}
 
 					// Import relative module, try match file path after excluding user part.
 					if (resolved.moduleName.startsWith('.')
 						&& node.getSourceFile().fileName.includes('/' + moduleName.replace(/^@[\w-]+\//, '') + '/')
 					) {
-						return true
+						return resolved.memberName
 					}
-					
-					return false
-				})
-
-				if (implementModules) {
-					return true
 				}
 			}
 
 			let superClass = cls.getSuper(node)
 			if (!superClass) {
-				return false
+				return null
 			}
 
-			return cls.isImplementedOf(superClass, typeName, moduleName)
+			return cls.getFirstImplementedOf(superClass, typeNames, moduleName)
 		},
 	}
 
@@ -672,41 +683,46 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** Test whether is derived class of a specified named class, and of specified module. */
 		isDerivedOf(node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration, declName: string, moduleName: string): boolean {
+			return !!objectLike.getFirstDerivedOf(node, [declName], moduleName)
+		},
+
+		/** Get first of the derived class of a specified named class, and of specified module. */
+		getFirstDerivedOf(node: TS.ClassLikeDeclaration | TS.InterfaceDeclaration, declNames: string[], moduleName: string): string | null {
 			let extendHeritageClause = node.heritageClauses?.find(hc => {
 				return hc.token === ts.SyntaxKind.ExtendsKeyword
 			})
 
 			if (!extendHeritageClause) {
-				return false
+				return null
 			}
 
 			let firstType = extendHeritageClause.types[0]
 			if (!firstType || !ts.isExpressionWithTypeArguments(firstType)) {
-				return false
+				return null
 			}
 
 			let exp = firstType.expression
 
 			let resolved = symbol.resolveImport(exp)
-			if (resolved) {
-				if (resolved.moduleName === moduleName && resolved.memberName === declName) {
-					return true
+			if (resolved && declNames.includes(resolved.memberName)) {
+				if (resolved.moduleName === moduleName) {
+					return resolved.memberName
 				}
 
 				// Import relative module, try match file path.
 				if (resolved.moduleName.startsWith('.')
 					&& node.getSourceFile().fileName.includes('/' + moduleName + '/')
 				) {
-					return true
+					return resolved.memberName
 				}
 			}
 
 			let superDecl = symbol.resolveDeclaration(exp, ts.isClassDeclaration)
 			if (superDecl) {
-				return objectLike.isDerivedOf(superDecl, declName, moduleName)
+				return objectLike.getFirstDerivedOf(superDecl, declNames, moduleName)
 			}
 
-			return false
+			return null
 		},
 
 		/** Whether property or method has specified modifier. */
@@ -1879,13 +1895,20 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			}
 
 			// Compile codes within `lupos.js` library.
-			if (moduleName && moduleName.startsWith('.')
-				&& (
-					node.getSourceFile().fileName.includes('/lupos.js/tests/')
-					|| node.getSourceFile().fileName.includes('/lupos.js/out/')
-				)
-			) {
-				moduleName = '@pucelle/lupos.js'
+			if (moduleName && moduleName.startsWith('.')) {
+				let fileName = node.getSourceFile().fileName
+
+				// In lupos tests.
+				if (fileName.includes('/lupos/tests/src/')) {
+					moduleName = '@pucelle/lupos'
+				}
+
+				// In lupos.js tests.
+				if (fileName.includes('/lupos.js/tests/src/')
+					|| fileName.includes('/lupos.js/out/')
+				) {
+					moduleName = '@pucelle/lupos.js'
+				}
 			}
 
 			if (moduleName !== null && memberName !== null) {
@@ -2211,6 +2234,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		isMethodLike,
 		isTypeDeclaration,
 		isThis,
+		isLiteralLike,
 		isVoidReturning,
 		isArray,
 		isInstantlyRunFunction,
