@@ -530,6 +530,7 @@ export class TemplatePartParser {
 				}
 			}
 			
+			// Must remove after added all items.
 			node.remove()
 
 			// Ensure sibling nodes have been cleaned, then add slots.

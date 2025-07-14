@@ -112,7 +112,8 @@ export class HTMLRoot extends HTMLNode {
 			}
 
 			else if (token.type === HTMLTokenType.CommentText) {
-				current.append(new HTMLNode(HTMLNodeType.Comment, start, end, undefined, undefined, token.text))
+				let comment = new HTMLNode(HTMLNodeType.Comment, start, end, undefined, undefined, token.text)
+				current.append(comment)
 			}
 		}
 
