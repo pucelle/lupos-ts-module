@@ -1180,22 +1180,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** 
-		 * Test whether argument is of get type of parameter to observe:
-		 *   - `call(arg)` ~ `decl(ParameterToObserve<...>)`
-		 */
-		isTypeNodeOfGetOfParameterToObserve(typeNode: TS.TypeNode): boolean {
-			return symbol.isImportedFrom(typeNode, 'ParameterToObserve', '@pucelle/lupos')
-		},
-		
-		/** 
-		 * Test whether argument is of get type of parameter to observe:
-		 *   - `call(arg)` ~ `decl(SetOfParameterToObserve<...>)`
-		 */
-		isTypeNodeOfSetOfParameterToObserve(typeNode: TS.TypeNode): boolean {
-			return symbol.isImportedFrom(typeNode, 'SetOfParameterToObserve', '@pucelle/lupos')
-		},
-		
-		/** 
 		 * Test whether be `Map` or `Set`, or of `Array`.
 		 * Otherwise if resolved type is `MethodsToObserve`,
 		 * or resolved class implements `MethodsToObserve`, returns `true`.
