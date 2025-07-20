@@ -25,25 +25,30 @@ export class HTMLRoot extends HTMLNode {
 			}
 
 			else if (token.type === HTMLTokenType.EndTagName) {
+				let toMatch = current
+
 				do {
 
 					// </name>
-					if (current.tagName === token.text) {
-						current.closureEnd = end
-						current = current.parent ?? tree
+					if (toMatch.tagName === token.text) {
 						break
 					}
 
 					// </>
 					if (token.text === '') {
-						current.closureEnd = end
-						current = current.parent ?? tree
 						break
 					}
 
-					current.closureEnd = end
-					current = current.parent ?? tree
-				} while (current !== tree)
+					toMatch = toMatch.parent ?? tree
+				} while (toMatch !== tree)
+
+				// If can't find match, here it simply close all tags.
+				// So it doesn't fix tag closing like normal HTML parser do.
+				// Fixing tag closing, especially distinguishing which tag can and can't contains which
+				// is too complex, and it must ensure it has same logic with browser,
+				// or will get a wrong HTML tree structure.
+				toMatch.closureEnd = end
+				current = toMatch.parent ?? tree
 			}
 
 			else if (token.type === HTMLTokenType.TagEnd) {
