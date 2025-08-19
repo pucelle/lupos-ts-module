@@ -922,7 +922,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				let superDecl = symbol.resolveDeclaration(exp, isObjectLike)
 
 				return superDecl as T extends TS.ClassLikeDeclaration ? T : ObjectLike
-			})
+			}).filter(v => v)
 		},
 
 		/** Get extend expressions, the expressions which after `extends` keyword. */
