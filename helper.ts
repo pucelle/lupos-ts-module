@@ -1545,7 +1545,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				let initRest: TS.Expression | null = null
 
 				if (initializer && ts.isArrayLiteralExpression(initializer)) {
-					let o = variable._makeArrayLiteralList(initializer)
+					let o = variable.decomposeArrayLiteralList(initializer)
 					initList = o.list
 					initRest = o.rest.length > 0 ? o.rest[o.rest.length - 1] : null
 				}
@@ -1608,27 +1608,31 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			}
 		},
 
-		/** Make full literal array list. */
-		_makeArrayLiteralList(arr: TS.ArrayLiteralExpression): {list: TS.Expression[], rest: TS.Expression[]} {
+		/** 
+		 * Split array items to a list and rest.
+		 * `list` contains all items listed,
+		 * while `rest` contains list of items that need to spread.
+		 */
+		decomposeArrayLiteralList(arr: TS.ArrayLiteralExpression): {list: TS.Expression[], rest: TS.Expression[]} {
 			let list: TS.Expression[] = []
 			let rest: TS.Expression[] = []
 
-			variable._makeArrayLiteralListRecursively(arr, list, rest)
+			variable._decomposeArrayLiteralListRecursively(arr, list, rest)
 
 			return {list, rest}
 		},
 
-		_makeArrayLiteralListRecursively(arr: TS.ArrayLiteralExpression, list: TS.Expression[], rest: TS.Expression[]) {
+		_decomposeArrayLiteralListRecursively(arr: TS.ArrayLiteralExpression, list: TS.Expression[], rest: TS.Expression[]) {
 			for (let element of arr.elements) {
 				if (ts.isSpreadElement(element)) {
 					if (ts.isArrayLiteralExpression(element.expression)) {
 
 						// Have spread, not push items to list.
 						if (rest.length > 0) {
-							variable._makeArrayLiteralListRecursively(element.expression, [], rest)
+							variable._decomposeArrayLiteralListRecursively(element.expression, [], rest)
 						}
 						else {
-							variable._makeArrayLiteralListRecursively(element.expression, list, rest)
+							variable._decomposeArrayLiteralListRecursively(element.expression, list, rest)
 						}
 					}
 
@@ -1746,9 +1750,9 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			// `f([a])` ~ `function f(p: [T])` -> `{arg: a, type: T}`
 			else if (ts.isArrayLiteralExpression(arg)) {
-				let {list, rest} = variable._makeArrayLiteralList(arg)
+				let {list, rest} = variable.decomposeArrayLiteralList(arg)
 
-				// `[T]`
+				// `[T, T]`
 				if (paramType && ts.isTupleTypeNode(paramType)) {
 					for (let i = 0; i < list.length; i++) {
 						let item = list[i]
