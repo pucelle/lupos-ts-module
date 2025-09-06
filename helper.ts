@@ -19,13 +19,36 @@ export interface ResolvedImportNames {
 
 /**
  * `let {a: b} = c` =>
- * - name: b
+ * - name: 'b'
+ * - node: b
+ * - init: c
  * - keys: ['a']
+ * 
+ * `let {a: b} = {a: 1}` =>
+ * - name: `b`
+ * - node: b
+ * - init: 1
+ * - keys: []
  */
-interface VariableDeclarationName {
-	node: TS.Identifier
+export interface DeconstructedVariableDeclarationItem {
 	name: string
+	node: TS.Identifier
 	keys: (string | number)[]
+	initializer: TS.Expression | undefined
+}
+
+/**
+ * `f(a)` `function f(b: T)` =>
+ * - arg: a
+ * - type: T
+ * 
+ * `f([a])` `function f(b: [T])` =>
+ * - arg: a
+ * - type: T
+ */
+export interface DeconstructedArgumentTypeItem {
+	arg: TS.Expression
+	typeNode: TS.TypeNode | undefined
 }
 
 
@@ -503,7 +526,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** 
 		 * Get one property declaration by it's name.
-		 * `resolveChained` specifies whether will look at extended class or interfaces.
+		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
+		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getProperty(
 			node: ObjectLike,
@@ -524,7 +548,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** 
 		 * Get method declaration by it's name, and which will always have body.
-		 * `resolveChained` specifies whether will look at extended classes or interfaces.
+		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
+		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getMethod(
 			node: TS.ClassLikeDeclaration,
@@ -546,7 +571,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** 
 		 * Get constructor declaration.
-		 * `resolveChained` specifies whether will look at extended classes or interfaces.
+		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
+		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getConstructor(
 			node: ObjectLike,
@@ -562,7 +588,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return undefined
 		},
 
-		/** Get constructor parameter list, even from super class. */
+		/** 
+		 * Get constructor parameter list, even from super class.
+		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
+		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
+		 */
 		getConstructorParameters(
 			node: ObjectLike,
 			resolveChained: boolean,
@@ -776,7 +806,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** 
 		 * Get one object like member declaration or signature by it's name.
-		 * `resolveChained` specifies whether will look at extended classes or interfaces.
+		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
+		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getMember(
 			node: ObjectLike,
@@ -795,7 +826,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** 
 		 * Get one property declaration or signature by it's name.
-		 * `resolveChained` specifies whether will look at extended class or interfaces.
+		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
+		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getProperty(
 			node: ObjectLike,
@@ -816,7 +848,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** 
 		 * Get method declaration or signature by it's name.
-		 * `resolveChained` specifies whether will look at extended classes or interfaces.
+		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
+		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getMethod(
 			node: TS.ClassLikeDeclaration,
@@ -837,7 +870,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** 
 		 * Get constructor declaration or signature.
-		 * `resolveChained` specifies whether will look at extended classes or interfaces.
+		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
+		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getConstructor(
 			node: ObjectLike,
@@ -853,7 +887,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return undefined
 		},
 
-		/** Get constructor parameter list, even from super class. */
+		/** 
+		 * Get constructor parameter list, even from super class.
+		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
+		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
+		 */
 		getConstructorParameters(
 			node: ObjectLike,
 			resolveChained: boolean,
@@ -884,7 +922,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				let superDecl = symbol.resolveDeclaration(exp, isObjectLike)
 
 				return superDecl as T extends TS.ClassLikeDeclaration ? T : ObjectLike
-			})
+			}).filter(v => v)
 		},
 
 		/** Get extend expressions, the expressions which after `extends` keyword. */
@@ -905,7 +943,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Resolve class or interface or object literal and all it's extended interfaces,
 		 * and walk their members.
-		 * If `resolveAllPossible`, will try resolve all type parameters as unioned.
+		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
+		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		*walkMembers(
 			node: ObjectLike,
@@ -1071,6 +1110,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 *   - `Object.assign(..., a)`
 		 */
 		isAllElementsReadAccess(node: TS.Node): boolean {
+
+			// `[...a]`, or `{...a}`
 			if (node.parent
 				&& (ts.isSpreadElement(node.parent)
 					|| ts.isSpreadAssignment(node.parent)
@@ -1104,7 +1145,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			return false
 		},
-
+		
 		/** 
 		 * Test whether be all elements write access like:
 		 *   - `[...a] = ...`, or `{...a} = ...`
@@ -1137,11 +1178,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			return false
 		},
-		
+
 		/** 
 		 * Test whether be `Map` or `Set`, or of `Array`.
-		 * Otherwise if resolved type is `MethodsObserved`,
-		 * or resolved class implements `MethodsObserved`, returns `true`.
+		 * Otherwise if resolved type is `MethodsToObserve`,
+		 * or resolved class implements `MethodsToObserve`, returns `true`.
 		 */
 		isOfElementsAccess(rawNode: AccessNode): boolean {
 			let decl = symbol.resolveDeclaration(rawNode, (n: TS.Node) => isMethodLike(n) || isPropertyLike(n))
@@ -1172,7 +1213,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			// Not validate which method.
 			else if (ts.isClassDeclaration(classDecl)) {
 				for (let superDecl of cls.walkSelfAndChainedSuper(classDecl)) {
-					if (cls.isImplementedOf(superDecl, 'MethodsObserved', '@pucelle/lupos')) {
+					if (cls.isImplementedOf(superDecl, 'MethodsToObserve', '@pucelle/lupos')) {
 						return true
 					}
 				}
@@ -1183,7 +1224,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** 
 		 * Test whether calls read methods or properties like `Map.get`, `Set.has`, `Array.length`.
-		 * Otherwise whether calls read type methods of `MethodsObserved`.
+		 * Otherwise whether calls read type methods of `MethodsToObserve`.
 		 */
 		isOfElementsReadAccess(rawNode: AccessNode): boolean {
 			let decl = symbol.resolveDeclaration(rawNode, (n: TS.Node) => isMethodLike(n) || isPropertyLike(n))
@@ -1218,7 +1259,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				)
 			}
 			else if (ts.isClassDeclaration(classDecl)) {
-				return access._isOfMethodsObservable(classDecl, propName, 0)
+				return access._isOfMethodsToObserve(classDecl, propName, 0)
 			}
 
 			return false
@@ -1255,7 +1296,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** 
 		 * Test whether calls write methods like `Map.set` `Set.set`, or `Array.push`.
-		 * Otherwise whether calls write type methods of `MethodsObserved`.
+		 * Otherwise whether calls write type methods of `MethodsToObserve`.
 		 */
 		isOfElementsWriteAccess(rawNode: AccessNode) {
 			let decl = symbol.resolveDeclaration(rawNode, isMethodLike)
@@ -1288,16 +1329,16 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 					|| propName === 'splice'
 			}
 			else if (ts.isClassDeclaration(classDecl)) {
-				return access._isOfMethodsObservable(classDecl, propName, 1)
+				return access._isOfMethodsToObserve(classDecl, propName, 1)
 			}
 
 			return false
 		},
 		
-		_isOfMethodsObservable(classDecl: TS.ClassDeclaration, propName: string, paramIndex: number) {
+		_isOfMethodsToObserve(classDecl: TS.ClassDeclaration, propName: string, paramIndex: number) {
 			for (let superDecl of cls.walkSelfAndChainedSuper(classDecl)) {
 				let implemented = cls.getImplements(superDecl)
-				let methodsHalfObservedImplement = implemented.find(im => getText(im.expression) === 'MethodsObserved')
+				let methodsHalfObservedImplement = implemented.find(im => getText(im.expression) === 'MethodsToObserve')
 				if (!methodsHalfObservedImplement) {
 					continue
 				}
@@ -1442,7 +1483,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 
 
-	/** Variable declarations. */
+	/** To handle variable declarations. */
 	const variable = {
 
 		/** 
@@ -1450,43 +1491,308 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * `let [a, b]` = ... -> `[a, b]`
 		 * `let {a, b}` = ... -> `[a, b]`
 		 */
-		*walkDeclarationNames(node: TS.VariableDeclaration): Iterable<VariableDeclarationName> {
-			return yield* variable._walkVariablePatternElement(node.name, [])
+		*walkDeconstructedDeclarationItems(node: TS.VariableDeclaration): Iterable<DeconstructedVariableDeclarationItem> {
+			return yield* variable._walkDeconstructedArgumentTypeItemsRecursively(node.name, node.initializer, [])
 		},
 
-			
+		
 		/** Get all declared variable name from a variable pattern. */
-		*_walkVariablePatternElement(
+		*_walkDeconstructedArgumentTypeItemsRecursively(
 			node: TS.BindingName | TS.BindingElement | TS.ObjectBindingPattern | TS.ArrayBindingPattern | TS.OmittedExpression,
+			initializer: TS.Expression | undefined,
 			keys: (string | number)[]
-		): Iterable<VariableDeclarationName> {
+		): Iterable<DeconstructedVariableDeclarationItem> {
 			if (ts.isOmittedExpression(node)) {
 				return
 			}
 
+			// `let {a: b} = ...`
+			// `let {b} = ...`
 			if (ts.isObjectBindingPattern(node)) {
+				let initMap: Map<string, TS.Expression> | null = null
+				let restObj: TS.Expression | null = null
+
+				if (initializer && ts.isObjectLiteralExpression(initializer)) {
+					let o = variable._makeObjectLiteralMap(initializer)
+					initMap = o.map
+					restObj = o.rest.length > 0 ? o.rest[o.rest.length - 1] : null
+				}
+
 				for (let element of node.elements) {
+	
+					// `b`
 					let key = getText(element.propertyName ?? element.name)
-					yield* variable._walkVariablePatternElement(element, [...keys, key])
+
+					if (initMap?.has(key)) {
+						let subInitializer = initMap.get(key)!
+						yield* variable._walkDeconstructedArgumentTypeItemsRecursively(element, subInitializer, [])
+					}
+
+					// May be defined in the rest part.
+					// `let {b} = {...c}`
+					else if (restObj) {
+						yield* variable._walkDeconstructedArgumentTypeItemsRecursively(element, restObj, [key])
+					}
+					else {
+						yield* variable._walkDeconstructedArgumentTypeItemsRecursively(element, initializer, [...keys, key])
+					}
 				}
 			}
+
+			// `let [a] = ...`
 			else if (ts.isArrayBindingPattern(node)) {
+				let initList: TS.Expression[] | null = null
+				let initRest: TS.Expression | null = null
+
+				if (initializer && ts.isArrayLiteralExpression(initializer)) {
+					let o = variable.decomposeArrayLiteralList(initializer)
+					initList = o.list
+					initRest = o.rest.length > 0 ? o.rest[o.rest.length - 1] : null
+				}
+
 				for (let i = 0; i < node.elements.length; i++) {
 					let element = node.elements[i]
-					yield* variable._walkVariablePatternElement(element, [...keys, i])
+
+					if (initList && initList.length > i) {
+						let subInitializer = initList[i]
+						yield* variable._walkDeconstructedArgumentTypeItemsRecursively(element, subInitializer, [])
+					}
+					// May be defined in the rest part.
+					// Don't know about which key to use, directly use '' to represent all keys.
+					// `let [a, b] = [...c]`
+					else if (initRest) {
+						yield* variable._walkDeconstructedArgumentTypeItemsRecursively(element, initRest, [''])
+					}
+					else {
+						yield* variable._walkDeconstructedArgumentTypeItemsRecursively(element, initializer, [...keys, i])
+					}
 				}
 			}
 			else if (ts.isBindingElement(node)) {
-				yield* variable._walkVariablePatternElement(node.name, keys)
+				yield* variable._walkDeconstructedArgumentTypeItemsRecursively(node.name, initializer, keys)
 			}
 			else if (ts.isIdentifier(node)) {
 				yield {
 					node,
 					name: getFullText(node),
+					initializer,
 					keys,
 				}
 			}
-		}
+		},
+
+		/** Make full object key-value map. */
+		_makeObjectLiteralMap(obj: TS.ObjectLiteralExpression): {map: Map<string, TS.Expression>, rest: TS.Expression[]} {
+			let map: Map<string, TS.Expression> = new Map()
+			let rest: TS.Expression[] = []
+
+			variable._makeObjectLiteralMapRecursively(obj, map, rest)
+
+			return {map, rest}
+		},
+
+		_makeObjectLiteralMapRecursively(obj: TS.ObjectLiteralExpression, map: Map<string, TS.Expression>, rest: TS.Expression[]) {
+			for (let property of obj.properties) {
+				if (ts.isPropertyAssignment(property)) {
+					let key = getText(property.name)
+					map.set(key, property.initializer)
+				}
+				else if (ts.isSpreadAssignment(property)) {
+					if (ts.isObjectLiteralExpression(property.expression)) {
+						variable._makeObjectLiteralMapRecursively(property.expression, map, rest)
+					}
+					else {
+						rest.push(property.expression)
+					}
+				}
+			}
+		},
+
+		/** 
+		 * Split array items to a list and rest.
+		 * `list` contains all items listed,
+		 * while `rest` contains list of items that need to spread.
+		 */
+		decomposeArrayLiteralList(arr: TS.ArrayLiteralExpression): {list: TS.Expression[], rest: TS.Expression[]} {
+			let list: TS.Expression[] = []
+			let rest: TS.Expression[] = []
+
+			variable._decomposeArrayLiteralListRecursively(arr, list, rest)
+
+			return {list, rest}
+		},
+
+		_decomposeArrayLiteralListRecursively(arr: TS.ArrayLiteralExpression, list: TS.Expression[], rest: TS.Expression[]) {
+			for (let element of arr.elements) {
+				if (ts.isSpreadElement(element)) {
+					if (ts.isArrayLiteralExpression(element.expression)) {
+
+						// Have spread, not push items to list.
+						if (rest.length > 0) {
+							variable._decomposeArrayLiteralListRecursively(element.expression, [], rest)
+						}
+						else {
+							variable._decomposeArrayLiteralListRecursively(element.expression, list, rest)
+						}
+					}
+
+					// Don't know how many elements to push, so not push to push.
+					else {
+						rest.push(element.expression)
+					}
+				}
+				else {
+					list.push(element)
+				}
+			}
+		},
+	}
+
+
+	const parameter = {
+
+		/** Get method or constructor  */
+		getCallParameters(callExp: TS.CallExpression | TS.NewExpression): TS.NodeArray<TS.ParameterDeclaration> | undefined	{
+			let decl: TS.FunctionLikeDeclaration | TS.MethodSignature | TS.MethodDeclaration | TS.ConstructorDeclaration | undefined
+			if (ts.isCallExpression(callExp)) {
+				decl = symbol.resolveDeclaration(callExp.expression, n => isFunctionLike(n) || isMethodLike(n))
+			}
+			else {
+				let classDecl = symbol.resolveDeclaration(callExp.expression, ts.isClassLike)
+				if (classDecl) {
+					decl = cls.getConstructor(classDecl, true)
+				}
+			}
+
+			if (decl) {
+				return decl.parameters
+			}
+
+			return undefined
+		},
+
+		/** 
+		 * Walk for all mapped deconstructed argument expression and parameter type node.
+		 * `f({a})` ~ `function f(p: {a:T})` -> `{arg: a, type: T}`
+		 * `f([a])` ~ `function f(p: [T])` -> `{arg: a, type: T}`
+		 */
+		*walkDeconstructedArgumentTypeItems(
+			args: TS.NodeArray<TS.Expression>,
+			params: TS.NodeArray<TS.ParameterDeclaration>
+		): Iterable<DeconstructedArgumentTypeItem> {
+			let paramIndex = 0
+			let param = params.length > paramIndex ? params[0] : undefined
+
+			for (let arg of args) {
+
+				// `f(...a)`
+				if (ts.isSpreadElement(arg)) {
+
+					// `function f(...p)`
+					if (param && param.dotDotDotToken) {
+						yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(arg.expression, param.type)
+					}
+
+					// Should be type of `param.type[]`, simply ignores it.
+					else {
+						yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(arg.expression, undefined)
+					}
+				}
+				else {
+					yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(arg, param?.type)
+				}
+
+				// `function f(...p)`
+				if (param && !param.dotDotDotToken) {
+					paramIndex++
+					param = params.length > paramIndex ? params[0] : undefined
+				}
+			}
+		},
+
+		/** 
+		 * Walk for all mapped deconstructed argument and parameter type node.
+		 * `f({a})` ~ `function f(p: {a:T})` -> `{arg: a, type: T}`
+		 * `f([a])` ~ `function f(p: [T])` -> `{arg: a, type: T}`
+		 */
+		*_walkDeconstructedArgumentTypeItemsRecursively(arg: TS.Expression, paramType: TS.TypeNode | undefined): Iterable<DeconstructedArgumentTypeItem> {
+
+			//`f({a})` ~ `function f(p: {a:T})`
+			if (ts.isObjectLiteralExpression(arg)) {
+				let {map, rest} = variable._makeObjectLiteralMap(arg)
+				let typeMap: Map<string, TS.TypeNode> = new Map()
+
+				if (paramType && ts.isTypeLiteralNode(paramType)) {
+					for (let member of paramType.members) {
+						if (!ts.isPropertySignature(member)) {
+							continue
+						}
+
+						if (!member.type) {
+							continue
+						}
+
+						// `a`
+						let key = getText(member.name)
+						typeMap.set(key, member.type)
+					}
+				}
+
+				for (let [key, arg] of map.entries()) {
+					let type = typeMap.get(key)
+					yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(arg, type)
+				}
+	
+				for (let restItem of rest) {
+					yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(restItem, paramType)
+				}
+			}
+
+			// `f([a])` ~ `function f(p: [T])` -> `{arg: a, type: T}`
+			else if (ts.isArrayLiteralExpression(arg)) {
+				let {list, rest} = variable.decomposeArrayLiteralList(arg)
+
+				// `[T, T]`
+				if (paramType && ts.isTupleTypeNode(paramType)) {
+					for (let i = 0; i < list.length; i++) {
+						let item = list[i]
+						let type = i < paramType.elements.length ? paramType.elements[i] : undefined
+						yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(item, type)
+					}
+				}
+
+				// `T[]`
+				if (paramType && ts.isArrayTypeNode(paramType)) {
+					for (let item of list) {
+						yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(item, paramType.elementType)
+					}
+				}
+
+				// `Array<T>`
+				if (paramType && ts.isTypeReferenceNode(paramType)) {
+					let name = types.getTypeNodeReferenceName(paramType)
+					if ((name === 'Array' || name === 'ReadonlyArray')
+						&& paramType.typeArguments?.length === 1
+					) {
+						for (let item of list) {
+							yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(item, paramType.typeArguments[0])
+						}
+					}
+				}
+
+				for (let restItem of rest) {
+					yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(restItem, paramType)
+				}
+			}
+
+			// All others.
+			else {
+				yield {
+					arg,
+					typeNode: paramType,
+				}
+			}
+		},
 	}
 
 
@@ -1790,7 +2096,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			// `a: Readonly<{p: 1}>` -> `a.p` is readonly, not observe.
 			// `a: ReadonlyArray<...>` -> `a.?` is readonly, not observe.
-			// `a: DeepReadonly<...>` -> `a.?` and `d.?.?` are readonly, not observe.
 			// `readonly {...}` -> it may not 100% strict.
 			if (access.isAccess(node)) {
 				let exp = node.expression
@@ -1804,7 +2109,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		isElementsReadonly(node: TS.Node): boolean {
 			// `a: Readonly<{...}>` -> `a` is elements readonly, not observe.
 			// `a: ReadonlyArray<...>` -> `a` is elements readonly, not observe.
-			// `a: DeepReadonly<...>` -> `a.?` and `d.?.?` are readonly, not observe.
 			// `readonly {...}` to convert type properties readonly -> this may not 100% strict.
 	
 			let typeNode = types.getTypeNode(node)
@@ -1814,9 +2118,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			if (ts.isTypeReferenceNode(typeNode)) {
 				let name = types.getTypeNodeReferenceName(typeNode)
-
-				// Supports `DeepReadonly<...>` in `@pucelle/ff`.
-				if (name === 'Readonly' || name === 'ReadonlyArray' || name === 'DeepReadonly') {
+				if (name === 'Readonly' || name === 'ReadonlyArray') {
 					return true
 				}
 			}
@@ -1999,7 +2301,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return (test ? decls?.find(test) : decls?.[0]) as T | undefined
 		},
 
-		/** Resolve for chained object like: classes, interfaces, or object types. */
+		/** 
+		 * Resolve for chained object like: classes, interfaces, or object types.
+		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
+		 */
 		*resolveChainedObjectLike(node: TS.Node, resolveAllPossible: boolean = false): Iterable<ObjectLike> {
 			let objectLikeDecls = symbol.resolveDeclarations(node, isObjectLike)
 			if (!objectLikeDecls) {
@@ -2260,6 +2565,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		access,
 		assign,
 		variable,
+		parameter,
 		types,
 		symbol,
 		imports,

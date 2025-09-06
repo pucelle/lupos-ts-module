@@ -28,7 +28,7 @@ export class Scope {
 
 		// Variable declaration.
 		if (this.ts.isVariableDeclaration(node)) {
-			for (let {name} of this.helper.variable.walkDeclarationNames(node)) {
+			for (let {name} of this.helper.variable.walkDeconstructedDeclarationItems(node)) {
 				this.variables.set(name, node)
 			}
 		}
