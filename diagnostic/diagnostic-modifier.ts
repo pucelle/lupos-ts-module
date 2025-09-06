@@ -5,6 +5,7 @@ import {DiagnosticCode} from './codes'
 
 /** It helps to modify all the diagnostics of a source file. */
 export class DiagnosticModifier {
+
 	readonly helper: Helper
 
 	protected sourceFile!: TS.SourceFile
@@ -52,10 +53,10 @@ export class DiagnosticModifier {
 
 		// If all imported members are not read,
 		// diagnostic located at import declaration.
-		if (this.helper.ts.isImportSpecifier(node)) {
+		if (ts.isImportSpecifier(node)) {
 			let importDecl = node.parent.parent.parent
 
-			if (this.helper.ts.isImportDeclaration(importDecl)) {
+			if (ts.isImportDeclaration(importDecl)) {
 				this.deleteOfNode(importDecl, [DiagnosticCode.ValueNeverRead, DiagnosticCode.AllImportsUnused])
 
 				// Note not return here, all imports, and specified

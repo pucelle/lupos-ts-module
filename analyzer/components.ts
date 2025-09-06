@@ -91,6 +91,7 @@ export function analyzeLuposComponentEvents(decl: TS.ClassLikeDeclaration, helpe
 			events.push({
 				name: helper.getText(member.name),
 				nameNode: member.name,
+				declaration: member,
 				description: helper.getNodeDescription(member) || '',
 				sourceFile: decl.getSourceFile(),
 			})
@@ -128,7 +129,8 @@ function analyzeLuposComponentMemberProperty(decl: TS.ClassElement | TS.TypeElem
 		if (!beStatic) {
 			return {
 				name: helper.getText(decl.name),
-				nameNode: decl,
+				nameNode: decl.name,
+				declaration: decl,
 				description: helper.getNodeDescription(decl) || '',
 				sourceFile: decl.getSourceFile(),
 				public: bePublic,
@@ -144,7 +146,8 @@ function analyzeLuposComponentMemberProperty(decl: TS.ClassElement | TS.TypeElem
 		if (!beStatic) {
 			return{
 				name: helper.getText(decl.name),
-				nameNode: decl,
+				nameNode: decl.name,
+				declaration: decl,
 				description: helper.getNodeDescription(decl) || '',
 				sourceFile: decl.getSourceFile(),
 				public: bePublic,
@@ -188,7 +191,8 @@ export function analyzeLuposComponentSubProperties(
 		
 		let property: LuposProperty = {
 			name: helper.getText(typeMember.name),
-			nameNode: typeMember,
+			nameNode: typeMember.name,
+			declaration: typeMember,
 			description: helper.getNodeDescription(typeMember) || '',
 			sourceFile: typeMember.getSourceFile(),
 			public: true,

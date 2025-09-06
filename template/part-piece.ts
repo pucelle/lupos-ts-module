@@ -1,5 +1,5 @@
 import {HTMLNodeType} from '../html-syntax'
-import {TemplatePart, TemplatePartType} from './parts-parser'
+import {TemplatePart, TemplatePartType} from './part'
 
 
 export interface TemplatePartPiece {
