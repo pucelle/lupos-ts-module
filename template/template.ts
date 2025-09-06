@@ -3,7 +3,7 @@ import {ScopeTree} from '../scope'
 import {HTMLRoot, TemplateSlotPlaceholder} from '../html-syntax'
 import {PositionMapper} from '../utils'
 import {Helper} from '../helper'
-import {TemplatePart} from './parts-parser'
+import {TemplatePart} from './part'
 
 
 // This is no shared way to generate templates from a single source file,
@@ -74,6 +74,7 @@ export abstract class TemplateBasis {
 	 * `tagName` can be a dynamic component interpolation.
 	 */
 	*resolveComponentDeclarations(tagName: string): Iterable<TS.ClassDeclaration> {
+		let ts = this.helper.ts
 		let isNamedComponent = TemplateSlotPlaceholder.isNamedComponent(tagName)
 		let isDynamicComponent = TemplateSlotPlaceholder.isDynamicComponent(tagName)
 
@@ -88,7 +89,7 @@ export abstract class TemplateBasis {
 				return
 			}
 
-			let decls = this.helper.symbol.resolveDeclarations(ref, this.helper.ts.isClassDeclaration)
+			let decls = this.helper.symbol.resolveDeclarations(ref, ts.isClassDeclaration)
 			if (decls) {
 				yield* decls
 			}
@@ -97,7 +98,7 @@ export abstract class TemplateBasis {
 		// Resolve instance type of constructor interface.
 		else {
 			let ref = this.valueNodes[TemplateSlotPlaceholder.getUniqueSlotIndex(tagName)!]
-			let decls = this.helper.symbol.resolveDeclarations(ref, this.helper.ts.isClassDeclaration)
+			let decls = this.helper.symbol.resolveDeclarations(ref, ts.isClassDeclaration)
 			if (decls && decls.length > 0) {
 				yield* decls
 				return
@@ -128,6 +129,19 @@ export abstract class TemplateBasis {
 		}
 	}
 
+	/** Analyze part value type. */
+	getPartUniqueValue(part: TemplatePart): TS.Expression | null {
+		if (part.strings) {
+			return null
+		}
+		else if (part.valueIndices) {
+			let valueNode = this.valueNodes[part.valueIndices[0].index]
+			return valueNode
+		}
+		else {
+			return null
+		}
+	}
 
 	/** Convert template offset to local offset. */
 	templateOffsetToLocal(templateOffset: number): number {

@@ -9,6 +9,9 @@ export interface LuposItem {
 	/** Node of it's defined name. */
 	readonly nameNode: TS.Node
 
+	/** Node of declaration. */
+	readonly declaration: TS.Node
+
 	/** Description is leading comment of definition. */
 	readonly description: string
 
@@ -17,6 +20,9 @@ export interface LuposItem {
 }
 
 export interface LuposProperty extends LuposItem {
+
+	/** Defined class declaration. */
+	readonly declaration: TS.ClassElement | TS.TypeElement
 
 	/** Whether property is public. */
 	readonly public: boolean

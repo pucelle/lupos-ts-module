@@ -260,10 +260,11 @@ export class Analyzer {
 	 * Binding class must be imported.
 	 */
 	getBindingByName(name: string, template: TemplateBasis): LuposBinding | undefined {
+		let ts = this.helper.ts
 		let bindingClassDeclOrRef = template.getReferenceByName(name)
 
 		// Local declared.
-		let bindingClass = bindingClassDeclOrRef && this.helper.ts.isClassDeclaration(bindingClassDeclOrRef)
+		let bindingClass = bindingClassDeclOrRef && ts.isClassDeclaration(bindingClassDeclOrRef)
 			? bindingClassDeclOrRef
 			: undefined
 
@@ -271,7 +272,7 @@ export class Analyzer {
 		if (!bindingClass && bindingClassDeclOrRef) {
 			bindingClass = this.helper.symbol.resolveDeclaration(
 				bindingClassDeclOrRef,
-				this.helper.ts.isClassDeclaration
+				ts.isClassDeclaration
 			)
 		}
 

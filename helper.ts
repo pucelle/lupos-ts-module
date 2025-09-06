@@ -436,9 +436,9 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 	}
 
 
-	/** Get innermost node at specified offset index. */
+	/** Get inner-most node at specified offset index. */
 	function getNodeAtOffset(node: TS.Node, offset: number): TS.Node | undefined {
-		if (offset >= node.getStart() && offset < node.getEnd()) {
+		if (offset >= node.getStart() && offset <= node.getEnd()) {
 			return node.forEachChild(child => {
 				return getNodeAtOffset(child, offset) || undefined
 			}) || node
