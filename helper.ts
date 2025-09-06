@@ -1581,7 +1581,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** 
 		 * Get type node of a type.
-		 * Note the returned type node is not in source file, so can't be resolved.
+		 * Note the returned type node is newly created and not in source file,
+		 * so can't be resolved.
 		 */
 		typeToTypeNode(type: TS.Type): TS.TypeNode | undefined {
 			return typeCheckerGetter().typeToTypeNode(type, undefined, undefined)
@@ -1599,7 +1600,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return typeCheckerGetter().getTypeFromTypeNode(typeNode)
 		},
 		
-		/** Get the reference name of a type node, all type parameters are excluded. */
+		/** 
+		 * Get the reference name of a type node, all type parameters are excluded.
+		 * `A<B, C>` -> `A`
+		 */
 		getTypeNodeReferenceName(node: TS.TypeNode): string | undefined {
 			if (!ts.isTypeReferenceNode(node)) {
 				return undefined
@@ -1613,7 +1617,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return typeName.text
 		},
 
-		/** Get the parameters of a type node. */
+		/** 
+		 * Get the parameters of a type node.
+		 * `A<B, C>` -> `[B, C]`
+		 */
 		getTypeNodeParameters(node: TS.TypeNode): TS.TypeNode[] | undefined {
 			if (ts.isTypeReferenceNode(node)) {
 				return node.typeArguments ? [...node.typeArguments] : undefined

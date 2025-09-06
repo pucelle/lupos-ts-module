@@ -5,6 +5,7 @@ import {DiagnosticCode} from './codes'
 
 /** It helps to modify all the diagnostics of a source file. */
 export class DiagnosticModifier {
+	
 	readonly helper: Helper
 
 	protected sourceFile!: TS.SourceFile
