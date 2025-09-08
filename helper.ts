@@ -1744,7 +1744,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 				// `Array<T>`
 				else if (paramType && ts.isTypeReferenceNode(paramType)) {
-					let name = types.getTypeNodeReferenceName(paramType)
+					let name = types.getTypeNodeReferenceName(paramType)?.text
 					if ((name === 'Array' || name === 'ReadonlyArray')
 						&& paramType.typeArguments?.length === 1
 					) {
