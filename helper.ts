@@ -527,15 +527,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Get one property declaration by it's name.
 		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
-		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getProperty(
 			node: ObjectLike,
 			propertyName: string,
-			resolveChained: boolean,
-			resolveAllPossible: boolean = false
+			resolveChained: boolean
 		): TS.PropertyDeclaration | undefined {
-			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+			for (let member of objectLike.walkMembers(node, resolveChained)) {
 				if (objectLike.getMemberName(member) === propertyName
 					&& ts.isPropertyDeclaration(member)
 				) {
@@ -549,15 +547,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Get method declaration by it's name, and which will always have body.
 		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
-		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getMethod(
 			node: TS.ClassLikeDeclaration,
 			methodName: string,
-			resolveChained: boolean,
-			resolveAllPossible: boolean = false
+			resolveChained: boolean
 		): TS.MethodDeclaration | undefined {
-			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+			for (let member of objectLike.walkMembers(node, resolveChained)) {
 				if (objectLike.getMemberName(member) === methodName
 					&& ts.isMethodDeclaration(member)
 					&& member.body
@@ -572,14 +568,12 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Get constructor declaration.
 		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
-		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getConstructor(
 			node: ObjectLike,
-			resolveChained: boolean,
-			resolveAllPossible: boolean = false
+			resolveChained: boolean
 		): TS.ConstructorDeclaration | undefined {
-			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+			for (let member of objectLike.walkMembers(node, resolveChained)) {
 				if (ts.isConstructorDeclaration(member)) {
 					return member
 				}
@@ -591,14 +585,12 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Get constructor parameter list, even from super class.
 		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
-		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getConstructorParameters(
 			node: ObjectLike,
-			resolveChained: boolean,
-			resolveAllPossible: boolean = false
+			resolveChained: boolean
 		): TS.ParameterDeclaration[] | undefined {
-			let constructor = cls.getConstructor(node, resolveChained, resolveAllPossible)
+			let constructor = cls.getConstructor(node, resolveChained)
 			if (constructor) {
 				return [...constructor.parameters]
 			}
@@ -756,7 +748,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** Whether property or method has specified modifier. */
-		hasModifier(node: TS.PropertyDeclaration | TS.PropertySignature | TS.AccessorDeclaration | TS.MethodDeclaration | TS.MethodSignature, name: 'readonly' | 'static' | 'protected' | 'private' | 'public'): boolean {
+		hasModifier(
+			node: TS.PropertyDeclaration | TS.PropertySignature | TS.AccessorDeclaration | TS.MethodDeclaration | TS.MethodSignature,
+			name: 'readonly' | 'static' | 'protected' | 'private' | 'public'
+		): boolean {
 			for (let modifier of node.modifiers || []) {
 				if (modifier.kind === ts.SyntaxKind.ReadonlyKeyword && name === 'readonly') {
 					return true
@@ -779,7 +774,9 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 	
 		/** Returns the visibility modifier of given node. */
-		getVisibilityModifier(node: TS.PropertyDeclaration | TS.PropertySignature | TS.AccessorDeclaration | TS.MethodDeclaration | TS.MethodSignature): 'public' | 'protected' | 'private' {
+		getVisibilityModifier(
+			node: TS.PropertyDeclaration | TS.PropertySignature | TS.AccessorDeclaration | TS.MethodDeclaration | TS.MethodSignature
+		): 'public' | 'protected' | 'private' {
 			if (objectLike.hasModifier(node, 'private') || node.name.getText().startsWith('$')) {
 				return 'private'
 			}
@@ -807,15 +804,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Get one object like member declaration or signature by it's name.
 		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
-		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getMember(
 			node: ObjectLike,
 			memberName: string,
-			resolveChained: boolean,
-			resolveAllPossible: boolean = false
+			resolveChained: boolean
 		): TS.ClassElement | TS.TypeElement | undefined {
-			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+			for (let member of objectLike.walkMembers(node, resolveChained)) {
 				if (objectLike.getMemberName(member) === memberName) {
 					return member
 				}
@@ -827,15 +822,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Get one property declaration or signature by it's name.
 		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
-		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getProperty(
 			node: ObjectLike,
 			propertyName: string,
-			resolveChained: boolean,
-			resolveAllPossible: boolean = false
+			resolveChained: boolean
 		): TS.PropertyDeclaration | TS.PropertySignature | undefined {
-			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+			for (let member of objectLike.walkMembers(node, resolveChained)) {
 				if (objectLike.getMemberName(member) === propertyName
 					&& (ts.isPropertyDeclaration(member) || ts.isPropertySignature(member))
 				) {
@@ -849,15 +842,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Get method declaration or signature by it's name.
 		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
-		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getMethod(
 			node: TS.ClassLikeDeclaration,
 			methodName: string,
-			resolveChained: boolean,
-			resolveAllPossible: boolean = false
+			resolveChained: boolean
 		): TS.MethodDeclaration | TS.MethodSignature | undefined {
-			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+			for (let member of objectLike.walkMembers(node, resolveChained)) {
 				if (objectLike.getMemberName(member) === methodName
 					&& (ts.isMethodDeclaration(member) || ts.isMethodSignature(member))
 				) {
@@ -871,14 +862,12 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Get constructor declaration or signature.
 		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
-		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getConstructor(
 			node: ObjectLike,
-			resolveChained: boolean,
-			resolveAllPossible: boolean = false
+			resolveChained: boolean
 		): TS.ConstructorDeclaration | TS.ConstructSignatureDeclaration | undefined {
-			for (let member of objectLike.walkMembers(node, resolveChained, resolveAllPossible)) {
+			for (let member of objectLike.walkMembers(node, resolveChained)) {
 				if (ts.isConstructorDeclaration(member) || ts.isConstructSignatureDeclaration(member)) {
 					return member
 				}
@@ -890,14 +879,12 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Get constructor parameter list, even from super class.
 		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
-		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		getConstructorParameters(
 			node: ObjectLike,
-			resolveChained: boolean,
-			resolveAllPossible: boolean = false
+			resolveChained: boolean
 		): TS.ParameterDeclaration[] | undefined {
-			let constructor = objectLike.getConstructor(node, resolveChained, resolveAllPossible)
+			let constructor = objectLike.getConstructor(node, resolveChained)
 			if (constructor) {
 				return [...constructor.parameters]
 			}
@@ -944,15 +931,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * Resolve class or interface or object literal and all it's extended interfaces,
 		 * and walk their members.
 		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
-		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
 		 */
 		*walkMembers(
 			node: ObjectLike,
-			resolveChained: boolean,
-			resolveAllPossible: boolean = false
+			resolveChained: boolean
 		): Iterable<TS.ClassElement | TS.TypeElement> {
 			if (resolveChained) {
-				for (let chained of objectLike.walkChained(node, resolveAllPossible)) {
+				for (let chained of objectLike.walkChained(node)) {
 					yield* chained.members
 				}
 			}
@@ -964,13 +949,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Resolve class or interface or object literal, and all it's extended interfaces,
 		 * and all the object literal chain like:
-		 * `type A = {...}`
-		 * `type B = A & {...}`
+		 * `interface A extends B {...}`
+		 * `class A extends B implements C {...}`
+		 * `type A = B & {...}`
 		 * Will sort chained result by depth.
-		 * If `resolveAllPossible`, will try resolve all type parameters as unioned.
 		 */
-		*walkChained(node: ObjectLike, resolveAllPossible: boolean = false): Iterable<ObjectLike> {
-			let os = [...objectLike._resolveAndWalkChainedNodesRecursively(node, resolveAllPossible, 0, new Set())]
+		*walkChained(node: ObjectLike): Iterable<ObjectLike> {
+			let os = [...objectLike._resolveAndWalkChainedNodesRecursively(node, 0, new Set())]
 			os.sort((a, b) => a.depth - b.depth)
 
 			yield* os.map(o => o.o)
@@ -979,7 +964,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** Resolves and iterates all chained nodes. */
 		*_resolveAndWalkChainedNodesRecursively(
 			node: TS.Node,
-			resolveAllPossible: boolean,
 			depth: number,
 			walked: Set<TS.Node>
 		): Iterable<{o: ObjectLike, depth: number}> {
@@ -996,14 +980,14 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				let extended = objectLike.getExtends(node)
 				if (extended) {
 					for (let n of extended) {
-						yield* objectLike._resolveAndWalkChainedNodesRecursively(n, resolveAllPossible, depth + 1, walked)
+						yield* objectLike._resolveAndWalkChainedNodesRecursively(n, depth + 1, walked)
 					}
 				}
 
 				let sameNameResolved = symbol.resolveDeclarations(node, ts.isInterfaceDeclaration)
 				if (sameNameResolved) {
 					for (let res of sameNameResolved) {
-						yield* objectLike._resolveAndWalkChainedNodesRecursively(res, resolveAllPossible, depth, walked)
+						yield* objectLike._resolveAndWalkChainedNodesRecursively(res, depth, walked)
 					}
 				}
 			}
@@ -1015,27 +999,16 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			// `type B = A`, resolve A.
 			else if (ts.isTypeAliasDeclaration(node)) {
-
-				// Resolve all type parameters.
-				if (resolveAllPossible) {
-					for (let typeNode of types.destructTypeNode(node.type)) {
-						yield* objectLike._resolveAndWalkChainedNodesRecursively(typeNode, resolveAllPossible, depth + 1, walked)
-					}
-				}
-
-				// Resolve only unioned type parameters.
-				else {
-					if (ts.isIntersectionTypeNode(node.type)) {
-						for (let type of node.type.types) {
-							yield* objectLike._resolveAndWalkChainedNodesRecursively(type, resolveAllPossible, depth + 1, walked)
-						}
-					}
+				for (let decl of symbol.resolveTypeNodeDeclarations(node.type)) {
+					yield* objectLike._resolveAndWalkChainedNodesRecursively(decl, depth + 1, walked)
 				}
 			}
 
 			// Reference like `A`, resolve `A`.
 			else if (ts.isTypeReferenceNode(node)) {
-				yield* objectLike._resolveAndWalkChainedNodesRecursively(node.typeName, resolveAllPossible, depth + 1, walked)
+				for (let decl of symbol.resolveTypeNodeDeclarations(node)) {
+					yield* objectLike._resolveAndWalkChainedNodesRecursively(decl, depth + 1, walked)
+				}
 			}
 
 			// Resolve and continue.
@@ -1043,7 +1016,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				let resolved = symbol.resolveDeclarations(node)
 				if (resolved) {
 					for (let res of resolved) {
-						yield* objectLike._resolveAndWalkChainedNodesRecursively(res, resolveAllPossible, depth + 1, walked)
+						yield* objectLike._resolveAndWalkChainedNodesRecursively(res, depth + 1, walked)
 					}
 				}
 			}
@@ -1545,7 +1518,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				let initRest: TS.Expression | null = null
 
 				if (initializer && ts.isArrayLiteralExpression(initializer)) {
-					let o = variable.decomposeArrayLiteralList(initializer)
+					let o = variable.splitArrayLiteral(initializer)
 					initList = o.list
 					initRest = o.rest.length > 0 ? o.rest[o.rest.length - 1] : null
 				}
@@ -1609,30 +1582,31 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** 
+		 * `[a, b, ... c]` -> `{list: [a, b], rest: [c]}`
 		 * Split array items to a list and rest.
 		 * `list` contains all items listed,
 		 * while `rest` contains list of items that need to spread.
 		 */
-		decomposeArrayLiteralList(arr: TS.ArrayLiteralExpression): {list: TS.Expression[], rest: TS.Expression[]} {
+		splitArrayLiteral(arr: TS.ArrayLiteralExpression): {list: TS.Expression[], rest: TS.Expression[]} {
 			let list: TS.Expression[] = []
 			let rest: TS.Expression[] = []
 
-			variable._decomposeArrayLiteralListRecursively(arr, list, rest)
+			variable._splitArrayLiteralRecursively(arr, list, rest)
 
 			return {list, rest}
 		},
 
-		_decomposeArrayLiteralListRecursively(arr: TS.ArrayLiteralExpression, list: TS.Expression[], rest: TS.Expression[]) {
+		_splitArrayLiteralRecursively(arr: TS.ArrayLiteralExpression, list: TS.Expression[], rest: TS.Expression[]) {
 			for (let element of arr.elements) {
 				if (ts.isSpreadElement(element)) {
 					if (ts.isArrayLiteralExpression(element.expression)) {
 
 						// Have spread, not push items to list.
 						if (rest.length > 0) {
-							variable._decomposeArrayLiteralListRecursively(element.expression, [], rest)
+							variable._splitArrayLiteralRecursively(element.expression, [], rest)
 						}
 						else {
-							variable._decomposeArrayLiteralListRecursively(element.expression, list, rest)
+							variable._splitArrayLiteralRecursively(element.expression, list, rest)
 						}
 					}
 
@@ -1750,7 +1724,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			// `f([a])` ~ `function f(p: [T])` -> `{arg: a, type: T}`
 			else if (ts.isArrayLiteralExpression(arg)) {
-				let {list, rest} = variable.decomposeArrayLiteralList(arg)
+				let {list, rest} = variable.splitArrayLiteral(arg)
 
 				// `[T, T]`
 				if (paramType && ts.isTupleTypeNode(paramType)) {
@@ -1770,7 +1744,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 				// `Array<T>`
 				if (paramType && ts.isTypeReferenceNode(paramType)) {
-					let name = types.getTypeNodeReferenceName(paramType)
+					let name = types.getTypeNodeReferenceName(paramType)?.text
 					if ((name === 'Array' || name === 'ReadonlyArray')
 						&& paramType.typeArguments?.length === 1
 					) {
@@ -1888,7 +1862,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** 
 		 * Get type node of a type.
 		 * Note the returned type node is newly created and not in source file,
-		 * so can't be resolved.
+		 * so they can't be resolved.
 		 */
 		typeToTypeNode(type: TS.Type): TS.TypeNode | undefined {
 			return typeCheckerGetter().typeToTypeNode(type, undefined, undefined)
@@ -1907,10 +1881,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 		
 		/** 
-		 * Get the reference name of a type node, all type parameters are excluded.
+		 * Get the reference name as an identifier of a type node, all type parameters are excluded.
 		 * `A<B, C>` -> `A`
 		 */
-		getTypeNodeReferenceName(node: TS.TypeNode): string | undefined {
+		getTypeNodeReferenceName(node: TS.TypeNode): TS.Identifier | undefined {
 			if (!ts.isTypeReferenceNode(node)) {
 				return undefined
 			}
@@ -1920,12 +1894,13 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				return undefined
 			}
 
-			return typeName.text
+			return typeName
 		},
 
 		/** 
 		 * Get the parameters of a type node.
 		 * `A<B, C>` -> `[B, C]`
+		 * `T[]` -> `T`
 		 */
 		getTypeNodeParameters(node: TS.TypeNode): TS.TypeNode[] | undefined {
 			if (ts.isTypeReferenceNode(node)) {
@@ -1938,44 +1913,9 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return undefined
 		},
 
-		/** 
-		 * Resolve all type parameters.
-		 * `A & B` -> `[A, B]`
-		 * `Omit<A, B>` -> `[A, B]`
-		 */
-		destructTypeNode(node: TS.TypeNode):
-			(TS.TypeReferenceNode | TS.TypeLiteralNode | TS.TypeQueryNode)[]
-		{
-			let list: (TS.TypeReferenceNode | TS.TypeLiteralNode)[] = []
-			types._destructTypeNodeRecursively(node, list)
-
-			return list
-		},
-		
-		_destructTypeNodeRecursively(node: TS.Node, list: TS.TypeNode[]) {
-			if (ts.isTypeReferenceNode(node) || ts.isTypeLiteralNode(node) || ts.isTypeQueryNode(node)) {
-				list.push(node)
-			}
-
-			ts.forEachChild(node, (n: TS.Node) => types._destructTypeNodeRecursively(n, list))
-		},
-
-
 		/** Get full text of a type, all type parameters are included. */
 		getTypeFullText(type: TS.Type): string {
 			return typeCheckerGetter().typeToString(type)
-		},
-
-		/** Get the reference name of a type, all type parameters are excluded. */
-		getTypeReferenceName(type: TS.Type): string | undefined {
-			let typeNode = types.typeToTypeNode(type)
-			return typeNode ? types.getTypeNodeReferenceName(typeNode) : undefined
-		},
-
-		/** Get types of type parameters. */
-		getTypeParameters(type: TS.Type): (TS.Type | undefined)[] | undefined {
-			let typeNode = types.typeToTypeNode(type)
-			return typeNode ? types.getTypeNodeParameters(typeNode)?.map(t => types.typeOfTypeNode(t)) : undefined
 		},
 
 		/** Get the returned type of a method / function declaration. */
@@ -2117,7 +2057,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			}
 
 			if (ts.isTypeReferenceNode(typeNode)) {
-				let name = types.getTypeNodeReferenceName(typeNode)
+				let name = types.getTypeNodeReferenceName(typeNode)?.text
 				if (name === 'Readonly' || name === 'ReadonlyArray') {
 					return true
 				}
@@ -2301,18 +2241,15 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return (test ? decls?.find(test) : decls?.[0]) as T | undefined
 		},
 
-		/** 
-		 * Resolve for chained object like: classes, interfaces, or object types.
-		 * `resolveAllPossible`: when true, will try resolve all type parameters as unioned.
-		 */
-		*resolveChainedObjectLike(node: TS.Node, resolveAllPossible: boolean = false): Iterable<ObjectLike> {
+		/** Resolve for chained object like: classes, interfaces, or object types. */
+		*resolveChainedObjectLike(node: TS.Node): Iterable<ObjectLike> {
 			let objectLikeDecls = symbol.resolveDeclarations(node, isObjectLike)
 			if (!objectLikeDecls) {
 				return undefined
 			}
 
 			for (let decl of objectLikeDecls) {
-				yield* objectLike.walkChained(decl, resolveAllPossible)
+				yield* objectLike.walkChained(decl)
 			}
 		},
 		
@@ -2322,14 +2259,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * - `{new(): Cls}`
 		 */
 		*resolveInstanceDeclarations(fromTypeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
-			let typeNodes = types.destructTypeNode(fromTypeNode)
-			if (typeNodes.length === 0) {
-				return
-			}
-
+			let typeNodes = symbol.resolveTypeNodeComponents(fromTypeNode)
+			
 			for (let typeNode of typeNodes) {
 	
-				// `typeof Com`, resolve `Com`.
+				// `typeof Com`, resolves `Com`.
 				if (ts.isTypeQueryNode(typeNode)) {
 					let decls = symbol.resolveDeclarations(typeNode.exprName, ts.isClassDeclaration)
 					if (decls) {
@@ -2337,15 +2271,14 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 					}
 				}
 	
-				// Resolve returned type of constructor `{new()...}`.
+				// Resolve returned type of `{new()...}`.
 				else {
-					let objects = symbol.resolveDeclarations(typeNode, isObjectLike)
-					if (!objects) {
-						continue
-					}
+					for (let decl of symbol.resolveTypeNodeDeclarations(typeNode)) {
+						if (!isObjectLike(decl)) {
+							continue
+						}
 
-					for (let item of objects) {
-						let newCons = objectLike.getConstructor(item, true)
+						let newCons = objectLike.getConstructor(decl, true)
 						if (!newCons) {
 							continue
 						}
@@ -2356,16 +2289,96 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 						}
 		
 						// Try resolve all type parameters and get all possible.
-						let instanceTypeNodes = types.destructTypeNode(newTypeNode)
-						if (instanceTypeNodes.length === 0) {
-							return
-						}
-
-						for (let instanceTypeNode of instanceTypeNodes) {
-							let decls = symbol.resolveDeclarations(instanceTypeNode, ts.isClassDeclaration)
-							if (decls) {
-								yield* decls
+						let instanceDecls = symbol.resolveTypeNodeDeclarations(newTypeNode)
+						for (let instanceDecl of instanceDecls) {
+							if (ts.isClassDeclaration(instanceDecl)) {
+								yield instanceDecl
 							}
+						}
+					}
+				}
+			}
+		},
+
+		/** 
+		 * Resolve component parts of a type node.
+		 * Normally will resolve an type literal, or a type reference.
+		 * Note it can't resolve self-built types, or complex type expressions.
+		 * like `extends`, `infer`, `{[key in ...]}`.
+		 * 
+		 * `A & B` -> `[A, B]`
+		 * `A | B` -> `[A, B]`
+		 * `Partial<A>` -> `[A]`
+		 * `Omit<A, B>` -> `[A]`
+		 */
+		*resolveTypeNodeComponents(node: TS.TypeNode, maxDepth: number = 10): Iterable<TS.TypeNode> {
+			if (maxDepth === 0) {
+				return
+			}
+
+			if (ts.isUnionTypeNode(node) || ts.isIntersectionTypeNode(node)) {
+				for (let type of node.types) {
+					yield* symbol.resolveTypeNodeComponents(type, maxDepth - 1)
+				}
+			}
+			else if (node.kind === ts.SyntaxKind.NumberKeyword
+				|| node.kind === ts.SyntaxKind.StringKeyword
+				|| node.kind === ts.SyntaxKind.BooleanKeyword
+				|| node.kind === ts.SyntaxKind.TrueKeyword
+				|| node.kind === ts.SyntaxKind.FalseKeyword
+				|| node.kind === ts.SyntaxKind.NullKeyword
+				|| node.kind === ts.SyntaxKind.UndefinedKeyword
+				|| ts.isLiteralTypeNode(node)	// 1, '1'
+				|| ts.isTypeQueryNode(node)		// typeof A
+				|| ts.isTypeLiteralNode(node)	// {...}
+			) {
+				yield node
+			}
+			else if (ts.isTypeReferenceNode(node)) {
+				let name = getText(node.typeName)
+				if (name === 'Partial'
+					|| name === 'Required'
+					|| name === 'Readonly'
+					|| name === 'Pick'
+					|| name === 'Omit'
+					|| name === 'NonNullable'
+				) {
+					let firstType = node.typeArguments?.[0]
+					if (firstType) {
+						yield* symbol.resolveTypeNodeComponents(firstType, maxDepth - 1)
+					}
+				}
+
+				else {
+					yield node
+				}
+			}
+		},
+
+		/** 
+		 * Resolve component parts of a type node.
+		 * Normally will resolve an type literal, or a type reference.
+		 * Note it can't resolve self-built types, or complex type expressions.
+		 * like `extends`, `infer`, `{[key in ...]}`.
+		 */
+		*resolveTypeNodeDeclarations(node: TS.TypeNode, maxDepth: number = 10): Iterable<TS.Declaration | TS.TypeLiteralNode> {
+			for (let com of symbol.resolveTypeNodeComponents(node)) {
+				if (ts.isTypeLiteralNode(com)) {
+					yield com
+				}
+
+				else if (ts.isTypeReferenceNode(com)) {
+					let decls = symbol.resolveDeclarations(com)
+					if (!decls) {
+						continue
+					}
+
+					for (let decl of decls) {
+						if (ts.isTypeAliasDeclaration(decl)) {
+							yield* symbol.resolveTypeNodeDeclarations(decl.type, maxDepth - 1)
+						}
+						else {
+							yield decl
 						}
 					}
 				}
@@ -2456,10 +2469,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			for (let i = 0; i < extendsParameters.length; i++) {
 				let param = extendsParameters[i]
-				let destructed = types.destructTypeNode(param)
+				let resolved = symbol.resolveTypeNodeComponents(param)
 				let paramRefed: (TS.InterfaceDeclaration | TS.TypeLiteralNode)[] = []
 
-				for (let ref of destructed) {
+				for (let ref of resolved) {
 					if (ts.isTypeReferenceNode(ref)) {
 						let refName = getFullText(ref.typeName)
 

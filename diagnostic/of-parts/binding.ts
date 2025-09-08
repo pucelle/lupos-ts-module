@@ -29,7 +29,7 @@ export function diagnoseBinding(
 
 		let binding = analyzer.getBindingByName(mainName, template)
 		if (!binding && !LuposKnownInternalBindings[mainName]) {
-			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Binding class "${mainName}" is not imported or declared.`)
+			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Binding class "${mainName}" is not existing.`)
 			return
 		}
 	}
@@ -85,10 +85,10 @@ export function diagnoseBinding(
 		let valueNodes: (TS.Expression | null)[] = [null]
 		let valueTypes = [template.getPartValueType(part)]
 
-		// `?:binding=${a, b}`, `?:binding=${(a, b)}`
-		if (!part.strings && part.valueIndices) {
-			let valueNode = template.valueNodes[part.valueIndices[0].index]
-
+		let valueNode = template.getPartUniqueValue(part)
+		if (valueNode) {
+			
+			// `?:binding=${a, b}`, `?:binding=${(a, b)}`
 			if (ts.isParenthesizedExpression(valueNode)) {
 				valueNode = valueNode.expression
 			}
@@ -193,13 +193,13 @@ function diagnoseOtherUpdateParameter(
 	modifier: DiagnosticModifier
 ) {
 	let helper = template.helper
-	let method = helper.class.getMethod(binding.declaration, 'update', true)
+	let updateMethod = helper.class.getMethod(binding.declaration, 'update', true)
 
-	if (!method) {
+	if (!updateMethod) {
 		return
 	}
 		
-	let paramTypes = method.parameters.map(param => helper.types.typeOf(param))
+	let paramTypes = updateMethod.parameters.map(param => helper.types.typeOf(param))
 
 	for (let i = 0; i < valueTypes.length; i++) {
 		let valueType = valueTypes[i]

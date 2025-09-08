@@ -26,11 +26,7 @@ export function diagnoseComponent(
 
 		let component = analyzer.getComponentByTagName(tagName, template)
 		if (!component) {
-			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Component "<${tagName}>" is not imported or declared.`)
-			return
-		}
-		else if (!helper.objectLike.isDerivedOf(component.declaration, 'Component', '@pucelle/lupos.js')) {
-			modifier.add(start, length, DiagnosticCode.NotAssignable, `"<${tagName}>" is not a component.`)
+			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Component "<${tagName}>" is not existing.`)
 			return
 		}
 	}
