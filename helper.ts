@@ -1736,15 +1736,15 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				}
 
 				// `T[]`
-				if (paramType && ts.isArrayTypeNode(paramType)) {
+				else if (paramType && ts.isArrayTypeNode(paramType)) {
 					for (let item of list) {
 						yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(item, paramType.elementType)
 					}
 				}
 
 				// `Array<T>`
-				if (paramType && ts.isTypeReferenceNode(paramType)) {
-					let name = types.getTypeNodeReferenceName(paramType)?.text
+				else if (paramType && ts.isTypeReferenceNode(paramType)) {
+					let name = types.getTypeNodeReferenceName(paramType)
 					if ((name === 'Array' || name === 'ReadonlyArray')
 						&& paramType.typeArguments?.length === 1
 					) {
