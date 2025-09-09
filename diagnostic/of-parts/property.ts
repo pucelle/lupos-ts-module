@@ -6,6 +6,7 @@ import {DiagnosticModifier} from '../diagnostic-modifier'
 
 export function diagnoseProperty(
 	piece: TemplatePartPiece,
+	pieces: TemplatePartPiece[],
 	part: TemplatePart,
 	template: TemplateBasis,
 	modifier: DiagnosticModifier,
@@ -22,8 +23,23 @@ export function diagnoseProperty(
 		let property = component ? analyzer.getComponentProperty(component, mainName) : null
 
 		if (component && !property) {
-			modifier.add(start, length, DiagnosticCode.NotExistOn, `"${mainName}" is not exist on "<${tagName}>".`)
+			modifier.add(start, length, DiagnosticCode.NotExistOn, `Property "${mainName}" is not exist on "<${tagName}>".`)
 			return
+		}
+
+		if (property) {
+			let hasNoValue = !pieces.find(piece => piece.type === TemplatePartPieceType.AttrValue)
+			if (hasNoValue) {
+				let propertyType = helper.types.typeOf(property.nameNode)
+
+				if (!helper.types.isBooleanType(propertyType)) {
+					let fromText = 'boolean'
+					let toText = helper.types.getTypeFullText(propertyType)
+
+					modifier.add(start, length, DiagnosticCode.NotAssignable, `Value type "${fromText}" is not assignable to property type "${toText}".`)
+					return
+				}
+			}
 		}
 	}
 
@@ -32,7 +48,7 @@ export function diagnoseProperty(
 		let property = component ? analyzer.getComponentProperty(component, mainName) : null
 
 		// Can't compare types correctly, especially when have generic parameter.
-		if (component && property) {
+		if (property) {
 			let propertyType = helper.types.typeOf(property.nameNode)
 			let valueType = template.getPartValueType(part)
 
@@ -42,7 +58,7 @@ export function diagnoseProperty(
 
 				helper.types.isAssignableToExtended(valueType, propertyType)
 
-				modifier.add(start, length, DiagnosticCode.NotAssignable, `Property type "${fromText}" is not assignable to "${toText}".`)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `Value type "${fromText}" is not assignable to property type "${toText}".`)
 				return
 			}
 		}

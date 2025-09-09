@@ -21,13 +21,14 @@ export class TemplateDiagnostics {
 			let pieces = parseAllTemplatePartPieces(part)
 
 			for (let piece of pieces) {
-				this.diagnosePartLocation(piece, part, template, modifier)
+				this.diagnosePartLocation(piece, pieces, part, template, modifier)
 			}
 		}
 	}
 
 	private diagnosePartLocation(
 		piece: TemplatePartPiece,
+		pieces: TemplatePartPiece[],
 		part: TemplatePart,
 		template: TemplateBasis,
 		modifier: DiagnosticModifier
@@ -49,7 +50,7 @@ export class TemplateDiagnostics {
 
 		// `.xxx`
 		else if (part.type === TemplatePartType.Property) {
-			diagnoseProperty(piece, part, template, modifier, this.analyzer)
+			diagnoseProperty(piece, pieces, part, template, modifier, this.analyzer)
 		}
 
 		// `@xxx` or `@@xxx`

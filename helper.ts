@@ -1964,6 +1964,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return (type.flags & ts.TypeFlags.NumberLike) > 0
 		},
 
+		/** Test whether type represents a boolean. */
+		isBooleanType(type: TS.Type): boolean {
+			return (type.flags & ts.TypeFlags.BooleanLike) > 0
+		},
+
 		/** Test whether type represents a value, and not null or undefined. */
 		isNonNullableValueType(type: TS.Type): boolean {
 			if (type.isUnionOrIntersection()) {
