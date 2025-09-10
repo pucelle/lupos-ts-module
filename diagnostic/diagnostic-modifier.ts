@@ -45,8 +45,8 @@ export class DiagnosticModifier {
 		this.added.push(diag)
 	}
 
-	/** Add a diagnostic by parameters. */
-	getByNode(node: TS.Node, code: DiagnosticCode, message: string, category: TS.DiagnosticCategory = this.helper.ts.DiagnosticCategory.Error) {
+	/** Make a diagnostic by parameters. */
+	protected makeByNode(node: TS.Node, code: DiagnosticCode, message: string, category: TS.DiagnosticCategory = this.helper.ts.DiagnosticCategory.Error) {
 		let start = node.getStart()
 		let length = node.getEnd() - start
 
@@ -63,13 +63,13 @@ export class DiagnosticModifier {
 	}
 
 	/** Test whether has added a specified diagnostic. */
-	protected hasAdded(start: number, code: DiagnosticCode): boolean {
-		return !!this.added.find(item => item.start === start && item.code === code)
+	protected hasAdded(diag: {start: number | undefined, code: number}): boolean {
+		return !!this.added.find(item => item.start === diag.start && item.code === diag.code)
 	}
 
 	/** Test whether has deleted a specified diagnostic. */
-	protected hasDeleted(start: number, code: DiagnosticCode): boolean {
-		return !!this.deleted.find(item => item.start === start && item.code === code)
+	protected hasDeleted(diag: {start: number | undefined, code: number}): boolean {
+		return !!this.deleted.find(item => item.start === diag.start && item.code === diag.code)
 	}
 
 	/** 
@@ -127,8 +127,8 @@ export class DiagnosticModifier {
 		let restUnImported: TS.Diagnostic[] = []
 
 		for (let diag of startDiagnostics) {
-			if (this.hasDeleted(diag.start!, diag.code)) {
-				restUnImported.push(...this.getSiblingImportDiags(diag.start!))
+			if (this.hasDeleted(diag)) {
+				restUnImported.push(...this.getSiblingImportDiagnostics(diag.start!))
 			}
 			else {
 				filtered.push(diag)
@@ -138,7 +138,7 @@ export class DiagnosticModifier {
 		return [...filtered, ...this.added, ...restUnImported]
 	}
 
-	private getSiblingImportDiags(start: number): TS.Diagnostic[] {
+	private getSiblingImportDiagnostics(start: number): TS.Diagnostic[] {
 		let importDecl = this.potentialAllImportsUnUsed.find(decl => decl.getStart() === start)
 		if (!importDecl) {
 			return []
@@ -147,8 +147,8 @@ export class DiagnosticModifier {
 		let unImported: TS.Diagnostic[] = []
 
 		for (let element of (importDecl.importClause!.namedBindings! as TS.NamedImports).elements) {
-			if (!this.hasDeleted(element.name.getStart(), DiagnosticCode.ValueNeverRead)) {
-				unImported.push(this.getByNode(
+			if (!this.hasDeleted({start: element.name.getStart(), code: DiagnosticCode.ValueNeverRead})) {
+				unImported.push(this.makeByNode(
 					element.name,
 					DiagnosticCode.ValueNeverRead,
 					`'${this.helper.getText(element.name)}' is declared but its value is never read.`
