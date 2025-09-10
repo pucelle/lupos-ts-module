@@ -11,6 +11,7 @@ export class DiagnosticModifier {
 	protected sourceFile!: TS.SourceFile
 	protected added: TS.Diagnostic[] = []
 	protected deleted: {start: number, code: number}[] = []
+	protected potentialAllImportsUnUsed: TS.ImportDeclaration[] = []
 
 	constructor(helper: Helper) {
 		this.helper = helper
@@ -44,11 +45,38 @@ export class DiagnosticModifier {
 		this.added.push(diag)
 	}
 
+	/** Add a diagnostic by parameters. */
+	getByNode(node: TS.Node, code: DiagnosticCode, message: string, category: TS.DiagnosticCategory = this.helper.ts.DiagnosticCategory.Error) {
+		let start = node.getStart()
+		let length = node.getEnd() - start
+
+		let diag: TS.Diagnostic = {
+			category,
+			code,
+			messageText: message,
+			file: this.sourceFile,
+			start,
+			length,
+		}
+
+		return diag
+	}
+
+	/** Test whether has added a specified diagnostic. */
+	protected hasAdded(start: number, code: DiagnosticCode): boolean {
+		return !!this.added.find(item => item.start === start && item.code === code)
+	}
+
+	/** Test whether has deleted a specified diagnostic. */
+	protected hasDeleted(start: number, code: DiagnosticCode): boolean {
+		return !!this.deleted.find(item => item.start === start && item.code === code)
+	}
+
 	/** 
 	 * Add usage of a import specifier node, delete it's diagnostic.
 	 * It will try to extend node and test if diagnostic located on whole import statement.
 	 */
-	deleteNeverReadFromNodeExtended(node: TS.Node) {
+	deleteNeverRead(node: TS.Node) {
 		let ts = this.helper.ts
 
 		// If all imported members are not read,
@@ -57,10 +85,11 @@ export class DiagnosticModifier {
 			let importDecl = node.parent.parent.parent
 
 			if (ts.isImportDeclaration(importDecl)) {
-				this.deleteOfNode(importDecl, [DiagnosticCode.ValueNeverRead, DiagnosticCode.AllImportsUnused])
+				this.deleteByNode(importDecl, [DiagnosticCode.ValueNeverRead, DiagnosticCode.AllImportsUnused])
 
-				// Note not return here, all imports, and specified
-				// import diagnostics exist at the same time.
+				if (!this.potentialAllImportsUnUsed.includes(importDecl)) {
+					this.potentialAllImportsUnUsed.push(importDecl)
+				}
 			}
 		}
 
@@ -75,16 +104,16 @@ export class DiagnosticModifier {
 				
 				for (let i of sameFileInterfaces) {
 					let iName = this.helper.getIdentifier(i) ?? node
-					this.deleteOfNode(iName, [DiagnosticCode.ValueNeverRead, DiagnosticCode.NeverRead])
+					this.deleteByNode(iName, [DiagnosticCode.ValueNeverRead, DiagnosticCode.NeverRead])
 				}
 			}
 		}
 
-		this.deleteOfNode(decl, [DiagnosticCode.ValueNeverRead, DiagnosticCode.NeverRead])
+		this.deleteByNode(decl, [DiagnosticCode.ValueNeverRead, DiagnosticCode.NeverRead])
 	}
 
 	/** For binding multiple parameters `:bind=${a, b}`. */
-	deleteOfNode(node: TS.Node, codes: DiagnosticCode[]) {
+	deleteByNode(node: TS.Node, codes: DiagnosticCode[]) {
 		let start = node.getStart()
 
 		for (let code of codes) {
@@ -94,10 +123,39 @@ export class DiagnosticModifier {
 
 	/** Get all diagnostics after modified. */
 	getModified(startDiagnostics: TS.Diagnostic[]) {
-		let diags = startDiagnostics.filter(diag => {
-			return !this.deleted.find(item => item.start === diag.start && item.code === diag.code)
-		})
+		let filtered: TS.Diagnostic[] = []
+		let restUnImported: TS.Diagnostic[] = []
 
-		return [...diags, ...this.added]
+		for (let diag of startDiagnostics) {
+			if (this.hasDeleted(diag.start!, diag.code)) {
+				restUnImported.push(...this.getSiblingImportDiags(diag.start!))
+			}
+			else {
+				filtered.push(diag)
+			}
+		}
+		
+		return [...filtered, ...this.added, ...restUnImported]
+	}
+
+	private getSiblingImportDiags(start: number): TS.Diagnostic[] {
+		let importDecl = this.potentialAllImportsUnUsed.find(decl => decl.getStart() === start)
+		if (!importDecl) {
+			return []
+		}
+
+		let unImported: TS.Diagnostic[] = []
+
+		for (let element of (importDecl.importClause!.namedBindings! as TS.NamedImports).elements) {
+			if (!this.hasDeleted(element.name.getStart(), DiagnosticCode.ValueNeverRead)) {
+				unImported.push(this.getByNode(
+					element.name,
+					DiagnosticCode.ValueNeverRead,
+					`'${this.helper.getText(element.name)}' is declared but its value is never read.`
+				))
+			}
+		}
+		
+		return unImported
 	}
 }

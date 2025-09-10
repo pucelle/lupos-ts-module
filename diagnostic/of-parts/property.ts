@@ -23,7 +23,7 @@ export function diagnoseProperty(
 		let property = component ? analyzer.getComponentProperty(component, mainName) : null
 
 		if (component && !property) {
-			modifier.add(start, length, DiagnosticCode.NotExistOn, `Property "${mainName}" is not exist on "<${tagName}>".`)
+			modifier.add(start, length, DiagnosticCode.NotExistOn, `Property '${mainName}' is not exist on '<${tagName}>'.`)
 			return
 		}
 
@@ -36,7 +36,7 @@ export function diagnoseProperty(
 					let fromText = 'boolean'
 					let toText = helper.types.getTypeFullText(propertyType)
 
-					modifier.add(start, length, DiagnosticCode.NotAssignable, `Value type "${fromText}" is not assignable to property type "${toText}".`)
+					modifier.add(start, length, DiagnosticCode.NotAssignable, `Value type '${fromText}' is not assignable to property type '${toText}'.`)
 					return
 				}
 			}
@@ -56,9 +56,7 @@ export function diagnoseProperty(
 				let fromText = helper.types.getTypeFullText(valueType)
 				let toText = helper.types.getTypeFullText(propertyType)
 
-				helper.types.isAssignableToExtended(valueType, propertyType)
-
-				modifier.add(start, length, DiagnosticCode.NotAssignable, `Value type "${fromText}" is not assignable to property type "${toText}".`)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `Value type '${fromText}' is not assignable to property type '${toText}'.`)
 				return
 			}
 		}

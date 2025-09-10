@@ -24,12 +24,12 @@ export function diagnoseBinding(
 	if (piece.type === TemplatePartPieceType.Name) {
 		let ref = template.getReferenceByName(mainName)
 		if (ref) {
-			modifier.deleteNeverReadFromNodeExtended(ref)
+			modifier.deleteNeverRead(ref)
 		}
 
 		let binding = analyzer.getBindingByName(mainName, template)
 		if (!binding && !LuposKnownInternalBindings[mainName]) {
-			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Binding class "${mainName}" is not existing.`)
+			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Binding class '${mainName}' is not existing.`)
 			return
 		}
 	}
@@ -40,24 +40,24 @@ export function diagnoseBinding(
 
 		if (mainName === 'class') {
 			if (modifierIndex > 0) {
-				modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier "${modifierText}" is not allowed, only one modifier as class name can be specified.`)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier '${modifierText}' is not allowed, only one modifier as class name can be specified.`)
 				return
 			}
 		}
 		else if (mainName === 'style') {
 			if (modifierIndex > 1) {
-				modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier "${modifierText}" is not allowed, at most two modifiers can be specified for ":style".`)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier '${modifierText}' is not allowed, at most two modifiers can be specified for ':style'.`)
 				return
 			}
 
 			if (modifierIndex === 1 && !LuposBindingModifiers.style.find(item => item.name === modifierText)) {
-				modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier "${modifierText}" is not allowed, it must be one of "${LuposBindingModifiers.style.map(item => item.name).join(', ')}".`)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier '${modifierText}' is not allowed, it must be one of '${LuposBindingModifiers.style.map(item => item.name).join(', ')}'.`)
 				return
 			}
 		}
 		else if (LuposBindingModifiers[mainName]) {
 			if (!LuposBindingModifiers[mainName].find(item => item.name === modifierText)) {
-				modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier "${modifierText}" is not allowed, it must be one of "${LuposBindingModifiers[mainName].map(item => item.name).join(', ')}".`)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier '${modifierText}' is not allowed, it must be one of '${LuposBindingModifiers[mainName].map(item => item.name).join(', ')}'.`)
 				return
 			}
 		}
@@ -73,7 +73,7 @@ export function diagnoseBinding(
 
 				if (availableModifiers && availableModifiers.length > 0) {
 					if (!availableModifiers.find(name => name === modifierText)) {
-						modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier "${modifierText}" is not allowed, it must be one of "${availableModifiers.join(', ')}".`)
+						modifier.add(start, length, DiagnosticCode.NotAssignable, `Modifier '${modifierText}' is not allowed, it must be one of '${availableModifiers.join(', ')}'.`)
 						return
 					}
 				}
@@ -87,7 +87,7 @@ export function diagnoseBinding(
 
 		let valueNode = template.getPartUniqueValue(part)
 		if (valueNode) {
-			
+
 			// `?:binding=${a, b}`, `?:binding=${(a, b)}`
 			if (ts.isParenthesizedExpression(valueNode)) {
 				valueNode = valueNode.expression
@@ -107,7 +107,7 @@ export function diagnoseBinding(
 			// May unused comma expression of a for `${a, b}`, here remove it.
 			if (splittedValueNodes.length > 1) {
 				for (let i = 0; i < splittedValueNodes.length - 1; i++) {
-					modifier.deleteOfNode(splittedValueNodes[i], [DiagnosticCode.UnUsedComma])
+					modifier.deleteByNode(splittedValueNodes[i], [DiagnosticCode.UnUsedComma])
 				}
 			}
 		}
@@ -173,7 +173,7 @@ function diagnoseStyleUpdateParameter(
 			let valueLength = valueNode ? valueNode.end - valueStart : length
 			let fromText = helper.types.getTypeFullText(valueType)
 
-			modifier.add(valueStart, valueLength, DiagnosticCode.NotAssignable, `Type "${fromText}" is not assignable to ":style" Binding Parameter.`)
+			modifier.add(valueStart, valueLength, DiagnosticCode.NotAssignable, `Type '${fromText}' is not assignable to ':style' Binding Parameter.`)
 		}
 
 		return 
@@ -216,7 +216,7 @@ function diagnoseOtherUpdateParameter(
 			let fromText = helper.types.getTypeFullText(valueType)
 			let toText = helper.types.getTypeFullText(paramType)
 
-			modifier.add(valueStart, valueLength, DiagnosticCode.NotAssignable, `Type "${fromText}" is not assignable to Binding Parameter type "${toText}".`)
+			modifier.add(valueStart, valueLength, DiagnosticCode.NotAssignable, `Type '${fromText}' is not assignable to Binding Parameter type '${toText}'.`)
 		}
 	}
 }

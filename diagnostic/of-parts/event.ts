@@ -28,7 +28,7 @@ export function diagnoseEvent(
 	if (piece.type === TemplatePartPieceType.Name) {
 		if (component) {
 			if (part.namePrefix === '@@' && !comEvent) {
-				modifier.add(start, length, DiagnosticCode.NotExistOn, `"<${component.name}>" does not support event "${mainName}".`)
+				modifier.add(start, length, DiagnosticCode.NotExistOn, `'<${component.name}>' does not support event '${mainName}'.`)
 				return
 			}
 		}
@@ -50,7 +50,7 @@ export function diagnoseEvent(
 				let inCategory = !!findCompletionDataItem(LuposDOMEventModifiers[category], modifierValue)
 
 				if (!inCategory) {
-					modifier.add(start, length, DiagnosticCode.NotExistOn, `Modifier "${modifierValue}" is not supported by event "${mainName}".`)
+					modifier.add(start, length, DiagnosticCode.NotExistOn, `Modifier '${modifierValue}' is not supported by event '${mainName}'.`)
 				}
 			}
 		}
@@ -68,7 +68,7 @@ export function diagnoseEvent(
 				let fromText = helper.types.getTypeFullText(handlerType)
 				let toText = helper.types.getTypeFullText(eventType)
 
-				modifier.add(start, length, DiagnosticCode.NotAssignable, `Property type "${fromText}" is not assignable to type "${toText}".`)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `Property type '${fromText}' is not assignable to type '${toText}'.`)
 				return
 			}
 		}
@@ -79,7 +79,7 @@ export function diagnoseEvent(
 
 			if (!helper.types.isFunctionType(handlerType) && !helper.types.isAnyType(handlerType)) {
 				let fromText = helper.types.getTypeFullText(handlerType)
-				modifier.add(start, length, DiagnosticCode.NotAssignable, `"${fromText}" is not a event handler.`)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `'${fromText}' is not a event handler.`)
 				return
 			}
 		}

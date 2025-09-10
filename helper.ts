@@ -470,9 +470,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		// /**	^\/\*\*[^\n]*
 		// */	\s*\*\/\s*$
 		// *	^\s*\* ?
-		return comment.replace(/^\s*\/\/ ?|^\/\*\*[\s^\n]*|\s*\*\/\s*$|^\s*\* ?/gm, '')
+		return comment.replace(/^\s*\/\/ ?|^\/\*\*[\s^\n]*(?:\*\s)?|\s*\*\/\s*$|^\s*\* ?/gm, '')
 	}
-
 
 
 

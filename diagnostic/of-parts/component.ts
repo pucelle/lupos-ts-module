@@ -21,12 +21,12 @@ export function diagnoseComponent(
 	if (TemplateSlotPlaceholder.isNamedComponent(tagName)) {
 		let ref = template.getReferenceByName(tagName)
 		if (ref) {
-			modifier.deleteNeverReadFromNodeExtended(ref)
+			modifier.deleteNeverRead(ref)
 		}
 
 		let component = analyzer.getComponentByTagName(tagName, template)
 		if (!component) {
-			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Component "<${tagName}>" is not existing.`)
+			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Component '<${tagName}>' is not existing.`)
 			return
 		}
 	}
@@ -41,7 +41,7 @@ export function diagnoseComponent(
 
 			let decl = helper.symbol.resolveDeclaration(valueNode, ts.isClassDeclaration)
 			if (!decl || !helper.objectLike.isDerivedOf(decl, 'Component', '@pucelle/lupos.js')) {
-				modifier.add(start, length, DiagnosticCode.NotAssignable, `"${helper.getFullText(valueNode)}" is not a component.`)
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `'${helper.getFullText(valueNode)}' is not a component.`)
 				return
 			}
 		}
