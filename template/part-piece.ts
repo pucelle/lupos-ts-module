@@ -50,6 +50,7 @@ export function parseAllTemplatePartPieces(part: TemplatePart): TemplatePartPiec
 		|| part.type === TemplatePartType.FlowControl
 		|| part.type === TemplatePartType.SlotTag
 		|| part.type === TemplatePartType.NormalStartTag
+		|| part.type === TemplatePartType.EmptyStartTag
 	) {
 		end += part.node.type === HTMLNodeType.Tag ? part.node.tagName!.length : 0
 

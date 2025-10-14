@@ -4,8 +4,11 @@ import {HTMLAttribute, HTMLNode, TemplateSlotString, TemplateSlotValueIndex} fro
 /** Type of each template part. */
 export enum TemplatePartType {
 
-	/** `<lu:...>`, `<slot>`, or any of `<[a-z]+`, or only `<`. */
+	/** `<lu:...>`, `<slot>`, or any of `<[a-z]+`. */
 	NormalStartTag,
+
+	/** Only `<`. */
+	EmptyStartTag,
 
 	/** `<slot>` */
 	SlotTag,
