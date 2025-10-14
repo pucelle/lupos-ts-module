@@ -54,15 +54,9 @@ export class PositionMapper {
 		}
 
 		let index = this.findIndex(from)
-		let prev = this.fromTo[index]
-		let next = index < this.fromTo.length - 1 ? this.fromTo[index + 1] : null
+		let diff = this.fromTo[index].to - this.fromTo[index].from
 
-		if (!next) {
-			return from + prev.to - prev.from
-		}
-
-		let rate = (from - prev.from) / (next.from - prev.from)
-		return Math.round(prev.to + rate * (next.to - prev.to))
+		return from + diff
 	}
 
 	private findIndex(from: number) {
@@ -82,15 +76,9 @@ export class PositionMapper {
 		}
 
 		let index = this.backFindIndex(to)
-		let prev = this.fromTo[index]
-		let next = index < this.fromTo.length - 1 ? this.fromTo[index + 1] : null
+		let diff = this.fromTo[index].to - this.fromTo[index].from
 
-		if (!next) {
-			return to + prev.from - prev.to
-		}
-
-		let rate = (to - prev.to) / (next.to - prev.to)
-		return Math.round(prev.from + rate * (next.from - prev.from))
+		return to - diff
 	}
 
 	private backFindIndex(to: number) {
