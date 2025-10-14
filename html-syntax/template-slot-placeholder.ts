@@ -47,6 +47,9 @@ export namespace TemplateSlotPlaceholder {
 	 * Get whole string part of a tagged template.
 	 * Will add `$LUPOS_START_\d$ to indicate start of each template part.
 	 * Template slots have been replaced to placeholder `$LUPOS_SLOT_INDEX_\d$`.
+	 * 
+	 * Odd indices are value interpolation start.
+	 * Even indices are start or value interpolation end.
 	 */
 	export function toTemplateContent(template: TS.TemplateLiteral): {string: string, mapper: PositionMapper} {
 		let string = ''
@@ -65,7 +68,13 @@ export namespace TemplateSlotPlaceholder {
 			let index = -1
 			
 			for (let span of template.templateSpans) {
+
+				// `|${...}`
+				mapper.add(string.length, span.getStart() - 2)
+
 				string += `\$LUPOS_SLOT_INDEX_${++index}\$`
+
+				// `${...}|`
 				mapper.add(string.length, span.literal.getStart() + 1)
 				string += span.literal.rawText
 			}
