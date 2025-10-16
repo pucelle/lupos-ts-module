@@ -551,11 +551,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			node: TS.ClassLikeDeclaration,
 			methodName: string,
 			resolveChained: boolean
-		): TS.MethodDeclaration | undefined {
+		): TS.MethodDeclaration | TS.MethodSignature | undefined {
 			for (let member of objectLike.walkMembers(node, resolveChained)) {
 				if (objectLike.getMemberName(member) === methodName
-					&& ts.isMethodDeclaration(member)
-					&& member.body
+					&& isMethodLike(member)
 				) {
 					return member
 				}
