@@ -5,6 +5,9 @@ import {TemplatePart, TemplatePartType} from './part'
 export interface TemplatePartPiece {
 	type: TemplatePartPieceType
 
+	/** For attribute value it includes quotes. */
+	name: string
+
 	/** Start offset in template region. */
 	start: number
 
@@ -56,6 +59,7 @@ export function parseAllTemplatePartPieces(part: TemplatePart): TemplatePartPiec
 
 		pieces.push({
 			type: TemplatePartPieceType.TagName,
+			name: part.mainName!,
 			start,
 			end,
 		})
@@ -70,6 +74,7 @@ export function parseAllTemplatePartPieces(part: TemplatePart): TemplatePartPiec
 		// `@|name|`
 		pieces.push({
 			type: TemplatePartPieceType.Name,
+			name: part.mainName || '',
 			start,
 			end
 		})
@@ -84,6 +89,7 @@ export function parseAllTemplatePartPieces(part: TemplatePart): TemplatePartPiec
 			// `.|modifier|`
 			pieces.push({
 				type: TemplatePartPieceType.Modifier,
+				name: part.modifiers[i],
 				start,
 				end,
 				modifierIndex: i,
@@ -104,6 +110,7 @@ export function parseAllTemplatePartPieces(part: TemplatePart): TemplatePartPiec
 		// a="|b|"
 		pieces.push({
 			type: TemplatePartPieceType.AttrValue,
+			name: part.attr.name,
 			start: valueStart,
 			end: valueEnd,
 		})
