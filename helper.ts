@@ -2114,12 +2114,22 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		isImportedFrom(node: TS.Node, memberName: string, moduleName: string): boolean {
 			let nm = symbol.resolveImport(node)
 
-			if (nm && nm.memberName === memberName && nm.moduleName === moduleName) {
-				return true
-			}
-			else {
+			if (!nm || nm.memberName !== memberName) {
 				return false
 			}
+
+			if (nm.moduleName === moduleName) {
+				return true
+			}
+				
+			// Import relative module, try match file path.
+			if (nm.moduleName.startsWith('.')
+				&& node.getSourceFile().fileName.includes('/' + moduleName + '/')
+			) {
+				return true
+			}
+
+			return false
 		},
 
 		/** Resolve the import name and module. */
