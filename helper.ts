@@ -680,7 +680,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 					// Import relative module, try match file path after excluding user part.
 					if (resolved.moduleName.startsWith('.')
-						&& node.getSourceFile().fileName.includes('/' + moduleName.replace(/^@[\w-]+\//, '') + '/')
+						&& node.getSourceFile().fileName.includes('/' + moduleName.replace('@pucelle', '') + '/')
 					) {
 						return resolved.memberName
 					}
@@ -731,7 +731,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 				// Import relative module, try match file path.
 				if (resolved.moduleName.startsWith('.')
-					&& node.getSourceFile().fileName.includes('/' + moduleName + '/')
+					&& node.getSourceFile().fileName.includes('/' + moduleName.replace('@pucelle', '') + '/')
 				) {
 					return resolved.memberName
 				}
@@ -2124,7 +2124,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				
 			// Import relative module, try match file path.
 			if (nm.moduleName.startsWith('.')
-				&& node.getSourceFile().fileName.includes('/' + moduleName + '/')
+				&& node.getSourceFile().fileName.includes('/' + moduleName.replace('@pucelle', '') + '/')
 			) {
 				return true
 			}
