@@ -265,6 +265,11 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			|| ts.isSetAccessorDeclaration(node)
 	}
 
+	/** Whether be a constructor declaration or signature. */
+	function isConstructorLike(node: TS.Node): node is TS.ConstructorDeclaration | TS.ConstructSignatureDeclaration {
+		return ts.isConstructorDeclaration(node) || ts.isConstructSignatureDeclaration(node)
+	}
+
 	/** Whether be a method declaration or signature. */
 	function isMethodLike(node: TS.Node): node is TS.MethodSignature | TS.MethodDeclaration {
 		return ts.isMethodSignature(node) || ts.isMethodDeclaration(node)
@@ -544,7 +549,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** 
-		 * Get method declaration by it's name, and which will always have body.
+		 * Get method declaration or signature by it's name, and which will always have body.
 		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
 		 */
 		getMethod(
@@ -564,10 +569,47 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** 
-		 * Get constructor declaration.
+		 * Get method declaration by it's name, and which will always have body.
+		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
+		 */
+		getMethodDeclaration(
+			node: TS.ClassLikeDeclaration,
+			methodName: string,
+			resolveChained: boolean
+		): TS.MethodDeclaration | undefined {
+			for (let member of objectLike.walkMembers(node, resolveChained)) {
+				if (objectLike.getMemberName(member) === methodName
+					&& ts.isMethodDeclaration(member)
+				) {
+					return member
+				}
+			}
+
+			return undefined
+		},
+
+		/** 
+		 * Get constructor declaration or signature.
 		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
 		 */
 		getConstructor(
+			node: ObjectLike,
+			resolveChained: boolean
+		): TS.ConstructorDeclaration | TS.ConstructSignatureDeclaration | undefined {
+			for (let member of objectLike.walkMembers(node, resolveChained)) {
+				if (isConstructorLike(member)) {
+					return member
+				}
+			}
+
+			return undefined
+		},
+
+		/** 
+		 * Get constructor declaration.
+		 * `resolveChained`: specifies whether will look at extended classes or interfaces.
+		 */
+		getConstructorDeclaration(
 			node: ObjectLike,
 			resolveChained: boolean
 		): TS.ConstructorDeclaration | undefined {
@@ -1625,7 +1667,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 		/** Get method or constructor  */
 		getCallParameters(callExp: TS.CallExpression | TS.NewExpression): TS.NodeArray<TS.ParameterDeclaration> | undefined	{
-			let decl: TS.FunctionLikeDeclaration | TS.MethodSignature | TS.MethodDeclaration | TS.ConstructorDeclaration | undefined
+			let decl: TS.FunctionLikeDeclaration | TS.MethodSignature | TS.MethodDeclaration | TS.ConstructorDeclaration | TS.ConstructSignatureDeclaration | undefined
 			if (ts.isCallExpression(callExp)) {
 				decl = symbol.resolveDeclaration(callExp.expression, n => isFunctionLike(n) || isMethodLike(n))
 			}
@@ -2569,6 +2611,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		isPropertyLike,
 		isPropertyOrGetAccessor,
 		isPropertyOrGetSetAccessor,
+		isConstructorLike,
 		isMethodLike,
 		isTypeDeclaration,
 		isThis,
