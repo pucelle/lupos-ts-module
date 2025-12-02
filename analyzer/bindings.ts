@@ -12,7 +12,7 @@ export function analyzeLuposBindings(sourceFile: TS.SourceFile, helper: Helper):
 		if (helper.ts.isClassDeclaration(node)
 			&& node.name
 			&& (
-				helper.class.isImplementedOf(node, 'Binding', '@pucelle/lupos.js')
+				helper.class.isImplementedOf(node, 'Binding', 'lupos.html')
 				|| LuposKnownInternalBindingNamesMap.has(node.name.text)
 			)
 		) {

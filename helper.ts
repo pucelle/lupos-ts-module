@@ -1226,7 +1226,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			// Not validate which method.
 			else if (ts.isClassDeclaration(classDecl)) {
 				for (let superDecl of cls.walkSelfAndChainedSuper(classDecl)) {
-					if (cls.isImplementedOf(superDecl, 'MethodsObserved', '@pucelle/lupos')) {
+					if (cls.isImplementedOf(superDecl, 'MethodsObserved', 'lupos')) {
 						return true
 					}
 				}
@@ -2204,14 +2204,14 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 				// In lupos tests.
 				if (fileName.includes('/lupos/tests/src/')) {
-					moduleName = '@pucelle/lupos'
+					moduleName = 'lupos'
 				}
 
 				// In lupos.js tests.
 				if (fileName.includes('/lupos.js/tests/src/')
 					|| fileName.includes('/lupos.js/out/')
 				) {
-					moduleName = '@pucelle/lupos.js'
+					moduleName = 'lupos.html'
 				}
 			}
 

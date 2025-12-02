@@ -22,7 +22,7 @@ export function analyzeLuposComponents(sourceFile: TS.SourceFile, helper: Helper
 function isLuposComponent(node: TS.Node, helper: Helper): node is TS.ClassLikeDeclaration {
 	return helper.ts.isClassDeclaration(node)
 		&& !!node.name
-		&& helper.objectLike.isDerivedOf(node, 'Component', '@pucelle/lupos.js')
+		&& helper.objectLike.isDerivedOf(node, 'Component', 'lupos.html')
 }
 
 

@@ -40,7 +40,7 @@ export function diagnoseComponent(
 			let valueNode = template.valueNodes[valueIndex]
 
 			let decl = helper.symbol.resolveDeclaration(valueNode, ts.isClassDeclaration)
-			if (!decl || !helper.objectLike.isDerivedOf(decl, 'Component', '@pucelle/lupos.js')) {
+			if (!decl || !helper.objectLike.isDerivedOf(decl, 'Component', 'lupos.html')) {
 				modifier.add(start, length, DiagnosticCode.NotAssignable, `'${helper.getFullText(valueNode)}' is not a component.`)
 				return
 			}
