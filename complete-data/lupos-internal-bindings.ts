@@ -1,4 +1,4 @@
-/** Known bindings existing in `lupos.js`. */
+/** Known bindings existing in `lupos.html`. */
 export const LuposKnownInternalBindings: Record<string, {name: string, parameterCount: number, implementsPart: boolean}> = {
 	class: {name: 'ClassBinding', parameterCount: 1, implementsPart: false},
 	html: {name: 'HTMLBinding', parameterCount: 1, implementsPart: false},

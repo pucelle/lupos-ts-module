@@ -30,7 +30,7 @@ export function createLuposBinding(node: TS.ClassDeclaration, helper: Helper): L
 	let sourceFile = node.getSourceFile()
 
 	// `ClassBinding` -> `class`
-	if (sourceFile.fileName.includes('/lupos.js/')) {
+	if (sourceFile.fileName.includes('/lupos.html/')) {
 		name = LuposKnownInternalBindingNamesMap.get(name) || name
 	}
 
