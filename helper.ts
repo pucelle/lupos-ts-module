@@ -2198,7 +2198,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				}
 			}
 
-			// Compile codes within `lupos.js` library.
+			// Compile codes within `lupos.html` library.
 			if (moduleName && moduleName.startsWith('.')) {
 				let fileName = node.getSourceFile().fileName
 
@@ -2207,9 +2207,9 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 					moduleName = 'lupos'
 				}
 
-				// In lupos.js tests.
-				if (fileName.includes('/lupos.js/tests/src/')
-					|| fileName.includes('/lupos.js/out/')
+				// In lupos.html tests.
+				if (fileName.includes('/lupos.html/tests/src/')
+					|| fileName.includes('/lupos.html/out/')
 				) {
 					moduleName = 'lupos.html'
 				}
