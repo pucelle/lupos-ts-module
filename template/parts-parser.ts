@@ -76,7 +76,7 @@ export class TemplatePartParser {
 				break
 
 			case HTMLNodeType.Text:
-				callbacks.push(this.parseText(node))
+				callbacks.push(this.parseTextLike(node))
 				break
 		}
 
@@ -318,7 +318,7 @@ export class TemplatePartParser {
 	}
 
 	/** Parse `<tag>${...}</tag>`. */
-	private parseText(node: HTMLNode) {
+	private parseTextLike(node: HTMLNode) {
 		let callbacks: (() => void)[] = []
 
 		// Try to join all neighbor string sections.
@@ -507,7 +507,7 @@ export class TemplatePartParser {
 		if (!strings) {
 			current.strings = null
 			current.valueIndices = valueIndices
-			current.beText = this.isValueAtIndexValueType(valueIndices[0].index)
+			current.beText = this.isTextValueAtIndexValueType(valueIndices[0].index)
 
 			return group
 		}
@@ -521,7 +521,7 @@ export class TemplatePartParser {
 			}
 
 			let valueIndex = valueIndices[i]
-			let beText = this.isValueAtIndexValueType(valueIndex.index)
+			let beText = this.isTextValueAtIndexValueType(valueIndex.index)
 
 			if (beText) {
 				current.valueIndices!.push(valueIndex)
@@ -562,11 +562,11 @@ export class TemplatePartParser {
 	}
 
 	/** Check whether a value index represents a value type of node. */
-	private isValueAtIndexValueType(index: number): boolean {
+	private isTextValueAtIndexValueType(index: number): boolean {
 		let rawNode = this.valueNodes[index]
 		let type = this.helper.types.typeOf(rawNode)
 
-		return this.helper.types.isValueType(type)
+		return this.helper.types.isStringType(type) || this.helper.types.isNumericType(type)
 	}
 }
 
