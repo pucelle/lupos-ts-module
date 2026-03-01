@@ -6,7 +6,6 @@ import {Helper} from '../helper'
 import {ListMap, TwoWayListMap} from '../utils'
 import {TemplateBasis} from '../template'
 import {LuposKnownInternalBindings} from '../complete-data'
-import {Logger} from '../../core'
 
 
 /** 
@@ -47,10 +46,6 @@ export class Analyzer {
 
 		let components = analyzeLuposComponents(sourceFile, this.helper)
 		let bindings = analyzeLuposBindings(sourceFile, this.helper)
-
-		if (bindings.length > 0) {
-			Logger.log(bindings.map(v => v.name))
-		}
 
 		this.files.add(sourceFile)
 
