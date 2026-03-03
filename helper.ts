@@ -1977,7 +1977,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return (type.flags & ts.TypeFlags.Object) > 0
 		},
 
-		/** Test whether type represents a value. */
+		/** 
+		 * Test whether type represents a value.
+		 * Note it only detect a direct boolean type, can't check type extends value type.
+		 */
 		isValueType(type: TS.Type): boolean {
 			if (type.isUnionOrIntersection()) {
 				return type.types.every(t => types.isValueType(t))
@@ -1994,17 +1997,26 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			)) > 0
 		},
 
-		/** Test whether type represents a string. */
+		/** 
+		 * Test whether type represents a string.
+		 * Note it only detect a direct boolean type, can't check type extends string.
+		 */
 		isStringType(type: TS.Type): boolean {
 			return (type.flags & ts.TypeFlags.StringLike) > 0
 		},
 
-		/** Test whether type represents a number. */
+		/** 
+		 * Test whether type represents a number.
+		 * Note it only detect a direct boolean type, can't check type extends number.
+		 */
 		isNumericType(type: TS.Type): boolean {
 			return (type.flags & ts.TypeFlags.NumberLike) > 0
 		},
 
-		/** Test whether type represents a boolean. */
+		/** 
+		 * Test whether type represents a boolean.
+		 * Note it only detect a direct boolean type, can't check type extends boolean.
+		 */
 		isBooleanType(type: TS.Type): boolean {
 			return (type.flags & ts.TypeFlags.BooleanLike) > 0
 		},

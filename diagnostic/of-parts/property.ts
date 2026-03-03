@@ -31,8 +31,9 @@ export function diagnoseProperty(
 			let hasNoValue = !pieces.find(piece => piece.type === TemplatePartPieceType.AttrValue)
 			if (hasNoValue) {
 				let propertyType = helper.types.typeOf(property.nameNode)
+				let booleanType = helper.typeChecker.getBooleanType()
 
-				if (!helper.types.isBooleanType(propertyType)) {
+				if (!helper.types.isAssignableToExtended(propertyType, booleanType)) {
 					let fromText = 'boolean'
 					let toText = helper.types.getTypeFullText(propertyType)
 
