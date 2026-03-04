@@ -1134,6 +1134,14 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				return true
 			}
 
+			// `of a`
+			if (node.parent
+				&& ts.isForOfStatement(node.parent)
+				&& node === node.parent.expression
+			) {
+				return true
+			}
+
 			// `Object.xx(...)`
 			if (node.parent
 				&& ts.isCallExpression(node.parent)
@@ -1258,10 +1266,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			let propName = getText(decl.name)
 	
 			if (objName === 'Map') {
-				return propName === 'has' || propName === 'get' || propName === 'size'
+				return propName === 'has' || propName === 'get' || propName === 'size' || propName === 'keys' || propName === 'values'
 			}
 			else if (objName === 'Set') {
-				return propName === 'has' || propName === 'size'
+				return propName === 'has' || propName === 'size' || propName === 'keys' || propName === 'values'
 			}
 			else if (objName === 'Array' || objName === 'ReadonlyArray') {
 				return !(
