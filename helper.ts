@@ -1122,7 +1122,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 *   - `Object.keys(a)`, `Object.values(a)`, `Object.entries(a)`
 		 *   - `Object.assign(..., a)`
 		 */
-		isAllElementsReadAccess(node: TS.Node): boolean {
+		isAllElementsReadAccess(node: TS.Node): node is TS.Expression {
 
 			// `[...a]`, or `{...a}`
 			if (node.parent
@@ -1172,7 +1172,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 *   - `[...a] = ...`, or `{...a} = ...`
 		 *   - `Object.assign(a, ...)`
 		 */
-		isAllElementsWriteAccess(node: TS.Node): boolean {
+		isAllElementsWriteAccess(node: TS.Node): node is TS.Expression {
 			if (node.parent
 				&& (ts.isSpreadElement(node.parent)
 					|| ts.isSpreadAssignment(node.parent)
