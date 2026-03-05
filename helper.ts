@@ -1122,7 +1122,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 *   - `Object.keys(a)`, `Object.values(a)`, `Object.entries(a)`
 		 *   - `Object.assign(..., a)`
 		 */
-		isAllElementsReadAccess(node: TS.Node): boolean {
+		isAllElementsReadAccess(node: TS.Node): node is TS.Expression {
 
 			// `[...a]`, or `{...a}`
 			if (node.parent
@@ -1130,6 +1130,14 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 					|| ts.isSpreadAssignment(node.parent)
 				)
 				&& !assign.isWithinAssignmentTo(node)
+			) {
+				return true
+			}
+
+			// `of a`
+			if (node.parent
+				&& ts.isForOfStatement(node.parent)
+				&& node === node.parent.expression
 			) {
 				return true
 			}
@@ -1164,7 +1172,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 *   - `[...a] = ...`, or `{...a} = ...`
 		 *   - `Object.assign(a, ...)`
 		 */
-		isAllElementsWriteAccess(node: TS.Node): boolean {
+		isAllElementsWriteAccess(node: TS.Node): node is TS.Expression {
 			if (node.parent
 				&& (ts.isSpreadElement(node.parent)
 					|| ts.isSpreadAssignment(node.parent)
@@ -1258,10 +1266,10 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			let propName = getText(decl.name)
 	
 			if (objName === 'Map') {
-				return propName === 'has' || propName === 'get' || propName === 'size'
+				return propName === 'has' || propName === 'get' || propName === 'size' || propName === 'keys' || propName === 'values'
 			}
 			else if (objName === 'Set') {
-				return propName === 'has' || propName === 'size'
+				return propName === 'has' || propName === 'size' || propName === 'keys' || propName === 'values'
 			}
 			else if (objName === 'Array' || objName === 'ReadonlyArray') {
 				return !(
