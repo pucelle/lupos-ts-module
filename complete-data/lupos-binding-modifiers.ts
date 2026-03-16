@@ -19,8 +19,8 @@ export const LuposBindingModifiers: Record<string, ModifierCompletionDataItem[]>
 		{name: 'binding', description: 'Force reference previous binding.', group: 1},
 	],
 	transition: [
-		{name: 'global', description: 'Play transition only when element itself get inserted or removed.', group: 1},
-		{name: 'local', description: 'Play transition when element or any ancestral element get inserted or removed, this is default action.', group: 1},
+		{name: 'local', description: 'Play transition only when element itself get inserted or removed, this is default action.', group: 1},
+		{name: 'global', description: 'Play transition when element or any ancestral element get inserted or removed, this is default action.', group: 1},
 		{name: 'immediate', description: 'Play transition immediately after element get initialized.', group: 2},
 	],
 }
