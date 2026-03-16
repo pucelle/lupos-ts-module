@@ -16,7 +16,10 @@ export class ScopeTree<S extends Scope = Scope> {
 	readonly ts: typeof TS
 
 	protected stack: S[] = []
+
+	/** Current not in stack. */
 	protected current: S | null = null
+	
 	protected sourceFile: TS.SourceFile | null = null
 
 	/** Scope node -> scope. */
@@ -34,9 +37,7 @@ export class ScopeTree<S extends Scope = Scope> {
 
 		// In the first visiting initialize visit and scope tree.
 		const visitor = (node: TS.Node) => {
-			this.toNext(node)
-
-			this.toChild()
+			this.toChild(node)
 			this.ts.forEachChild(node, visitor)
 			this.toParent(node)
 		}
@@ -44,8 +45,8 @@ export class ScopeTree<S extends Scope = Scope> {
 		visitor(sourceFile)
 	}
 
-	/** To next sibling. */
-	protected toNext(node: TS.Node) {
+	/** Before entering child nodes. */
+	protected toChild(node: TS.Node) {
 		if (this.ts.isSourceFile(node)
 			|| this.helper.isFunctionLike(node)
 			|| this.ts.isForStatement(node)
@@ -53,7 +54,11 @@ export class ScopeTree<S extends Scope = Scope> {
 			|| this.ts.isForInStatement(node)
 			|| this.ts.isBlock(node)
 		) {
-			let parent = this.stack.length > 0 ? this.stack[this.stack.length - 1] : null
+			let parent = this.current
+			if (parent) {
+				this.stack.push(parent)
+			}
+
 			this.current = new this.Scope(node, parent, this.helper)
 			this.scopeMap.set(node, this.current!)
 		}
@@ -62,14 +67,11 @@ export class ScopeTree<S extends Scope = Scope> {
 		}
 	}
 
-	/** To first child. */
-	protected toChild() {
-		this.stack.push(this.current!)
-	}
-
-	/** To parent. */
-	protected toParent(_node: TS.Node) {
-		this.current = this.stack.pop()!
+	/** Exit self and enter parent. */
+	protected toParent(node: TS.Node) {
+		if (node === this.current?.node) {
+			this.current = this.stack.pop()!
+		}
 	}
 
 	/** Get top most scope, the scope of source file. */
