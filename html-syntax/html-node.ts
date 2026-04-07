@@ -1,5 +1,6 @@
 import {TemplateSlotPlaceholder} from './template-slot-placeholder'
 import {SelfClosingTags} from './html-token-scanner'
+import {generateFingerPrint} from '../utils'
 
 
 export enum HTMLNodeType {
@@ -106,8 +107,14 @@ export class HTMLNode {
 	/** Description for text and comment node. */
 	desc: string | null = null
 
+	/** All child nodes. */
 	children: HTMLNode[] = []
+
+	/* Parent node */
 	parent: HTMLNode | null = null
+
+	/** A finger print id, indicates will add more element before current. */
+	fingerPrintId: string | null = null
 
 	constructor(type: HTMLNodeType, start: number, end: number, tagName?: string, attrs?: HTMLAttribute[], text?: string) {
 		this.type = type
@@ -128,6 +135,13 @@ export class HTMLNode {
 		}
 		else {
 			this.text = undefined
+		}
+
+		if (type === HTMLNodeType.Tag
+			&& tagName!.startsWith('lu:')
+			&& tagName !== 'lu:portal'
+		) {
+			this.fingerPrintId = generateFingerPrint(6)
 		}
 	}
 
@@ -276,10 +290,10 @@ export class HTMLNode {
 				)
 		}
 		else if (this.type === HTMLNodeType.Text) {
-			return this.text || ''
+			return this.text ?? ''
 		}
 		else {
-			return `<!--${this.text || ''}-->`
+			return `<!--${this.text ?? ''}-->`
 		}
 	}
 
@@ -326,7 +340,7 @@ export class HTMLNode {
 
 			// Flow control
 			if (tagName.startsWith('lu:') && tagName !== 'lu:portal') {
-				return `<!---->`
+				return `<!--${this.fingerPrintId ?? ''}-->`
 			}
 
 			// Portal
@@ -357,7 +371,7 @@ export class HTMLNode {
 			return this.text!
 		}
 		else {
-			return `<!---->`
+			return `<!--${this.fingerPrintId ?? ''}-->`
 		}
 	}
 
