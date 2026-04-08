@@ -11,5 +11,5 @@ export function setFingerPrintSalt(theSalt: string) {
 
 
 export function generateFingerPrint(length: number) {
-	return crypto.createHash('md5').update(salt + '_' + index).digest('hex').slice(0, length)
+	return crypto.createHash('md5').update(salt + '_' + index++).digest('hex').slice(0, length)
 }

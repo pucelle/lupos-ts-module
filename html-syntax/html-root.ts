@@ -148,7 +148,7 @@ export class HTMLRoot extends HTMLNode {
 		super(HTMLNodeType.Tag, -1, -1, 'root', [])
 	}
 
-	getContentHTMLString() {
+	override getContentHTMLString() {
 		if (this.firstChild?.tagName === 'template') {
 			return this.firstChild.getContentHTMLString()
 		}
