@@ -2,6 +2,7 @@ import type * as TS from 'typescript'
 import {HTMLAttribute, HTMLNode, HTMLNodeType, HTMLRoot, TemplateSlotPlaceholder, TemplateSlotString, TemplateSlotValueIndex} from '../html-syntax'
 import {Helper} from '../helper'
 import {TemplatePart, TemplatePartType} from './part'
+import {generateFingerPrint} from '../utils'
 
 
 /** 
@@ -365,6 +366,7 @@ export class TemplatePartParser {
 
 			let comment = new HTMLNode(HTMLNodeType.Comment, node.start, node.end)
 			comment.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(null, valueIndices)
+			comment.fingerPrintId = generateFingerPrint(6)
 			node.replaceWith(comment)
 
 			let callback = this.onPart({
@@ -428,6 +430,7 @@ export class TemplatePartParser {
 				else {
 					let comment = new HTMLNode(HTMLNodeType.Comment, node.start, node.end)
 					comment.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(strings, valueIndices)
+					comment.fingerPrintId = generateFingerPrint(6)
 					node.before(comment)
 
 					let addSlotFn = () => this.onPart({
