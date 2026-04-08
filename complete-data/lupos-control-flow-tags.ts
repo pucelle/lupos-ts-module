@@ -43,4 +43,8 @@ export const LuposFlowControlTags: CompletionDataItem[] = [
 		name: "lu:default",
 		description: "`<lu:default>Default Content</>` shows content when all case `matchingValue` mismatched.",
 	},
+	{
+		name: "lu:portal",
+		description: "`<lu:portal>Content</>` renders elements within it and the rendered contents can be safely moved to other place",
+	},
 ]
