@@ -20,6 +20,7 @@ export class HTMLRoot extends HTMLNode {
 				// start is the start of tag name.
 				let node = new HTMLNode(HTMLNodeType.Tag, start, -1, token.text, [])
 				node.nameEnd = end
+
 				current.append(node)
 				current = node
 			}

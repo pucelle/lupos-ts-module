@@ -114,7 +114,7 @@ export class HTMLNode {
 	parent: HTMLNode | null = null
 
 	/** A finger print id, indicates will add more element before current. */
-	fingerPrintId: string | null = null
+	markerId: string | null = null
 
 	constructor(type: HTMLNodeType, start: number, end: number, tagName?: string, attrs?: HTMLAttribute[], text?: string) {
 		this.type = type
@@ -141,7 +141,7 @@ export class HTMLNode {
 			&& tagName!.startsWith('lu:')
 			&& tagName !== 'lu:portal'
 		) {
-			this.fingerPrintId = generateFingerPrint(6)
+			this.markerId = generateFingerPrint(6)
 		}
 	}
 
@@ -277,13 +277,13 @@ export class HTMLNode {
 	}
 
 	/** Get string which still include slot indices. */
-	toString(): string {
+	toReadableString(): string {
 		if (this.type === HTMLNodeType.Tag) {
 			let tagName = this.tagName!
 			let children = this.children
 
-			return `<${tagName}${this.toStringOfAttrs(true)}${children.length === 0 ? ' /' : ''}>`
-				+ children.map(child => child.toString()).join('')
+			return `<${tagName}${this.toStringOfAttrs(false)}${children.length === 0 ? ' /' : ''}>`
+				+ children.map(child => child.toReadableString()).join('')
 				+ (children.length > 0
 					? `</${TemplateSlotPlaceholder.isDynamicComponent(tagName) ? '' : tagName}>`
 					: ''
@@ -299,18 +299,18 @@ export class HTMLNode {
 
 	/** Get content string which still include slot indices and text not been trimmed. */
 	getContentString(): string {
-		return this.children.map(child => child.toString()).join('')
+		return this.children.map(child => child.toReadableString()).join('')
 	}
 
 	/** 
 	 * Output attribute to string.
-	 * `includeRemoved` indicates whether should output removed attributes.
+	 * `forHTMLOutput` indicates whether should output final code to create elements.
 	 */
-	toStringOfAttrs(includeRemoved: boolean): string {
+	toStringOfAttrs(forHTMLOutput: boolean): string {
 		let joined: string[] = []
 
 		for (let {name, value, removed, quoted} of this.attrs!) {
-			if (!includeRemoved && removed) {
+			if (forHTMLOutput && removed) {
 				continue
 			}
 
@@ -330,6 +330,11 @@ export class HTMLNode {
 			}
 		}
 
+		// For hydration identify as component.
+		if (forHTMLOutput && TemplateSlotPlaceholder.isComponent(this.tagName!)) {
+			joined.push('com')
+		}
+
 		return joined.map(v => ' ' + v).join('')
 	}
 
@@ -340,7 +345,7 @@ export class HTMLNode {
 
 			// Flow control
 			if (tagName.startsWith('lu:') && tagName !== 'lu:portal') {
-				return `<!--${this.fingerPrintId ?? ''}-->`
+				return `<!--${this.markerId ?? ''}-->`
 			}
 
 			// Portal
@@ -357,21 +362,20 @@ export class HTMLNode {
 			let tagNameAttr = this.attrs!.find(attr => attr.name === 'tagName')
 			if (tagNameAttr) {
 				tagName = tagNameAttr.value ?? tagName
-				this.removeAttr(tagNameAttr)
 			}
 	
 			if (SelfClosingTags.includes(tagName)) {
-				return `<${tagName}${this.toStringOfAttrs(false)} />`
+				return `<${tagName}${this.toStringOfAttrs(true)} />`
 			}
 
 			let contents = this.children.map(child => child.toHTMLString()).join('')
-			return `<${tagName}${this.toStringOfAttrs(false)}>${contents}</${tagName}>`
+			return `<${tagName}${this.toStringOfAttrs(true)}>${contents}</${tagName}>`
 		}
 		else if (this.type === HTMLNodeType.Text) {
 			return this.text!
 		}
 		else {
-			return `<!--${this.fingerPrintId ?? ''}-->`
+			return `<!--${this.markerId ?? ''}-->`
 		}
 	}
 
