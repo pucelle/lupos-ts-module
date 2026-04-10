@@ -66,13 +66,6 @@ export class Analyzer {
 					this.references.add(sourceFile, refFile.fileName)
 				}
 			}
-
-			for (let slotEl of Object.values(component.slotElements)) {
-				let refFile = slotEl.nameNode.getSourceFile()
-				if (refFile !== sourceFile) {
-					this.references.add(sourceFile, refFile.fileName)
-				}
-			}
 		}
 	
 		for (let binding of bindings) {
@@ -210,18 +203,6 @@ export class Analyzer {
 		return undefined
 	}
 
-	/** Get all refs or slots properties outer class declaration contains given node. */
-	getComponentSubProperties(component: LuposComponent, propertyName: 'slotElements', subPropertyName: string): LuposProperty | undefined {
-		for (let com of this.walkComponents(component)) {
-			if (com[propertyName][subPropertyName]) {
-				return com[propertyName][subPropertyName]
-			}
-		}
-
-		return undefined
-	}
-
-	
 	/** Get event of a component. */
 	getComponentEvent(component: LuposComponent, eventName: string): LuposEvent | undefined {
 		for (let com of this.walkComponents(component)) {

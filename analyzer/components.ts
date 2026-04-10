@@ -66,7 +66,6 @@ export function createLuposComponent(node: TS.ClassLikeDeclaration, helper: Help
 		sourceFile: node.getSourceFile(),
 		properties,
 		events,
-		slotElements,
 	}
 }
 

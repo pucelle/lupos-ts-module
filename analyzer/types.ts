@@ -47,7 +47,4 @@ export interface LuposComponent extends LuposItem {
 
 	/** Component events, include all events even from super classes. */
 	readonly events: Record<string, LuposEvent>
-
-	/** Component slot elements. */
-	readonly slotElements: Record<string, LuposProperty>
 }
