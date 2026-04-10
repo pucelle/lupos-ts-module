@@ -141,7 +141,7 @@ export class HTMLNode {
 			&& tagName!.startsWith('lu:')
 			&& tagName !== 'lu:portal'
 		) {
-			this.markerId = generateFingerPrint(6)
+			this.markerId = generateFingerPrint()
 		}
 	}
 

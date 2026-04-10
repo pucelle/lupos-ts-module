@@ -366,7 +366,7 @@ export class TemplatePartParser {
 
 			let comment = new HTMLNode(HTMLNodeType.Comment, node.start, node.end)
 			comment.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(null, valueIndices)
-			comment.markerId = generateFingerPrint(6)
+			comment.markerId = generateFingerPrint()
 			node.replaceWith(comment)
 
 			let callback = this.onPart({
@@ -430,7 +430,7 @@ export class TemplatePartParser {
 				else {
 					let comment = new HTMLNode(HTMLNodeType.Comment, node.start, node.end)
 					comment.desc = TemplateSlotPlaceholder.joinStringsAndValueIndices(strings, valueIndices)
-					comment.markerId = generateFingerPrint(6)
+					comment.markerId = generateFingerPrint()
 					node.before(comment)
 
 					let addSlotFn = () => this.onPart({
