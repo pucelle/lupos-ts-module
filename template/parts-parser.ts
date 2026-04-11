@@ -199,6 +199,7 @@ export class TemplatePartParser {
 			// Specifies custom tagName for component.
 			if (name === 'tagName') {
 				node.removeAttr(attr)
+
 				let callback = this.onUnSlottedAttribute(attr, node)
 				if (callback) {
 					callbacks.push(callback)
@@ -246,7 +247,8 @@ export class TemplatePartParser {
 			// On component or template, component inner may add more.
 			let isSharedModification = node.tagName === 'template'
 				|| node.tagName && TemplateSlotPlaceholder.isComponent(node.tagName)
-				|| (name === 'class' || name === 'style') && attrs.find(attr => attr.name.startsWith(':' + name))
+				|| (name === 'class' || name === 'style')
+					&& attrs.find(attr => attr.name.startsWith(':' + name))
 
 			// To add attribute, but not fully set.
 			if (type === null && isSharedModification) {

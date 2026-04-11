@@ -14,10 +14,17 @@ export interface HTMLAttribute {
 
 	name: string
 
-	/** Original attribute value. */
+	/** 
+	 * Original attribute value without removing quotes.
+	 * Or null if no value, or newly created attr.
+	 */
 	rawValue: string | null
 
-	/** Quotes have been removed. */
+	/** 
+	 * Quotes have been removed.
+	 * Note like standard DOM html attribute,
+	 * value `null` means had set attr name, but no value existing.
+	 */
 	value: string | null
 
 	/** Whether raw attribute value has been quoted. */
@@ -218,6 +225,7 @@ export class HTMLNode {
 		this.children = []
 	}
 
+	/** Removes current node. */
 	remove() {
 		let index = this.parent!.children.indexOf(this)
 		if (index > -1) {
@@ -231,6 +239,31 @@ export class HTMLNode {
 		let index = this.siblingIndex
 		this.parent!.children.splice(index, 1, ...this.children)
 		this.setParent(null)
+	}
+
+	setAttr(name: string, value: string | null) {
+		this.attrs = this.attrs ?? []
+
+		let existingAttr = this.attrs?.find(a => a.name === name)
+		if (existingAttr) {
+			existingAttr.value = value
+		}
+		else {
+			let attr: HTMLAttribute = {
+				name,
+				rawValue: null,
+				value,
+				quoted: true,
+				start: this.tagEnd,
+				end: this.tagEnd,
+				nameStart: this.tagEnd,
+				nameEnd: this.tagEnd,
+				valueStart: this.tagEnd,
+				valueEnd: this.tagEnd,
+			}
+
+			this.attrs.push(attr)
+		}
 	}
 
 	removeAttr(attr: HTMLAttribute) {
@@ -331,6 +364,7 @@ export class HTMLNode {
 		}
 
 		// For hydration identify as component.
+		// Can't directly set this to node attribute, or will be compiled to `$com.el.setAttribute('com', '')`.
 		if (forHTMLOutput && TemplateSlotPlaceholder.isComponent(this.tagName!)) {
 			joined.push('com')
 		}
@@ -361,7 +395,7 @@ export class HTMLNode {
 			// Specifies custom tagName.
 			let tagNameAttr = this.attrs!.find(attr => attr.name === 'tagName')
 			if (tagNameAttr) {
-				tagName = tagNameAttr.value ?? tagName
+				tagName = tagNameAttr.value || tagName
 			}
 	
 			if (SelfClosingTags.includes(tagName)) {
