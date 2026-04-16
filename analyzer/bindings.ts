@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {LuposBinding} from './types'
 import {Helper, LuposKnownInternalBindingNamesMap} from '..'
 

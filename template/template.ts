@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {ScopeTree} from '../scope'
 import {HTMLRoot, TemplateSlotPlaceholder} from '../html-syntax'
 import {PositionMapper} from '../utils'

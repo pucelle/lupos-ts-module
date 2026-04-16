@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {HTMLAttribute, HTMLNode, HTMLNodeType, HTMLRoot, TemplateSlotPlaceholder, TemplateSlotString, TemplateSlotValueIndex} from '../html-syntax'
 import {Helper} from '../helper'
 import {TemplatePart, TemplatePartType} from './part'

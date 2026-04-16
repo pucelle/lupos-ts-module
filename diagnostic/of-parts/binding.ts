@@ -3,7 +3,7 @@ import {LuposBindingModifiers, LuposKnownInternalBindings} from '../../complete-
 import {TemplateBasis, TemplatePart, TemplatePartPiece, TemplatePartPieceType} from '../../template'
 import {DiagnosticCode} from '../codes'
 import {DiagnosticModifier} from '../diagnostic-modifier'
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 
 
 export function diagnoseBinding(

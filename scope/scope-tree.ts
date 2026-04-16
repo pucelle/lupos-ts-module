@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {Scope} from './scope'
 import {Helper} from '../helper'
 

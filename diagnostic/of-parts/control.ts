@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {TemplateBasis, TemplatePart, TemplatePartPiece} from '../../template'
 import {DiagnosticModifier} from '../diagnostic-modifier'
 import {HTMLNode, HTMLNodeType, TemplateSlotPlaceholder} from '../../html-syntax'

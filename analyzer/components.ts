@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {LuposComponent, LuposEvent, LuposProperty} from './types'
 import {Helper, ObjectLike} from '../helper'
 

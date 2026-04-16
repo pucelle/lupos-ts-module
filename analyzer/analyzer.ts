@@ -1,4 +1,4 @@
-import type * as TS from 'typescript'
+import type TS from 'typescript'
 import {analyzeLuposComponents, createLuposComponent} from './components'
 import {LuposBinding, LuposComponent, LuposEvent, LuposProperty} from './types'
 import {analyzeLuposBindings, createLuposBinding} from './bindings'
