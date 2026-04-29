@@ -7,6 +7,7 @@ let index = 0
 
 export function setFingerPrintSalt(theSalt: string) {
 	salt = theSalt
+	index = 0
 }
 
 
