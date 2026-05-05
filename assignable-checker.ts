@@ -29,13 +29,33 @@ export function assignableChecker(ts: typeof TS, typeCheckerGetter: () => TS.Typ
 			return true
 		}
 
-		/** `never` can assign to nothing. */
+		/** `never` can be assigned from nothing, except never. */
 		if (from.flags & ts.TypeFlags.Never) {
-			return false
+			return (to.flags & ts.TypeFlags.Never) > 0
 		}
 
-		// Generic type works as any.
-		if (isGenericType(from) || isGenericType(to)) {
+		/** `any` can be assigned from any, except never. */
+		if (to.flags & ts.TypeFlags.Any) {
+			return true
+		}
+
+		// Try resolve generic type. if failed, treat as any.
+		if (isGenericType(from)) {
+			let fromResolvedType = resolveGenericType(from)
+			if (fromResolvedType) {
+				return isAssignableTo(fromResolvedType, to, depth - 1)
+			}
+
+			return true
+		}
+
+		// Try resolve generic type. if failed, treat as any.
+		if (isGenericType(to)) {
+			let toResolvedType = resolveGenericType(to)
+			if (toResolvedType) {
+				return isAssignableTo(from, toResolvedType, depth - 1)
+			}
+
 			return true
 		}
 
@@ -134,6 +154,25 @@ export function assignableChecker(ts: typeof TS, typeCheckerGetter: () => TS.Typ
 
 	function isGenericType(from: TS.Type): boolean {
 		return (from.flags & ts.TypeFlags.TypeParameter) > 0
+	}
+
+	function resolveGenericType(from: TS.Type): TS.Type | undefined {
+		let fromDecl = (from.getSymbol() ?? from.aliasSymbol)?.declarations?.[0]
+		if (!fromDecl) {
+			return undefined
+		}
+
+		// Resolve type of `string` of `T extends string`
+		if (ts.isTypeParameterDeclaration(fromDecl)
+			&& fromDecl.constraint
+		) {
+			let checker = typeCheckerGetter()
+			let fromType = checker.getTypeAtLocation(fromDecl.constraint)
+			
+			return fromType
+		}
+
+		return undefined
 	}
 
 	function isConditionalTypeMatch(conditional: TS.ConditionalType, type: TS.Type, depth: number): boolean {
