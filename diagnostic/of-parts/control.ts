@@ -23,12 +23,6 @@ export function diagnoseControl(
 	if (tagName === 'lu:await') {
 		diagnoseAwait(part, start, length, template, modifier)
 	}
-	else if (tagName === 'lu:then') {
-		diagnoseThen(part, start, length, template, modifier)
-	}
-	else if (tagName === 'lu:catch') {
-		diagnoseCatch(part, start, length, template, modifier)
-	}
 
 	else if (tagName === 'lu:for') {
 		diagnoseFor(part, start, length, template, modifier)
@@ -86,36 +80,6 @@ function diagnoseAwait(
 	// 	modifier.add(valueStart, valueLength, ''< DiagnosticCode.NotAssignable,lu:await ${promise}>' can only accept promise type of parameter.')
 	// 	return
 	// }
-}
-
-
-function diagnoseThen(
-	part: TemplatePart,
-	start: number,
-	length: number,
-	_template: TemplateBasis,
-	modifier: DiagnosticModifier
-) {
-	let previousNode = part.node.previousSibling
-	if (!previousNode || previousNode.tagName !== 'lu:await') {
-		modifier.add(start, length, DiagnosticCode.ControlTagMustFollowSpecified, `'<lu:then>' must follow '<lu:await>'.`)
-		return
-	}
-}
-
-
-function diagnoseCatch(
-	part: TemplatePart,
-	start: number,
-	length: number,
-	_template: TemplateBasis,
-	modifier: DiagnosticModifier
-) {
-	let previousNode = part.node.previousSibling
-	if (!previousNode || (previousNode.tagName !== 'lu:await' && previousNode.tagName !== 'lu:then')) {
-		modifier.add(start, length, DiagnosticCode.ControlTagMustFollowSpecified, `'<lu:catch>' must follow '<lu:await>' or '<lu:then>'.`)
-		return
-	}
 }
 
 

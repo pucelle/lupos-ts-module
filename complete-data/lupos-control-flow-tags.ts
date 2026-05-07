@@ -1,15 +1,7 @@
 export const LuposFlowControlTags: CompletionDataItem[] = [
 	{
 		name: "lu:await",
-		description: "`<lu:await ${promise}>Pending</>`, shows contents before promise resolved or rejected.",
-	},
-	{
-		name: "lu:then",
-		description: "`<lu:then>Resolved</>`, shows contents after promise resolved, follows `<lu:await>`.",
-	},
-	{
-		name: "lu:catch",
-		description: "`<lu:catch>Rejected</>`, shows contents after promise rejected, follows `<lu:await>` or `<lu:then>`",
+		description: "`<lu:await ${AsyncContent}>DefaultContent</>`, shows contents before promise resolved or rejected.",
 	},
 	{
 		name: "lu:for",
