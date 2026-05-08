@@ -2338,16 +2338,27 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		 * - `let node = resolveRegistry<ItemSourceBundle>('ItemSourceBundle')`
 		 */
 		*resolveDeepDeclClassDeclarations(decl: TS.Declaration): Iterable<TS.ClassDeclaration> {
+
+			// Already an class declaration.
 			if (ts.isClassDeclaration(decl)) {
 				yield decl
 			}
 
+			// Resolve from variable declaration.
 			else if (ts.isVariableDeclaration(decl)) {
 				if (decl.type) {
 					yield* symbol._resolveTypeNodeClassDeclarations(decl.type)
 				}
 				else if (decl.initializer) {
 					yield* symbol.resolveDeepExpClassDeclarations(decl.initializer)
+				}
+			}
+
+			// Directly resolve, like from `ImportSpecifier`.
+			else {
+				let decls = symbol.resolveDeclarations(decl, ts.isClassDeclaration)
+				if (decls) {
+					yield* decls
 				}
 			}
 		},
