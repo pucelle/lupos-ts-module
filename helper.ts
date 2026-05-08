@@ -2327,13 +2327,69 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 				yield* objectLike.walkChained(decl)
 			}
 		},
+
+		/** 
+		 * Resolve class declarations deeply from a base declaration.
+		 * 
+		 * - `class {...}`
+		 * - `let node = new Class()`
+		 * - `let node: Class = ...`
+		 * - `let node = xxx as Class`
+		 * - `let node = resolveRegistry<ItemSourceBundle>('ItemSourceBundle')`
+		 */
+		*resolveDeepDeclClassDeclarations(decl: TS.Declaration): Iterable<TS.ClassDeclaration> {
+			if (ts.isClassDeclaration(decl)) {
+				yield decl
+			}
+
+			else if (ts.isVariableDeclaration(decl)) {
+				if (decl.type) {
+					yield* symbol._resolveTypeNodeClassDeclarations(decl.type)
+				}
+				else if (decl.initializer) {
+					yield* symbol.resolveDeepExpClassDeclarations(decl.initializer)
+				}
+			}
+		},
+
+		/** Resolve class declarations deeply from an expression. */
+		*resolveDeepExpClassDeclarations(exp: TS.Expression): Iterable<TS.ClassDeclaration> {
+
+			// Resolve from `as Type`.
+			if (ts.isAsExpression(exp)) {
+				yield* symbol._resolveTypeNodeClassDeclarations(exp.type)
+			}
+
+			// Resolve from the `new Class`.
+			else if (ts.isNewExpression(exp)) {
+				yield* symbol.resolveDeepExpClassDeclarations(exp.expression)
+			}
+
+			else {
+
+				// Directly resolve.
+				let decls = symbol.resolveDeclarations(exp, ts.isClassDeclaration)
+				if (decls) {
+					yield* decls
+				}
+
+				// Resolve from type node, not always work.
+				else {
+					let typeNode = types.getTypeNode(exp, false)
+					if (typeNode) {
+						yield* symbol._resolveTypeNodeClassDeclarations(typeNode)
+						return
+					}
+				}
+			}
+		},
 		
 		/** 
 		 * Resolve class declarations from type nodes like:
 		 * - `typeof Cls`
 		 * - `{new(): Cls}`
 		 */
-		*resolveInstanceDeclarations(fromTypeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
+		*_resolveTypeNodeClassDeclarations(fromTypeNode: TS.TypeNode): Iterable<TS.ClassDeclaration> {
 			let typeNodes = symbol.resolveTypeNodeComponents(fromTypeNode)
 			
 			for (let typeNode of typeNodes) {

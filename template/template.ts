@@ -74,7 +74,6 @@ export abstract class TemplateBasis {
 	 * `tagName` can be a dynamic component interpolation.
 	 */
 	*resolveComponentDeclarations(tagName: string): Iterable<TS.ClassDeclaration> {
-		let ts = this.helper.ts
 		let isNamedComponent = TemplateSlotPlaceholder.isNamedComponent(tagName)
 		let isDynamicComponent = TemplateSlotPlaceholder.isDynamicComponent(tagName)
 
@@ -82,33 +81,18 @@ export abstract class TemplateBasis {
 			return
 		}
 
-		// Resolve class declarations directly.
+		// Resolve class declarations from import declaration.
 		if (isNamedComponent) {
-			let ref = this.scopeTree.getReferenceByName(tagName, this.node)
-			if (!ref) {
-				return
-			}
-
-			let decls = this.helper.symbol.resolveDeclarations(ref, ts.isClassDeclaration)
-			if (decls) {
-				yield* decls
+			let decl = this.scopeTree.getReferenceByName(tagName, this.node)
+			if (decl) {
+				yield* this.helper.symbol.resolveDeepDeclClassDeclarations(decl)
 			}
 		}
 
-		// Resolve instance type of constructor interface.
+		// Resolve class declarations from dynamic component expression.
 		else {
-			let ref = this.valueNodes[TemplateSlotPlaceholder.getUniqueSlotIndex(tagName)!]
-			let decls = this.helper.symbol.resolveDeclarations(ref, ts.isClassDeclaration)
-			if (decls && decls.length > 0) {
-				yield* decls
-				return
-			}
-
-			let typeNode = this.helper.types.getTypeNode(ref, false)
-			if (typeNode) {
-				yield* this.helper.symbol.resolveInstanceDeclarations(typeNode)
-				return
-			}
+			let exp = this.valueNodes[TemplateSlotPlaceholder.getUniqueSlotIndex(tagName)!]
+			yield* this.helper.symbol.resolveDeepExpClassDeclarations(exp)
 		}
 	}
 

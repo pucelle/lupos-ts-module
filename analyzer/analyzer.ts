@@ -166,6 +166,7 @@ export class Analyzer {
 			this.analyzeFile(sourceFile)
 		}
 
+		// Local class declaration.
 		if (declaration.parent !== sourceFile) {
 			return createLuposComponent(declaration, this.helper)
 		}

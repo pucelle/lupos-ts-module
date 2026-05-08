@@ -14,7 +14,7 @@ export class Scope {
 	readonly ts: typeof TS
 
 	/** All variables declared here, by `variable name -> declaration`. */
-	protected variables: Map<string, TS.Node | null> = new Map()
+	protected variables: Map<string, TS.Declaration | null> = new Map()
 
 	constructor(node: ScopeNode, parent: Scope | null, helper: Helper) {
 		this.node = node
@@ -90,7 +90,7 @@ export class Scope {
 	}
 
 	/** Try get raw declaration by it's variable name. */
-	getVariableDeclaredOrReferenced(name: string): TS.Node | undefined {
+	getVariableDeclaredOrReferenced(name: string): TS.Declaration | undefined {
 		if (this.variables.has(name)) {
 			return this.variables.get(name) ?? undefined
 		}
