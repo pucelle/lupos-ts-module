@@ -2342,24 +2342,27 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			// Already an class declaration.
 			if (ts.isClassDeclaration(decl)) {
 				yield decl
+				return
 			}
 
 			// Resolve from variable declaration.
-			else if (ts.isVariableDeclaration(decl)) {
+			if (ts.isVariableDeclaration(decl)) {
 				if (decl.type) {
 					yield* symbol._resolveTypeNodeClassDeclarations(decl.type)
+					return
 				}
 				else if (decl.initializer) {
-					yield* symbol.resolveDeepExpClassDeclarations(decl.initializer)
+					let decls = [...symbol.resolveDeepExpClassDeclarations(decl.initializer)]
+					if (decls.length > 0) {
+						yield* decls
+					}
 				}
 			}
 
 			// Directly resolve, like from `ImportSpecifier`.
-			else {
-				let decls = symbol.resolveDeclarations(decl, ts.isClassDeclaration)
-				if (decls) {
-					yield* decls
-				}
+			let decls = symbol.resolveDeclarations(decl, ts.isClassDeclaration)
+			if (decls) {
+				yield* decls
 			}
 		},
 
