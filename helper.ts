@@ -2383,7 +2383,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 				// Directly resolve.
 				let decls = symbol.resolveDeclarations(exp, ts.isClassDeclaration)
-				if (decls) {
+				if (decls && decls.length > 0) {
 					yield* decls
 				}
 
