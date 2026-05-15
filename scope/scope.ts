@@ -33,9 +33,11 @@ export class Scope {
 			}
 		}
 
-		// Parameter.
+		// Parameter declarations.
 		else if (this.ts.isParameter(node)) {
-			this.variables.set(this.helper.getFullText(node.name), node)
+			for (let {name} of this.helper.parameter.walkDeconstructedDeclarationItems(node)) {
+				this.variables.set(name, node)
+			}
 		}
 
 		// `import {a as b}`,  `import {a}`

@@ -1673,7 +1673,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 	const parameter = {
 
-		/** Get method or constructor  */
+		/** Get method or constructor from call expression. */
 		getCallParameters(callExp: TS.CallExpression | TS.NewExpression): TS.NodeArray<TS.ParameterDeclaration> | undefined	{
 			let decl: TS.FunctionLikeDeclaration | TS.MethodSignature | TS.MethodDeclaration | TS.ConstructorDeclaration | TS.ConstructSignatureDeclaration | undefined
 			if (ts.isCallExpression(callExp)) {
@@ -1692,6 +1692,17 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 
 			return undefined
 		},
+
+
+		/** 
+		 * Walk for all declared variable names from a variable declaration.
+		 * `([a, b])` = ... -> `[a, b]`
+		 * `({a, b})` = ... -> `[a, b]`
+		 */
+		*walkDeconstructedDeclarationItems(node: TS.ParameterDeclaration): Iterable<DeconstructedVariableDeclarationItem> {
+			return yield* variable._walkDeconstructedArgumentTypeItemsRecursively(node.name, node.initializer, [])
+		},
+
 
 		/** 
 		 * Walk for all mapped deconstructed argument expression and parameter type node.
