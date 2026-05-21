@@ -1116,6 +1116,50 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			return topmost
 		},
 
+		/** Like `a?.b`, or `a?.b.c`. */
+		isOfOptionalChaining(node: AccessNode): boolean {
+			let n: AccessNode = node
+
+			while (true) {
+				if (n.questionDotToken) {
+					return true
+				}
+
+				if (access.isAccess(n.expression)) {
+					n = n.expression
+				}
+				else {
+					break
+				}
+			}
+
+			return false
+		},
+
+		/** 
+		 * `a?.b` -> `a`
+		 * `a.b?.c` -> `a.b`.
+		 * `a.b?.c.d` -> `a.b`.
+		 */
+		removesLastOptionalChainingTail(node: AccessNode): TS.Expression {
+			let n: AccessNode = node
+
+			while (true) {
+				if (n.questionDotToken) {
+					return n.expression
+				}
+
+				if (access.isAccess(n.expression)) {
+					n = n.expression
+				}
+				else {
+					break
+				}
+			}
+
+			return node
+		},
+
 		/** 
 		 * Test whether be all elements read access like:
 		 *   - `[...a]`, or `{...a}`
