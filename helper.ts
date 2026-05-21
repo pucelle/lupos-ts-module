@@ -1117,31 +1117,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		},
 
 		/** Like `a?.b`, or `a?.b.c`. */
-		isOfOptionalChaining(node: AccessNode): boolean {
-			let n: AccessNode = node
-
-			while (true) {
-				if (n.questionDotToken) {
-					return true
-				}
-
-				if (access.isAccess(n.expression)) {
-					n = n.expression
-				}
-				else {
-					break
-				}
-			}
-
-			return false
-		},
-
-		/** 
-		 * `a?.b` -> `a`
-		 * `a.b?.c` -> `a.b`.
-		 * `a.b?.c.d` -> `a.b`.
-		 */
-		removesLastOptionalChainingTail(node: AccessNode): TS.Expression {
+		getOptionalChainingExp(node: AccessNode): TS.Expression | null {
 			let n: AccessNode = node
 
 			while (true) {
@@ -1149,15 +1125,24 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 					return n.expression
 				}
 
-				if (access.isAccess(n.expression)) {
-					n = n.expression
+				let exp: TS.Expression = n.expression
+
+				if (ts.isParenthesizedExpression(exp)) {
+					exp = exp.expression
+				}
+				else if (ts.isAsExpression(exp)) {
+					exp = exp.expression
+				}
+
+				if (access.isAccess(exp)) {
+					n = exp
 				}
 				else {
 					break
 				}
 			}
 
-			return node
+			return null
 		},
 
 		/** 
