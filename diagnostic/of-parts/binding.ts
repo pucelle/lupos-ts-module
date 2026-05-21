@@ -32,6 +32,20 @@ export function diagnoseBinding(
 			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Binding class '${mainName}' is not existing.`)
 			return
 		}
+
+		if (part.namePrefix === '?:') {
+			let implementsPart = true
+			if (binding) {
+				implementsPart = binding.declaration && helper.class.isImplementedOf(binding.declaration, 'Part', 'lupos.html')
+			}
+			else if (LuposKnownInternalBindings[mainName]) {
+				implementsPart = LuposKnownInternalBindings[mainName].implementsPart
+			}
+
+			if (!implementsPart) {
+				modifier.add(start, length, DiagnosticCode.NotAssignable, `Binding class '${mainName}' must implements 'Part' to work with '?:'.`)
+			}
+		}
 	}
 
 	else if (piece.type === TemplatePartPieceType.Modifier) {
