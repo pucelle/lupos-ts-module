@@ -1295,7 +1295,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 			let propName = getText(decl.name)
 	
 			if (objName === 'Map') {
-				return propName === 'has' || propName === 'get' || propName === 'size' || propName === 'keys' || propName === 'values'
+				return propName === 'has' || propName === 'get' || propName === 'size' || propName === 'keys'
+					|| propName === 'values' || propName === 'entries'
 			}
 			else if (objName === 'Set') {
 				return propName === 'has' || propName === 'size' || propName === 'keys' || propName === 'values'
