@@ -42,6 +42,8 @@ export function diagnoseControl(
 		diagnoseKeyed(part, start, length, template, modifier)
 	}
 
+	else if (tagName === 'lu:cache') {}
+
 	else if (tagName === 'lu:switch') {
 		diagnoseSwitch(part, start, length, template, modifier)
 	}

@@ -21,7 +21,11 @@ export const LuposFlowControlTags: CompletionDataItem[] = [
 	},
 	{
 		name: "lu:keyed",
-		description: "`<lu:keyed ${key}>Keyed Content</>`, it regenerates 'Keyed Content' after `key` get changed.\n\nIf `cache` attribute specified, will cache removed contents by key for later restoring.\n\nIf `weakCache` attribute specified, will cache removed contents in a weak map by key for later restoring, and key must be an object.",
+		description: "`<lu:keyed ${key}>Keyed Content</>`, it regenerates 'Keyed Content' after `key` get changed.\n\nIf `cache` attribute specified, will cache removed contents and states by key for later restoring.\n\nIf `weakCache` attribute specified, will cache removed contents in a weak map by key for later restoring, and key must be an object.",
+	},
+	{
+		name: "lu:cache",
+		description: "`<lu:cache>Cache Content</>`, it caches dynamically rendered contents with states for later restoring.",
 	},
 	{
 		name: "lu:switch",
