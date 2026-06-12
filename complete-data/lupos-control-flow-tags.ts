@@ -25,7 +25,7 @@ export const LuposFlowControlTags: CompletionDataItem[] = [
 	},
 	{
 		name: "lu:cache",
-		description: "`<lu:cache>Cache Content</>`, it caches dynamically rendered contents with states for later restoring.",
+		description: "`<lu:cache>${Dynamic Cache Content}</>`, it caches dynamically rendered contents with states for later restoring.",
 	},
 	{
 		name: "lu:switch",
