@@ -43,6 +43,7 @@ export function createLuposComponent(node: TS.ClassLikeDeclaration, helper: Help
 	let properties: Record<string, LuposProperty> = {}
 	let events: Record<string, LuposEvent> = {}
 	let slotElements: Record<string, LuposProperty> = {}
+	let tagName = 'div'
 
 	for (let decl of walkNonSuperNotSameNamedInterfaceChained(node, helper)) {
 		for (let event of analyzeLuposComponentEvents(node, helper)) {
@@ -58,9 +59,23 @@ export function createLuposComponent(node: TS.ClassLikeDeclaration, helper: Help
 		}
 	}
 
+	let tagNameDecl = helper.objectLike.getProperty(node, 'tagName', true)
+	if (tagNameDecl
+		&& helper.objectLike.hasModifier(tagNameDecl, 'static')
+	) {
+		let type = tagNameDecl.type
+		if (type
+			&& helper.ts.isLiteralTypeNode(type)
+			&& helper.ts.isStringLiteral(type.literal)
+		) {
+			tagName = type.literal.text
+		}
+	}
+
 	return {
 		name: helper.getText(node.name!),
 		nameNode: node.name!,
+		tagName,
 		declaration: node,
 		description: helper.getNodeDescription(node) || '',
 		sourceFile: node.getSourceFile(),
