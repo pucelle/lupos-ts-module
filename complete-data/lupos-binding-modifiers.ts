@@ -21,7 +21,6 @@ export const LuposBindingModifiers: Record<string, ModifierCompletionDataItem[]>
 	transition: [
 		{name: 'local', description: 'Play transition only when element itself get inserted or removed, this is default action.', group: 1},
 		{name: 'global', description: 'Play transition when element or any ancestral element get inserted or removed, this is default action.', group: 1},
-		{name: 'immediate', description: 'Play transition immediately after element get initialized.', group: 2},
 		{name: 'enter', description: 'Can only play enter transition, ignores leave.', group: 3},
 		{name: 'leave', description: 'Can only play leave transition, ignores enter.', group: 3},
 	],
