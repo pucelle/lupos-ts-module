@@ -39,6 +39,9 @@ export interface LuposBinding extends LuposItem {
 
 export interface LuposComponent extends LuposItem {
 
+	/** The default component element tag name. */
+	readonly tagName: string
+
 	/** Defined class declaration. */
 	readonly declaration: TS.ClassLikeDeclaration
 

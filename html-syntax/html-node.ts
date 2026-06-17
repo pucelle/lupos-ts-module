@@ -1,6 +1,7 @@
 import {TemplateSlotPlaceholder} from './template-slot-placeholder'
 import {SelfClosingTags} from './html-token-scanner'
 import {generateFingerPrint} from '../utils'
+import {TemplateParser} from '../../template/parsers'
 
 
 export enum HTMLNodeType {
@@ -373,7 +374,7 @@ export class HTMLNode {
 	}
 
 	/** Get string for building HTML nodes. */
-	toHTMLString(): string {
+	toHTMLString(template: TemplateParser): string {
 		if (this.type === HTMLNodeType.Tag) {
 			let tagName = this.tagName!
 
@@ -389,20 +390,30 @@ export class HTMLNode {
 
 			// Component
 			else if (TemplateSlotPlaceholder.isComponent(tagName)) {
-				tagName = 'div'
+				
+				// Specifies custom tagName.
+				let tagNameAttr = this.attrs!.find(attr => attr.name === 'tagName')
+				if (tagNameAttr) {
+					tagName = tagNameAttr.value || tagName
+				}
+
+				// Get from component static type declaration.
+				else {
+					let Com = template.analyzer.getComponentByTagName(tagName, template)
+					if (Com) {
+						tagName = Com.tagName
+					}
+					else {
+						tagName = 'div'
+					}
+				}
 			}
 
-			// Specifies custom tagName.
-			let tagNameAttr = this.attrs!.find(attr => attr.name === 'tagName')
-			if (tagNameAttr) {
-				tagName = tagNameAttr.value || tagName
-			}
-	
 			if (SelfClosingTags.includes(tagName)) {
 				return `<${tagName}${this.toStringOfAttrs(true)} />`
 			}
 
-			let contents = this.children.map(child => child.toHTMLString()).join('')
+			let contents = this.children.map(child => child.toHTMLString(template)).join('')
 			return `<${tagName}${this.toStringOfAttrs(true)}>${contents}</${tagName}>`
 		}
 		else if (this.type === HTMLNodeType.Text) {
@@ -414,7 +425,7 @@ export class HTMLNode {
 	}
 
 	/** Get html string of all the contents. */
-	getContentHTMLString() {
-		return this.children.map(child => child.toHTMLString()).join('')
+	getContentHTMLString(template: TemplateParser) {
+		return this.children.map(child => child.toHTMLString(template)).join('')
 	}
 }

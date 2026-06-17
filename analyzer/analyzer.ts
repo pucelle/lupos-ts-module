@@ -10,7 +10,7 @@ import {LuposKnownInternalBindings} from '../complete-data'
 
 /** 
  * In a plugin, it can visit sources across whole workspace.
- * In a transformer, it can only visit current source file and all resolved.
+ * In a transformer, it is only allowed to visit current source file and all resolved.
  */
 export class Analyzer {
 
@@ -32,7 +32,7 @@ export class Analyzer {
 	protected workspaceBindingsByName: ListMap<string, LuposBinding> = new ListMap()
 
 	/** Analyzed bindings by source file. */
-	protected workSpaceBindingsByFile: ListMap<TS.SourceFile, LuposBinding> = new ListMap()
+	protected workspaceBindingsByFile: ListMap<TS.SourceFile, LuposBinding> = new ListMap()
 
 	constructor(helper: Helper) {
 		this.helper = helper
@@ -70,7 +70,7 @@ export class Analyzer {
 	
 		for (let binding of bindings) {
 			this.workspaceBindingsByName.add(binding.name, binding)
-			this.workSpaceBindingsByFile.add(binding.sourceFile, binding)
+			this.workspaceBindingsByFile.add(binding.sourceFile, binding)
 		}
 	}
 
@@ -87,9 +87,9 @@ export class Analyzer {
 		}
 
 		// Binding expired.
-		for (let binding of [...this.workSpaceBindingsByFile.get(file) || []]) {
+		for (let binding of [...this.workspaceBindingsByFile.get(file) || []]) {
 			this.workspaceBindingsByName.delete(binding.name, binding)
-			this.workSpaceBindingsByFile.delete(binding.sourceFile, binding)
+			this.workspaceBindingsByFile.delete(binding.sourceFile, binding)
 		}
 
 		this.references.deleteLeft(file)
@@ -102,7 +102,7 @@ export class Analyzer {
 
 	/** Iterate all bindings. */
 	protected get bindings(): Iterable<LuposBinding> {
-		return this.workSpaceBindingsByFile.values()
+		return this.workspaceBindingsByFile.values()
 	}
 
 	/** Get components by name across all workspace. */
@@ -287,7 +287,7 @@ export class Analyzer {
 			return createLuposBinding(declaration, this.helper)
 		}
 
-		let bindings = this.workSpaceBindingsByFile.get(sourceFile)
+		let bindings = this.workspaceBindingsByFile.get(sourceFile)
 		if (bindings) {
 			return bindings?.find(c => c.declaration === declaration)
 		}

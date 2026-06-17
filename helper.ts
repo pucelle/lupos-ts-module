@@ -790,7 +790,7 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		/** Whether property or method has specified modifier. */
 		hasModifier(
 			node: TS.PropertyDeclaration | TS.PropertySignature | TS.AccessorDeclaration | TS.MethodDeclaration | TS.MethodSignature,
-			name: 'readonly' | 'static' | 'protected' | 'private' | 'public'
+			name: 'readonly' | 'static' | 'protected' | 'private' | 'public' | 'declare'
 		): boolean {
 			for (let modifier of node.modifiers || []) {
 				if (modifier.kind === ts.SyntaxKind.ReadonlyKeyword && name === 'readonly') {
@@ -806,6 +806,9 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 					return true
 				}
 				else if (modifier.kind === ts.SyntaxKind.PublicKeyword && name === 'public') {
+					return true
+				}
+				else if (modifier.kind === ts.SyntaxKind.DeclareKeyword && name === 'declare') {
 					return true
 				}
 			}
