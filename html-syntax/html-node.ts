@@ -1,7 +1,8 @@
 import {TemplateSlotPlaceholder} from './template-slot-placeholder'
 import {SelfClosingTags} from './html-token-scanner'
 import {generateFingerPrint} from '../utils'
-import {TemplateParser} from '../../template/parsers'
+import {Analyzer} from '../analyzer'
+import {TemplateBasis} from '../template'
 
 
 export enum HTMLNodeType {
@@ -374,7 +375,7 @@ export class HTMLNode {
 	}
 
 	/** Get string for building HTML nodes. */
-	toHTMLString(template: TemplateParser): string {
+	toHTMLString(template: TemplateBasis, analyzer: Analyzer): string {
 		if (this.type === HTMLNodeType.Tag) {
 			let tagName = this.tagName!
 
@@ -399,7 +400,7 @@ export class HTMLNode {
 
 				// Get from component static type declaration.
 				else {
-					let Com = template.analyzer.getComponentByTagName(tagName, template)
+					let Com = analyzer.getComponentByTagName(tagName, template)
 					if (Com) {
 						tagName = Com.tagName
 					}
@@ -413,7 +414,7 @@ export class HTMLNode {
 				return `<${tagName}${this.toStringOfAttrs(true)} />`
 			}
 
-			let contents = this.children.map(child => child.toHTMLString(template)).join('')
+			let contents = this.children.map(child => child.toHTMLString(template, analyzer)).join('')
 			return `<${tagName}${this.toStringOfAttrs(true)}>${contents}</${tagName}>`
 		}
 		else if (this.type === HTMLNodeType.Text) {
@@ -425,7 +426,7 @@ export class HTMLNode {
 	}
 
 	/** Get html string of all the contents. */
-	getContentHTMLString(template: TemplateParser) {
-		return this.children.map(child => child.toHTMLString(template)).join('')
+	getContentHTMLString(template: TemplateBasis, analyzer: Analyzer) {
+		return this.children.map(child => child.toHTMLString(template, analyzer)).join('')
 	}
 }

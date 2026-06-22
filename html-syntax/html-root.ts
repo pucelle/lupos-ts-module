@@ -1,4 +1,5 @@
-import {TemplateParser} from '../../template/parsers'
+import {Analyzer} from '../analyzer'
+import {TemplateBasis} from '../template'
 import {trimText} from '../utils'
 import {HTMLAttribute, HTMLNode, HTMLNodeType} from './html-node'
 import {HTMLTokenScanner, HTMLTokenType, SelfClosingTags} from './html-token-scanner'
@@ -150,12 +151,12 @@ export class HTMLRoot extends HTMLNode {
 		super(HTMLNodeType.Tag, -1, -1, 'root', [])
 	}
 
-	override getContentHTMLString(template: TemplateParser) {
+	override getContentHTMLString(template: TemplateBasis, analyzer: Analyzer) {
 		if (this.firstChild?.tagName === 'template') {
-			return this.firstChild.getContentHTMLString(template)
+			return this.firstChild.getContentHTMLString(template, analyzer)
 		}
 		else {
-			return super.getContentHTMLString(template)
+			return super.getContentHTMLString(template, analyzer)
 		}
 	}
 }
