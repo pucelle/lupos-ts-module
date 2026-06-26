@@ -11,7 +11,7 @@ export function setFingerPrintSalt(theSalt: string) {
 }
 
 
-/** At length 6, 100 ids, have 0.0295% change of collision. */
-export function generateFingerPrint(length: number = 6) {
+/** At length 6, 100 ids, have 0.000115% change of collision. */
+export function generateFingerPrint(length: number = 8) {
 	return crypto.createHash('md5').update(salt + '_' + index++).digest('hex').slice(0, length)
 }
