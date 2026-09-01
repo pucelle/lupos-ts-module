@@ -18,11 +18,16 @@ export class TemplateDiagnostics {
 
 	diagnose(parts: TemplatePart[], template: TemplateBasis, modifier: DiagnosticModifier) {
 		for (let part of parts) {
-			let pieces = parseAllTemplatePartPieces(part)
+			this.diagnosePart(part, template, modifier)
+		}
+	}
 
-			for (let piece of pieces) {
-				this.diagnosePartLocation(piece, pieces, part, template, modifier)
-			}
+	/** Diagnose one part before a compiler callback can modify it. */
+	diagnosePart(part: TemplatePart, template: TemplateBasis, modifier: DiagnosticModifier) {
+		let pieces = parseAllTemplatePartPieces(part)
+
+		for (let piece of pieces) {
+			this.diagnosePartLocation(piece, pieces, part, template, modifier)
 		}
 	}
 

@@ -6,6 +6,9 @@ import type {HelperCore, HelperGroupContext} from './context'
 export function createSymbolHelpers(ts: typeof TS, typeCheckerGetter: () => TS.TypeChecker, core: HelperCore, context: HelperGroupContext) {
 	const {getFullText, getText, getIdentifier, isObjectLike} = core
 	const {objectLike, types} = context
+	const UnaliasedSymbolCache: WeakMap<TS.Node, TS.Symbol | null> = new WeakMap()
+	const AliasedSymbolCache: WeakMap<TS.Node, TS.Symbol | null> = new WeakMap()
+	const ResolvedImportCache: WeakMap<TS.Node, ResolvedImportNames | null> = new WeakMap()
 
 	/** Symbol and declaration resolution helpers. */
 	const symbol = {
@@ -47,6 +50,11 @@ export function createSymbolHelpers(ts: typeof TS, typeCheckerGetter: () => TS.T
 
 		/** Resolve the import name and module. */
 		resolveImport(node: TS.Node): ResolvedImportNames | undefined {
+			let cached = ResolvedImportCache.get(node)
+			if (cached !== undefined) {
+				return cached ?? undefined
+			}
+
 			let memberName: string | null = null
 			let moduleName: string | null = null
 
@@ -86,14 +94,15 @@ export function createSymbolHelpers(ts: typeof TS, typeCheckerGetter: () => TS.T
 				}
 			}
 
-			if (moduleName !== null && memberName !== null) {
-				return {
+			let resolved = moduleName !== null && memberName !== null
+				? {
 					memberName,
 					moduleName,
 				}
-			}
+				: null
 
-			return undefined
+			ResolvedImportCache.set(node, resolved)
+			return resolved ?? undefined
 		},
 
 		/** 
@@ -106,20 +115,27 @@ export function createSymbolHelpers(ts: typeof TS, typeCheckerGetter: () => TS.T
 		 * Default value is `false`.
 		 */
 		resolveSymbol(node: TS.Node, resolveAlias: boolean): TS.Symbol | undefined {
-			let symbol = typeCheckerGetter().getSymbolAtLocation(node)
+			let cache = resolveAlias ? AliasedSymbolCache : UnaliasedSymbolCache
+			let cached = cache.get(node)
+			if (cached !== undefined) {
+				return cached ?? undefined
+			}
+
+			let resolved = typeCheckerGetter().getSymbolAtLocation(node)
 
 			// Get symbol from identifier.
-			if (!symbol && !ts.isIdentifier(node)) {
+			if (!resolved && !ts.isIdentifier(node)) {
 				let identifier = getIdentifier(node)
-				symbol = identifier ? typeCheckerGetter().getSymbolAtLocation(identifier) : undefined
+				resolved = identifier ? typeCheckerGetter().getSymbolAtLocation(identifier) : undefined
 			}
 
 			// Resolve aliased symbols to it's original declared place.
-			if (resolveAlias && symbol && (symbol.flags & ts.SymbolFlags.Alias) > 0) {
-				symbol = typeCheckerGetter().getAliasedSymbol(symbol)
+			if (resolveAlias && resolved && (resolved.flags & ts.SymbolFlags.Alias) > 0) {
+				resolved = typeCheckerGetter().getAliasedSymbol(resolved)
 			}
 
-			return symbol
+			cache.set(node, resolved ?? null)
+			return resolved
 		},
 
 		/** Resolves the declarations of a node. */

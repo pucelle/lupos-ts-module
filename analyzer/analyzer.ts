@@ -179,17 +179,23 @@ export class Analyzer {
 		return undefined
 	}
 
-	/** Walk component and it's super classes. */
-	protected *walkComponents(component: LuposComponent, deep = 0): Generator<LuposComponent> {
+	/** Walk a component and its superclasses. */
+	protected *walkComponents(component: LuposComponent): Generator<LuposComponent> {
+
+		// Avoid circular visiting.
+		let visitedDeclarations: Set<TS.ClassLikeDeclaration> = new Set([component.declaration])
 		yield component
 
 		for (let superClass of this.helper.class.walkChainedSuper(component.declaration)) {
-			let superComponent = this.getComponentByDeclaration(superClass)
-			if (!superComponent) {
-				continue
+			if (visitedDeclarations.has(superClass)) {
+				return
 			}
+			visitedDeclarations.add(superClass)
 
-			yield *this.walkComponents(superComponent, deep + 1)
+			let superComponent = this.getComponentByDeclaration(superClass)
+			if (superComponent) {
+				yield superComponent
+			}
 		}
 	}
 
