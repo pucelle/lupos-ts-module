@@ -171,7 +171,7 @@ export class ListMap<K, V> {
 
 	/** Clear all the data. */
 	clear() {
-		this.map = new Map()
+		this.map.clear()
 	}
 }
 
@@ -299,7 +299,7 @@ export class PairKeysMap<K1, K2, V> {
 
 	/** Clear all the data. */
 	clear() {
-		this.map = new Map()
+		this.map.clear()
 	}
 }
 
@@ -342,7 +342,7 @@ export class WeakerPairKeysMap<K1 extends object, K2 extends object, V> {
 	set(k1: K1, k2: K2, v: V) {
 		let sub = this.map.get(k1)
 		if (!sub) {
-			sub = new Map()
+			sub = new WeakMap()
 			this.map.set(k1, sub)
 		}
 
