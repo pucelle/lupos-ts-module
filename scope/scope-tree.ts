@@ -15,11 +15,13 @@ export class ScopeTree<S extends Scope = Scope> {
 	readonly helper: Helper
 	readonly ts: typeof TS
 
+	/** Scopes stack when parsing. */
 	protected stack: S[] = []
 
 	/** Current not in stack. */
 	protected current: S | null = null
 	
+	/** Current source file. */
 	protected sourceFile: TS.SourceFile | null = null
 
 	/** Scope node -> scope. */
