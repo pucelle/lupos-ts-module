@@ -280,7 +280,7 @@ export function createAccessHelpers(ts: typeof TS, core: HelperCore, context: He
 				return propName === 'get'
 			}
 			else if (objName === 'Array' || objName === 'ReadonlyArray') {
-				return propName === 'find'
+				return propName === 'at' || propName === 'find' || propName === 'findLast'
 			}
 
 			return false
