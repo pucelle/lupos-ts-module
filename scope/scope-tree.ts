@@ -33,9 +33,8 @@ export class ScopeTree<S extends Scope = Scope> {
 
 	/** Visit a source file and build scope tree. */
 	visitSourceFile(sourceFile: TS.SourceFile) {
-		this.sourceFile = sourceFile
+		this.initialize(sourceFile)
 
-		// In the first visiting initialize visit and scope tree.
 		const visitor = (node: TS.Node) => {
 			this.toChild(node)
 			this.ts.forEachChild(node, visitor)
@@ -43,10 +42,16 @@ export class ScopeTree<S extends Scope = Scope> {
 		}
 
 		visitor(sourceFile)
+		this.complete()
+	}
+
+	/** Initialize before visiting a source file. */
+	initialize(sourceFile: TS.SourceFile) {
+		this.sourceFile = sourceFile
 	}
 
 	/** Before entering child nodes. */
-	protected toChild(node: TS.Node) {
+	toChild(node: TS.Node) {
 		if (this.ts.isSourceFile(node)
 			|| this.helper.isFunctionLike(node)
 			|| this.ts.isForStatement(node)
@@ -68,11 +73,14 @@ export class ScopeTree<S extends Scope = Scope> {
 	}
 
 	/** Exit self and enter parent. */
-	protected toParent(node: TS.Node) {
+	toParent(node: TS.Node) {
 		if (node === this.current?.node) {
 			this.current = this.stack.pop()!
 		}
 	}
+
+	/** Complete work that requires the whole source tree to be indexed. */
+	complete() {}
 
 	/** Get top most scope, the scope of source file. */
 	getTopmost(): S {
