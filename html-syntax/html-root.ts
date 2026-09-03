@@ -5,7 +5,23 @@ import {HTMLAttribute, HTMLNode, HTMLNodeType} from './html-node'
 import {HTMLTokenScanner, HTMLTokenType, SelfClosingTags} from './html-token-scanner'
 
 
+export enum HTMLSyntaxErrorType {
+	TagNotMatched,
+	TagNotClosed,
+}
+
+export interface HTMLSyntaxError {
+	type: HTMLSyntaxErrorType
+	start: number
+	end: number
+	tagName: string
+	expectedTagName?: string
+}
+
+
 export class HTMLRoot extends HTMLNode {
+
+	readonly syntaxErrors: HTMLSyntaxError[] = []
 
 	static fromString(string: string): HTMLRoot {
 		let tokens = new HTMLTokenScanner(string).parseToTokens()
@@ -29,6 +45,7 @@ export class HTMLRoot extends HTMLNode {
 
 			else if (token.type === HTMLTokenType.EndTagName) {
 				let toMatch = current
+				let expected = current !== tree ? current : null
 
 				do {
 
@@ -44,6 +61,24 @@ export class HTMLRoot extends HTMLNode {
 
 					toMatch = toMatch.parent ?? tree
 				} while (toMatch !== tree)
+
+				if (!expected) {
+					tree.syntaxErrors.push({
+						type: HTMLSyntaxErrorType.TagNotMatched,
+						start,
+						end,
+						tagName: token.text,
+					})
+				}
+				else if (token.text !== '' && expected.tagName !== token.text) {
+					tree.syntaxErrors.push({
+						type: HTMLSyntaxErrorType.TagNotMatched,
+						start,
+						end,
+						tagName: token.text,
+						expectedTagName: expected.tagName,
+					})
+				}
 
 				// If can't find match, here it simply close all tags.
 				// So it doesn't fix tag closing like normal HTML parser do.
@@ -123,6 +158,18 @@ export class HTMLRoot extends HTMLNode {
 				let comment = new HTMLNode(HTMLNodeType.Comment, start, end, undefined, undefined, token.text)
 				current.append(comment)
 			}
+		}
+
+		// A node without a closure end was never closed by an end tag, a void-tag
+		// rule, or `/>`. Mismatched end tags already get a more useful diagnostic,
+		// so only report nodes that remain on the active ancestry at EOF.
+		for (let node = current; node !== tree; node = node.parent ?? tree) {
+			tree.syntaxErrors.push({
+				type: HTMLSyntaxErrorType.TagNotClosed,
+				start: node.nameStart,
+				end: node.nameEnd,
+				tagName: node.tagName!,
+			})
 		}
 
 		return tree

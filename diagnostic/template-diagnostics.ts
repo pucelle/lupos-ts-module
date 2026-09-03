@@ -3,6 +3,8 @@ import {Helper} from '../helper'
 import {parseAllTemplatePartPieces, TemplateBasis, TemplatePart, TemplatePartPiece, TemplatePartType} from '../template'
 import {DiagnosticModifier} from './diagnostic-modifier'
 import {diagnoseComponent, diagnoseControl, diagnoseBinding, diagnoseProperty, diagnoseEvent} from './of-parts'
+import {HTMLSyntaxErrorType} from '../html-syntax'
+import {DiagnosticCode} from './codes'
 
 
 /** Provide diagnostic service for a template. */
@@ -14,6 +16,33 @@ export class TemplateDiagnostics {
 	constructor(analyzer: Analyzer) {
 		this.analyzer = analyzer
 		this.helper = analyzer.helper
+	}
+
+	/** Diagnose structural HTML errors before template parsers modify the tree. */
+	diagnoseHTMLSyntax(template: TemplateBasis, modifier: DiagnosticModifier) {
+		let category = this.helper.ts.DiagnosticCategory.Warning
+
+		for (let error of template.root.syntaxErrors) {
+			let start = template.localOffsetToGlobal(error.start)
+			let length = Math.max(1, template.localOffsetToGlobal(error.end) - start)
+
+			if (error.type === HTMLSyntaxErrorType.TagNotClosed) {
+				modifier.add(start, length, DiagnosticCode.HTMLTagNotClosed, `Tag '<${error.tagName}>' is not closed.`, category)
+			}
+			else if (error.expectedTagName) {
+				modifier.add(
+					start,
+					length,
+					DiagnosticCode.HTMLTagNotMatched,
+					`Closing tag '</${error.tagName}>' does not match opening tag '<${error.expectedTagName}>'.`,
+					category
+				)
+			}
+			else {
+				let closingTag = error.tagName ? `</${error.tagName}>` : '</>'
+				modifier.add(start, length, DiagnosticCode.HTMLTagNotMatched, `Closing tag '${closingTag}' has no matching opening tag.`, category)
+			}
+		}
 	}
 
 	diagnose(parts: TemplatePart[], template: TemplateBasis, modifier: DiagnosticModifier) {

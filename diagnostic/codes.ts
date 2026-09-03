@@ -18,4 +18,6 @@ export enum DiagnosticCode {
 	ControlTagMustContainSpecified = 30002,
 	ControlTagMustBeContainedIn = 30003,
 	ControlTagMustBeLastChild = 30004,
+	HTMLTagNotMatched = 30005,
+	HTMLTagNotClosed = 30006,
 }
