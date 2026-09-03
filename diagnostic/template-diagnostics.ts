@@ -1,3 +1,4 @@
+import type TS from 'typescript'
 import {Analyzer} from '../analyzer'
 import {Helper} from '../helper'
 import {parseAllTemplatePartPieces, TemplateBasis, TemplatePart, TemplatePartPiece, TemplatePartType} from '../template'
@@ -43,6 +44,86 @@ export class TemplateDiagnostics {
 				modifier.add(start, length, DiagnosticCode.HTMLTagNotMatched, `Closing tag '${closingTag}' has no matching opening tag.`, category)
 			}
 		}
+	}
+
+	/** A root `<template>` mutates the context element, so it can't be one of several function results. */
+	diagnoseFunctionContextTemplate(template: TemplateBasis, modifier: DiagnosticModifier) {
+		let rootTemplateNode = template.root.firstChild
+		if (rootTemplateNode?.tagName !== 'template') {
+			return
+		}
+
+		let ts = this.helper.ts
+		let owner = this.helper.findOutward(template.node, this.helper.isFunctionLike)
+		if (!owner?.body) {
+			return
+		}
+
+		let taggedTemplate = template.node.parent
+		if (!ts.isTaggedTemplateExpression(taggedTemplate)) {
+			return
+		}
+
+		let returnedExpression: TS.Expression | undefined
+		let returnCount = 0
+		
+		// () => html`...`.
+		if (ts.isArrowFunction(owner) && !ts.isBlock(owner.body)) {
+			returnedExpression = owner.body
+			returnCount = 1
+		}
+
+		// function() {return html`...`}
+		else {
+
+			// Find the ancestral return statement.
+			let containingReturn: TS.ReturnStatement | undefined
+			for (let node: TS.Node | undefined = taggedTemplate.parent; node && node !== owner; node = node.parent) {
+				if (ts.isReturnStatement(node)) {
+					containingReturn = node
+					break
+				}
+			}
+
+			// A context template that is merely constructed inside a function isn't a result.
+			if (!containingReturn) {
+				return
+			}
+
+			let visit = (node: TS.Node) => {
+				if (node !== owner.body && this.helper.isFunctionLike(node)) {
+					return
+				}
+
+				if (ts.isReturnStatement(node)) {
+					returnCount++
+				}
+
+				ts.forEachChild(node, visit)
+			}
+
+			visit(owner.body)
+			returnedExpression = containingReturn.expression
+		}
+
+		// Resolve (...)
+		while (returnedExpression && ts.isParenthesizedExpression(returnedExpression)) {
+			returnedExpression = returnedExpression.expression
+		}
+
+		if (returnCount === 1 && returnedExpression === taggedTemplate) {
+			return
+		}
+
+		let start = template.localOffsetToGlobal(rootTemplateNode.nameStart)
+		let length = template.localOffsetToGlobal(rootTemplateNode.nameEnd) - start
+
+		modifier.add(
+			start,
+			length,
+			DiagnosticCode.ContextTemplateMustBeOnlyReturn,
+			`A function that returns '<template>' must use it as its only return value.`
+		)
 	}
 
 	diagnose(parts: TemplatePart[], template: TemplateBasis, modifier: DiagnosticModifier) {
