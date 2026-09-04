@@ -67,20 +67,6 @@ function diagnoseAwait(
 		modifier.add(start, length, DiagnosticCode.MissingArgument, `'<lu:await \${...}>' must accept a parameter as promise to await.`)
 		return
 	}
-
-	// let helper = template.helper
-	// let types = helper.types
-	// let valueNode = template.valueNodes[promiseIndex]
-	// let valueType = types.typeOf(valueNode)
-	// let typeReferenceText = types.getTypeReferenceName(valueType)
-
-	// if (typeReferenceText && typeReferenceText !== 'Promise') {
-	// 	let valueStart = valueNode.pos
-	// 	let valueLength = valueNode.end - valueNode.pos
-
-	// 	modifier.add(valueStart, valueLength, ''< DiagnosticCode.NotAssignable,lu:await ${promise}>' can only accept promise type of parameter.')
-	// 	return
-	// }
 }
 
 
@@ -96,6 +82,7 @@ function diagnoseFor(
 			"Use '<lu:for ${item} of ${list}>' or '<lu:for ${item, index} of ${list}>'.")
 	}
 }
+
 
 function diagnoseIf(
 	part: TemplatePart,

@@ -25,7 +25,7 @@ export function isMirrorControl(node: HTMLNode, values: TS.Expression[], helper:
 		return true
 	}
 	else {
-		return ['lu:if', 'lu:elseif', 'lu:switch', 'lu:case', 'lu:keyed'].includes(node.tagName!)
+		return ['lu:if', 'lu:elseif', 'lu:switch', 'lu:case', 'lu:keyed', 'lu:await'].includes(node.tagName!)
 			&& conditionOf(node, values) !== null
 	}
 }
@@ -34,6 +34,9 @@ export function isMirrorControl(node: HTMLNode, values: TS.Expression[], helper:
 export function buildControlFlow(node: HTMLNode, values: TS.Expression[], helper: Helper, output: ControlFlowOutput) {
 	if (node.tagName === 'lu:for') {
 		buildFor(node, values, helper, output)
+	}
+	else if (node.tagName === 'lu:await') {
+		buildAwait(node, values, output)
 	}
 	else {
 		buildBranch(node, values, output)
@@ -62,6 +65,21 @@ function buildFor(node: HTMLNode, values: TS.Expression[], helper: Helper, outpu
 	}
 
 	output.exclude(values[header.declarationIndex])
+	output.children(node)
+	output.write('}')
+}
+
+/** Require a promise and map assignment errors back to the supplied expression. */
+function buildAwait(node: HTMLNode, values: TS.Expression[], output: ControlFlowOutput) {
+	let promise = conditionOf(node, values)!
+	let name = output.identifier()
+	let start = output.position()
+
+	output.write(`{let ${name}: Promise<unknown> = (`)
+	output.copy(promise)
+	output.write(');')
+	output.check(start, promise)
+	output.write(`void ${name};`)
 	output.children(node)
 	output.write('}')
 }
