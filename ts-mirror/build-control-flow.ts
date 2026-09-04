@@ -6,12 +6,26 @@ import {parseForHeader} from '../template'
 
 /** Operations shared with the template writer while emitting lexical scopes. */
 export interface ControlFlowOutput {
+
+	/** Append generated control-flow text. */
 	write(text: string): void
+
+	/** Copy an expression with its source mapping. */
 	copy(node: TS.Expression): void
+
+	/** Read the current generated text offset. */
 	position(): number
+
+	/** Map a generated check back to its expression. */
 	check(start: number, node: TS.Expression): void
+
+	/** Suppress original diagnostics replaced by a copied check. */
 	exclude(node: TS.Expression): void
+
+	/** Emit checks within a child control scope. */
 	children(node: HTMLNode): void
+
+	/** Allocate a unique generated identifier. */
 	identifier(): string
 }
 
@@ -129,5 +143,6 @@ function buildBranch(node: HTMLNode, values: TS.Expression[], output: ControlFlo
 function conditionOf(node: HTMLNode, values: TS.Expression[]): TS.Expression | null {
 	let attr = node.attrs?.find(attr => TemplateSlotPlaceholder.isCompleteSlotIndex(attr.name))
 	let index = attr ? TemplateSlotPlaceholder.getUniqueSlotIndex(attr.name) : null
+
 	return index === null ? null : values[index]
 }

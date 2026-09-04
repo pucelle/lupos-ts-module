@@ -1,11 +1,11 @@
-import {buildScope} from './build-scope'
-import {buildControlFlow, isMirrorControl} from './build-control-flow'
 import type TS from 'typescript'
 import {Analyzer} from '../analyzer'
 import {Helper} from '../helper'
 import {HTMLNode, HTMLRoot, TemplateSlotPlaceholder} from '../html-syntax'
 import {ScopeTree} from '../scope'
 import {TemplateBasis, TemplatePart, TemplatePartParser, TemplatePartType} from '../template'
+import {buildScope} from './build-scope'
+import {buildControlFlow, isMirrorControl} from './build-control-flow'
 import {AllCapabilities} from './mirror-builder'
 import {MirrorInsertion, RelativeMapping} from './insertion-types'
 
@@ -35,6 +35,7 @@ export function buildTemplateInsertion(
 	// Resolve aliases as well as direct imports, and ignore unrelated tagged
 	// templates so ordinary TypeScript files do not acquire mirror scaffolding.
 	let imported = helper.symbol.resolveImport(node.tag)
+
 	if (!imported
 		|| imported.moduleName !== 'lupos.html'
 		|| imported.memberName !== 'html' && imported.memberName !== 'svg'
@@ -93,33 +94,28 @@ function buildTemplateChecks(
 		}).map(part => part.node)
 	)
 
-	let closestControl = (node: HTMLNode): HTMLNode | null => {
-		for (let parent = node.parent; parent; parent = parent.parent) {
-			if (controlNodes.has(parent)) {
-				return parent
-			}
-		}
+	let allParts = parts
+
+	emitScope(null)
+
+	if (text === '((() => {') {
 		return null
 	}
 
-	let copy = (value: TS.Expression) => {
-		let start = text.length
-		text += sourceFile.text.slice(value.getStart(sourceFile), value.getEnd())
+	// Close and invoke the IIFE, then leave a comma for the original template.
+	text += '})(),'
 
-		mappings.push({start,
-			end: text.length,
-			originalStart: value.getStart(sourceFile),
-			originalEnd: value.getEnd(),
-			kind: 'copied-expression',
-			capabilities: AllCapabilities
-		})
-
-		sourceDiagnosticExclusions.push({start: value.getStart(sourceFile), length: value.getWidth(sourceFile)})
+	return {
+		offset: node.getStart(sourceFile),
+		endOffset: node.getEnd(),
+		text,
+		mappings,
+		checks: checkSpans,
+		sourceDiagnosticExclusions,
 	}
 
-	let allParts = parts
-
-	let emitScope = (scope: HTMLNode | null) => {
+	/** Emit checks and child controls within one lexical scope. */
+	function emitScope(scope: HTMLNode | null) {
 		let parts = allParts.filter(part => closestControl(part.node) === scope)
 		let checks = buildScope(parts, template, analyzer, createIdentifier)
 		let offset = text.length
@@ -140,44 +136,58 @@ function buildTemplateChecks(
 		sourceDiagnosticExclusions.push(...checks.sourceDiagnosticExclusions)
 
 		if (scope) {
-			// Content and ordinary attribute expressions also need the loop's lexical scope.
-			let checked = new Set(
-				parts.filter(part => {
-					return part.type === TemplatePartType.Binding
-						|| part.type === TemplatePartType.Property
-						|| part.type === TemplatePartType.Event
-					}
-				).flatMap(part => !part.strings ? part.valueIndices?.map(v => v.index) ?? [] : [])
-			)
-			
-			for (let part of parts) {
-				if (controlNodes.has(part.node)) {
+			emitUncheckedValues(parts)
+		}
+
+		emitControls(scope)
+	}
+
+	/** Copy content and ordinary attribute values not covered by part checks. */
+	function emitUncheckedValues(parts: TemplatePart[]) {
+
+		// Content and ordinary attribute expressions also need the loop's lexical scope.
+		let checked = new Set(
+			parts.filter(part => {
+				return part.type === TemplatePartType.Binding
+					|| part.type === TemplatePartType.Property
+					|| part.type === TemplatePartType.Event
+				}
+			).flatMap(part => !part.strings ? part.valueIndices?.map(v => v.index) ?? [] : [])
+		)
+
+		for (let part of parts) {
+			if (controlNodes.has(part.node)) {
+				continue
+			}
+
+			let indices = part.valueIndices?.map(value => value.index) ?? []
+
+			if (part.type === TemplatePartType.FlowControl) {
+				indices.push(
+					...(part.node.attrs ?? []).flatMap(
+						attr =>
+							TemplateSlotPlaceholder.isCompleteSlotIndex(attr.name)
+								? [TemplateSlotPlaceholder.getUniqueSlotIndex(attr.name)!]
+								: []
+					)
+				)
+			}
+
+			for (let index of indices) {
+				if (checked.has(index)) {
 					continue
 				}
 
-				let indices = part.valueIndices?.map(value => value.index) ?? []
-
-				if (part.type === TemplatePartType.FlowControl) {
-					indices.push(
-						...(part.node.attrs ?? []).flatMap(
-							attr =>
-								TemplateSlotPlaceholder.isCompleteSlotIndex(attr.name)
-									? [TemplateSlotPlaceholder.getUniqueSlotIndex(attr.name)!]
-									: []
-						)
-					)
-				}
-
-				for (let index of indices) {
-					if (checked.has(index)) {
-						continue
-					}
-
-					checked.add(index)
-					text += 'void ('; copy(values[index]); text += ');'
-				}
+				checked.add(index)
+				text += 'void ('
+				copy(values[index])
+				text += ');'
 			}
 		}
+	}
+
+	/** Emit child control statements and their source diagnostic mappings. */
+	function emitControls(scope: HTMLNode | null) {
 		for (let control of controlNodes) {
 			if (closestControl(control) !== scope) {
 				continue
@@ -215,19 +225,32 @@ function buildTemplateChecks(
 			})
 		}
 	}
-	emitScope(null)
-	if (text === '((() => {') {
+
+	/** Find the nearest enclosing mirrored control scope. */
+	function closestControl(node: HTMLNode): HTMLNode | null {
+		for (let parent = node.parent; parent; parent = parent.parent) {
+			if (controlNodes.has(parent)) {
+				return parent
+			}
+		}
+
 		return null
 	}
-	// Close and invoke the IIFE, then leave a comma for the original template.
-	text += '})(),'
 
-	return {
-		offset: node.getStart(sourceFile),
-		endOffset: node.getEnd(),
-		text,
-		mappings,
-		checks: checkSpans,
-		sourceDiagnosticExclusions,
+	/** Copy an expression and suppress diagnostics from its original occurrence. */
+	function copy(value: TS.Expression) {
+		let start = text.length
+		text += sourceFile.text.slice(value.getStart(sourceFile), value.getEnd())
+
+		mappings.push({
+			start,
+			end: text.length,
+			originalStart: value.getStart(sourceFile),
+			originalEnd: value.getEnd(),
+			kind: 'copied-expression',
+			capabilities: AllCapabilities
+		})
+
+		sourceDiagnosticExclusions.push({start: value.getStart(sourceFile), length: value.getWidth(sourceFile)})
 	}
 }

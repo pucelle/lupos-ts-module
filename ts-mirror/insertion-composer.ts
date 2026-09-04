@@ -11,6 +11,7 @@ export function applyInsertions(
 	rangeStart = 0,
 	rangeEnd = sourceFile.text.length
 ): MirrorDocument {
+
 	// A template prefix sorts before its suffix at an equal offset. More
 	// importantly, sorting every boundary independently makes nesting work:
 	// outer prefix -> source -> inner prefix -> source -> inner suffix -> outer suffix.
@@ -31,6 +32,7 @@ export function applyInsertions(
 	let checkSpans: MirrorCheckSpan[] = []
 
 	for (let insertion of insertions) {
+
 		// Copy source between insertions verbatim and record a broad mapping. More
 		// specific generated mappings win later according to MappingPriority.
 		if (insertion.offset > originalOffset) {
@@ -45,7 +47,7 @@ export function applyInsertions(
 				kind: 'source',
 				capabilities: AllCapabilities,
 			})
-			
+
 			originalOffset = insertion.offset
 		}
 
@@ -78,6 +80,7 @@ export function applyInsertions(
 	if (originalOffset < rangeEnd) {
 		let mirrorStart = output.length
 		output += sourceFile.text.slice(originalOffset, rangeEnd)
+
 		mappings.push({
 			mirrorStart,
 			mirrorEnd: output.length,
@@ -107,16 +110,19 @@ export function composeCopiedTemplates(sourceFile: TS.SourceFile, insertions: Mi
 	for (let insertion of [...insertions].sort((a, b) => b.offset - a.offset)) {
 		let children = insertions.filter(child => child !== insertion && !moved.has(child)
 			&& child.offset > insertion.offset && child.endOffset < insertion.endOffset)
+
 		let copies = insertion.mappings.filter(mapping => mapping.kind === 'copied-expression')
 			.sort((a, b) => b.start - a.start)
 
 		for (let copy of copies) {
 			let contained = children.filter(child => child.offset >= copy.originalStart && child.endOffset <= copy.originalEnd)
+
 			if (contained.length === 0) {
 				continue
 			}
 
 			composeCopy(sourceFile, insertion, copy, contained)
+
 			for (let child of contained) {
 				moved.add(child)
 			}
@@ -132,11 +138,17 @@ function composeCopy(sourceFile: TS.SourceFile, insertion: MirrorInsertion, copy
 	let nested = applyInsertions(sourceFile, contained, copy.originalStart, copy.originalEnd)
 	let delta = nested.mirrorText.length - (copy.end - copy.start)
 	let shift = (offset: number) => offset >= copy.end ? offset + delta : offset
+
 	insertion.text = insertion.text.slice(0, copy.start) + nested.mirrorText + insertion.text.slice(copy.end)
+
 	insertion.mappings = insertion.mappings.filter(mapping => mapping.kind !== copy.kind
 		|| mapping.start !== copy.start || mapping.end !== copy.end).map(mapping => ({
-		...mapping, start: shift(mapping.start), end: shift(mapping.end),
-	}))
+			...mapping,
+			start: shift(mapping.start),
+			end: shift(mapping.end),
+		})
+	)
+
 	insertion.checks = insertion.checks.map(check => ({...check, start: shift(check.start), end: shift(check.end)}))
 
 	insertion.mappings.push(...nested.mappings.flatMap(mapping => splitSourceMapping(mapping, nested.sourceDiagnosticExclusions ?? [])).map(mapping => ({
@@ -147,6 +159,7 @@ function composeCopy(sourceFile: TS.SourceFile, insertion: MirrorInsertion, copy
 		kind: mapping.kind,
 		capabilities: mapping.capabilities,
 	})))
+
 	insertion.checks.push(...nested.checkSpans.map(check => ({
 		start: copy.start + check.start, end: copy.start + check.start + check.length,
 		fallbackStart: check.fallbackStart, fallbackEnd: check.fallbackStart + check.fallbackLength,
@@ -162,6 +175,7 @@ function splitSourceMapping(mapping: MirrorMapping, exclusions: readonly TS.Text
 
 	let innerBoundaries = exclusions.flatMap(span => [span.start, span.start + span.length])
 		.filter(offset => offset > mapping.originalStart && offset < mapping.originalEnd)
+
 	let boundaries = [...new Set([mapping.originalStart, ...innerBoundaries, mapping.originalEnd])]
 		.sort((a, b) => a - b)
 

@@ -12,7 +12,9 @@ import {applyInsertions, composeCopiedTemplates} from './insertion-composer'
 export type {RelativeMapping, MirrorCheck} from './insertion-types'
 
 /** Capabilities supported by exact semantic source copies. */
-export const AllCapabilities: readonly MirrorCapability[] = ['diagnostic', 'completion', 'definition', 'hover', 'references', 'rename']
+const ALL_CAPABILITIES: readonly MirrorCapability[] = ['diagnostic', 'completion', 'definition', 'hover', 'references', 'rename']
+
+export {ALL_CAPABILITIES as AllCapabilities}
 
 
 /**
@@ -63,6 +65,7 @@ function buildSourceMirror(
 	let visit = (node: TS.Node) => {
 		if (ts.isTaggedTemplateExpression(node)) {
 			let insertion = buildTemplateInsertion(node, helper, scopeTree, analyzer, createIdentifier)
+
 			if (insertion) {
 				insertions.push(insertion)
 			}
@@ -81,13 +84,16 @@ function buildSourceMirror(
 }
 
 
+/** Create collision-free identifiers for generated lexical scopes. */
 function createIdentifierFactory(sourceText: string): () => string {
 	let index = 0
 
 	return () => {
+
 		// Copied interpolation expressions execute inside the IIFE. Avoiding every
 		// identifier already present in the source prevents accidental shadowing.
 		let name: string
+
 		do {
 			name = `$LUPOS_MIRROR_${index++}`
 		}

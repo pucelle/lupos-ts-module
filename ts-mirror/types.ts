@@ -64,7 +64,7 @@ export interface MirrorCheckSpan extends TS.TextSpan {
  * inserted around tagged templates, which keeps all untouched text mappable.
  */
 export interface MirrorDocument {
-	
+
 	/** Same filename as the real source so relative imports retain their identity. */
 	readonly fileName: string
 

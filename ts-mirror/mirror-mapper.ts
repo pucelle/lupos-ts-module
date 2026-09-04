@@ -7,7 +7,7 @@ import {MirrorCapability, MirrorDocument, MirrorMapping} from './types'
  * source ranges. This is important because a property/value check commonly
  * has three mappings containing the same position.
  */
-const MappingPriority: Record<MirrorMapping['kind'], number> = {
+const MAPPING_PRIORITY: Record<MirrorMapping['kind'], number> = {
 	'source': 0,
 	'scaffold': 1,
 	'symbol-anchor': 2,
@@ -40,9 +40,11 @@ export function mapMirrorSpanToOriginal(
 	capability: MirrorCapability
 ): TS.TextSpan | null {
 	let mapping = chooseMapping(document.mappings, span.start, capability, true)
+
 	if (!mapping) {
 		return null
 	}
+
 	if (capability === 'diagnostic' && mapping.kind === 'source') {
 		let originalStart = mapPosition(mapping, span.start, true)
 
@@ -100,7 +102,7 @@ function chooseMapping(
 
 		let start = fromMirror ? mapping.mirrorStart : mapping.originalStart
 		let end = fromMirror ? mapping.mirrorEnd : mapping.originalEnd
-		
+
 		// A diagnostic at the next token must not select a range ending there.
 		// Cursor features still accept token ends for completion/navigation.
 		return position >= start && (position < end || position === end
@@ -108,8 +110,10 @@ function chooseMapping(
 	})
 
 	return candidates.sort((a, b) => {
+
 		// Prefer semantic mappings (expression/symbol) to broad fallback/source mappings.
-		let priority = MappingPriority[b.kind] - MappingPriority[a.kind]
+		let priority = MAPPING_PRIORITY[b.kind] - MAPPING_PRIORITY[a.kind]
+
 		if (priority !== 0) {
 			return priority
 		}
@@ -121,6 +125,7 @@ function chooseMapping(
 	})[0]
 }
 
+/** Map and clamp a position proportionally between corresponding ranges. */
 function mapPosition(mapping: MirrorMapping, position: number, fromMirror: boolean): number {
 	let fromStart = fromMirror ? mapping.mirrorStart : mapping.originalStart
 	let fromEnd = fromMirror ? mapping.mirrorEnd : mapping.originalEnd

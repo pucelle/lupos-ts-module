@@ -73,7 +73,7 @@ export function buildProperty(
 		let valueStart = text.length
 		text += sourceFile.text.slice(value.getStart(sourceFile), value.getEnd())
 		let valueEnd = text.length
-		
+
 		mappings.push({
 			start: valueStart,
 			end: valueEnd,
@@ -86,7 +86,7 @@ export function buildProperty(
 	else {
 		text += 'true'
 	}
-	
+
 	text += ');'
 
 	// Anything in the generated assignment that lacks a more precise property or
@@ -100,6 +100,10 @@ export function buildProperty(
 		capabilities: ['diagnostic'],
 	})
 
-	return {text, fallbackStart, fallbackEnd, mappings}
+	return {
+		text,
+		fallbackStart,
+		fallbackEnd,
+		mappings
+	}
 }
-

@@ -52,6 +52,7 @@ export function buildEvent(
 	text += '('
 
 	let value = template.getPartUniqueValue(part)
+
 	if (value) {
 		let start = text.length
 		text += sourceFile.text.slice(value.getStart(sourceFile), value.getEnd())
@@ -93,5 +94,10 @@ export function buildEvent(
 		capabilities: ['diagnostic']
 	})
 
-	return {text, mappings, fallbackStart, fallbackEnd}
+	return {
+		text,
+		mappings,
+		fallbackStart,
+		fallbackEnd
+	}
 }
