@@ -64,13 +64,28 @@ export interface DeconstructedArgumentTypeItem {
 	typeNode: TS.TypeNode | undefined
 }
 
+/** The helper type. */
+export type Helper = ReturnType<typeof makeHelperOfContext>
+
 
 /** Type of Helper functions. */
-export type Helper = ReturnType<typeof helperOfContext>
+export const Helpers: WeakMap<TS.Program, Helper> = new WeakMap()
 
 
 /** Help to get and check. */
-export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeChecker) {
+export function helperOfContext(ts: typeof TS, program: TS.Program) {
+	let helper = Helpers.get(program)
+	if (!helper) {
+		helper = makeHelperOfContext(ts, program)
+		Helpers.set(program, helper)
+	}
+
+	return helper
+}
+
+
+/** Help to get and check. */
+export function makeHelperOfContext(ts: typeof TS, program: TS.Program) {
 	const context = createHelperGroupContext()
 	const ast = createASTHelpers(ts, context)
 	const traversal = createTraversalHelpers(ts, ast)
@@ -126,8 +141,8 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 	const {assign} = createAssignmentHelpers(ts, context)
 	const {variable} = createVariableHelpers(ts, core)
 	const {parameter} = createParameterHelpers(ts, core, context)
-	const {types} = createTypeHelpers(ts, typeCheckerGetter, core, context)
-	const {symbol} = createSymbolHelpers(ts, typeCheckerGetter, core, context)
+	const {types} = createTypeHelpers(ts, program, core, context)
+	const {symbol} = createSymbolHelpers(ts, core, context)
 	const {imports} = createImportHelpers(ts)
 	const {pack} = createPackHelpers(ts)
 
@@ -141,12 +156,9 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 	Object.assign(context.symbol, symbol)
 
 
-	return {
+	let helper = {
 		ts,
 		factory: ts.factory,
-		get typeChecker() {
-			return typeCheckerGetter()
-		},
 		isRaw,
 		getFullText,
 		getText,
@@ -187,4 +199,6 @@ export function helperOfContext(ts: typeof TS, typeCheckerGetter: () => TS.TypeC
 		imports,
 		pack,
 	}
+
+	return helper
 }

@@ -3,7 +3,7 @@ import type {ObjectLike, ResolvedImportNames} from './index'
 import type {HelperCore, HelperGroupContext} from './context'
 
 
-export function createSymbolHelpers(ts: typeof TS, typeCheckerGetter: () => TS.TypeChecker, core: HelperCore, context: HelperGroupContext) {
+export function createSymbolHelpers(ts: typeof TS, core: HelperCore, context: HelperGroupContext) {
 	const {getFullText, getText, getIdentifier, isObjectLike} = core
 	const {objectLike, types} = context
 	const UnaliasedSymbolCache: WeakMap<TS.Node, TS.Symbol | null> = new WeakMap()
@@ -121,17 +121,17 @@ export function createSymbolHelpers(ts: typeof TS, typeCheckerGetter: () => TS.T
 				return cached ?? undefined
 			}
 
-			let resolved = typeCheckerGetter().getSymbolAtLocation(node)
+			let resolved = types.typeChecker.getSymbolAtLocation(node)
 
 			// Get symbol from identifier.
 			if (!resolved && !ts.isIdentifier(node)) {
 				let identifier = getIdentifier(node)
-				resolved = identifier ? typeCheckerGetter().getSymbolAtLocation(identifier) : undefined
+				resolved = identifier ? types.typeChecker.getSymbolAtLocation(identifier) : undefined
 			}
 
 			// Resolve aliased symbols to it's original declared place.
 			if (resolveAlias && resolved && (resolved.flags & ts.SymbolFlags.Alias) > 0) {
-				resolved = typeCheckerGetter().getAliasedSymbol(resolved)
+				resolved = types.typeChecker.getAliasedSymbol(resolved)
 			}
 
 			cache.set(node, resolved ?? null)

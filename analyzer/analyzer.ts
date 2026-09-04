@@ -2,17 +2,33 @@ import type TS from 'typescript'
 import {analyzeLuposComponents, createLuposComponent} from './components'
 import {LuposBinding, LuposComponent, LuposEvent, LuposProperty} from './types'
 import {analyzeLuposBindings, createLuposBinding} from './bindings'
-import {Helper} from '../helper'
+import {Helper, helperOfContext} from '../helper'
 import {ListMap, TwoWayListMap} from '../utils'
 import {TemplateBasis} from '../template'
 import {LuposKnownInternalBindings} from '../complete-data'
 
 
 /** 
- * In a plugin, it can visit sources across whole workspace.
- * In a transformer, it is only allowed to visit current source file and all resolved.
+ * In a plugin, it will be extended to visit source files across whole workspace.
+ * In a transformer, it is only visit source file when required.
  */
 export class Analyzer {
+
+	/** Original program identity controls the lifetime of all analysis caches. */
+	private static Analyzers = new WeakMap<TS.Program, Analyzer>()
+
+	/** Initialize analysis independently of diagnostic or transformer call order. */
+	static ofContext(ts: typeof TS, program: TS.Program): Analyzer {
+		let analyzer = this.Analyzers.get(program)
+		if (!analyzer) {
+			let helper = helperOfContext(ts, program)
+			analyzer = new Analyzer(helper)
+			this.Analyzers.set(program, analyzer)
+		}
+
+		return analyzer
+	}
+
 
 	readonly helper: Helper
 

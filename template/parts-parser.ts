@@ -569,9 +569,8 @@ export class TemplatePartParser {
 	/** Check whether a value index represents a value type of node. */
 	private isTextValueAtIndexValueType(index: number): boolean {
 		let rawNode = this.valueNodes[index]
-		let type = this.helper.types.typeOf(rawNode)
+		let type = this.helper.types.getMirroredType(rawNode)
 
 		return this.helper.types.isStringType(type) || this.helper.types.isNumericType(type)
 	}
 }
-

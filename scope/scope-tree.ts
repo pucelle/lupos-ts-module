@@ -11,9 +11,6 @@ type ScopeConstructor<S extends Scope> = {
 /** Build a tree of scopes. */
 export class ScopeTree<S extends Scope = Scope> {
 
-	/** Current ScopeTree instance. */
-	static current: ScopeTree
-
 	readonly Scope: ScopeConstructor<S>
 	readonly helper: Helper
 	readonly ts: typeof TS
@@ -53,7 +50,6 @@ export class ScopeTree<S extends Scope = Scope> {
 	/** Initialize before visiting a source file. */
 	initialize(sourceFile: TS.SourceFile) {
 		this.sourceFile = sourceFile
-		ScopeTree.current = this
 	}
 
 	/** Before entering child nodes. */
