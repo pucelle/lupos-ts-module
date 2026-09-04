@@ -85,7 +85,30 @@ export abstract class TemplateBasis {
 		if (isNamedComponent) {
 			let decl = this.scopeTree.getReferenceByName(tagName, this.node)
 			if (decl) {
-				yield* this.helper.symbol.resolveDeepDeclClassDeclarations(decl)
+
+				// A destructuring declaration describes the whole object. Resolve the
+				// selected local constructor, including aliases from awaited imports.
+				if (this.helper.ts.isVariableDeclaration(decl) && !this.helper.ts.isIdentifier(decl.name)) {
+					let item = [...this.helper.variable.walkDeconstructedDeclarationItems(decl)]
+						.find(item => item.name === tagName)
+
+					if (item) {
+						let type = this.helper.types.typeOf(item.node)
+
+						for (let signature of type.getConstructSignatures()) {
+							let instance = signature.getReturnType()
+
+							for (let declaration of instance.getSymbol()?.declarations ?? []) {
+								if (this.helper.ts.isClassDeclaration(declaration)) {
+									yield declaration
+								}
+							}
+						}
+					}
+				}
+				else {
+					yield* this.helper.symbol.resolveDeepDeclClassDeclarations(decl)
+				}
 			}
 		}
 
