@@ -145,6 +145,7 @@ function buildTemplateChecks(
 				parts.filter(part => {
 					return part.type === TemplatePartType.Binding
 						|| part.type === TemplatePartType.Property
+						|| part.type === TemplatePartType.Event
 					}
 				).flatMap(part => !part.strings ? part.valueIndices?.map(v => v.index) ?? [] : [])
 			)

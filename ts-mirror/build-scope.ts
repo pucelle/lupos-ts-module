@@ -5,6 +5,7 @@ import {TemplateBasis, TemplatePart, TemplatePartType} from '../template'
 import {MirrorCapability} from './types'
 import {buildBinding} from './build-binding'
 import {buildProperty} from './build-property'
+import {buildEvent} from './build-event'
 import {buildElementExpression} from './build-element-expression'
 import {LuposKnownInternalBindings} from '../complete-data'
 import {MirrorInsertion, RelativeMapping, MirrorCheck} from './insertion-types'
@@ -22,7 +23,7 @@ interface ComponentUse {
 }
 
 
-/** Build component, property, and binding checks within one lexical scope. */
+/** Build component, property, binding, and event checks within one lexical scope. */
 export function buildScope(parts: TemplatePart[], template: TemplateBasis, analyzer: Analyzer, createIdentifier: () => string) {
 	let {helper, sourceFile, valueNodes: values} = template
 	let text = ''
@@ -50,6 +51,7 @@ export function buildScope(parts: TemplatePart[], template: TemplateBasis, analy
 	emitComponents()
 	emitProperties()
 	emitBindings()
+	emitEvents()
 
 	return {
 		text,
@@ -185,6 +187,28 @@ export function buildScope(parts: TemplatePart[], template: TemplateBasis, analy
 
 			appendCheck(check, part)
 			previousBindings.set(part.node, instanceName)
+		}
+	}
+
+	/** Route declared component events to on, and other events to the element. */
+	function emitEvents() {
+		for (let part of parts) {
+			if (part.type !== TemplatePartType.Event || !part.mainName) {
+				continue
+			}
+
+			let component = componentByNode.get(part.node)
+			if (!component && TemplateSlotPlaceholder.isComponent(part.node.tagName!)) {
+				continue
+			}
+
+			let beComponentEvent = !!component && (part.namePrefix === '@@'
+				|| [...template.resolveComponentDeclarations(part.node.tagName!)].some(declaration => {
+					let candidate = analyzer.getComponentByDeclaration(declaration)
+					return !!candidate && !!analyzer.getComponentEvent(candidate, part.mainName!)
+				}))
+
+			appendCheck(buildEvent(part, template, component?.instanceName, beComponentEvent), part)
 		}
 	}
 }
