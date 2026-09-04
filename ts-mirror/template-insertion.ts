@@ -1,5 +1,5 @@
-import {buildScopeChecks} from './scope-checks'
-import {emitControlFlow, isMirrorControl} from './control-flow'
+import {buildScope} from './build-scope'
+import {buildControlFlow, isMirrorControl} from './build-control-flow'
 import type TS from 'typescript'
 import {Analyzer} from '../analyzer'
 import {Helper} from '../helper'
@@ -86,8 +86,13 @@ function buildTemplateChecks(
 	let checkSpans: MirrorInsertion['checks'] = []
 	let sourceDiagnosticExclusions: TS.TextSpan[] = []
 
-	let controlNodes = new Set(parts.filter(part => part.type === TemplatePartType.FlowControl
-		&& isMirrorControl(part.node, values, helper)).map(part => part.node))
+	let controlNodes = new Set(
+		parts.filter(part => {
+			return part.type === TemplatePartType.FlowControl
+				&& isMirrorControl(part.node, values, helper)
+		}).map(part => part.node)
+	)
+
 	let closestControl = (node: HTMLNode): HTMLNode | null => {
 		for (let parent = node.parent; parent; parent = parent.parent) {
 			if (controlNodes.has(parent)) {
@@ -96,48 +101,77 @@ function buildTemplateChecks(
 		}
 		return null
 	}
+
 	let copy = (value: TS.Expression) => {
 		let start = text.length
 		text += sourceFile.text.slice(value.getStart(sourceFile), value.getEnd())
-		mappings.push({start, end: text.length, originalStart: value.getStart(sourceFile), originalEnd: value.getEnd(),
-			kind: 'copied-expression', capabilities: AllCapabilities})
+
+		mappings.push({start,
+			end: text.length,
+			originalStart: value.getStart(sourceFile),
+			originalEnd: value.getEnd(),
+			kind: 'copied-expression',
+			capabilities: AllCapabilities
+		})
+
 		sourceDiagnosticExclusions.push({start: value.getStart(sourceFile), length: value.getWidth(sourceFile)})
 	}
+
 	let allParts = parts
+
 	let emitScope = (scope: HTMLNode | null) => {
 		let parts = allParts.filter(part => closestControl(part.node) === scope)
-		let checks = buildScopeChecks(parts, template, analyzer, createIdentifier)
+		let checks = buildScope(parts, template, analyzer, createIdentifier)
 		let offset = text.length
 		text += checks.text
 
 		mappings.push(...checks.mappings.map(mapping => ({
-			...mapping, start: mapping.start + offset, end: mapping.end + offset,
+			...mapping,
+			start: mapping.start + offset,
+			end: mapping.end + offset,
 		})))
 
 		checkSpans.push(...checks.checks.map(check => ({
-			...check, start: check.start + offset, end: check.end + offset,
+			...check,
+			start: check.start + offset,
+			end: check.end + offset,
 		})))
 
 		sourceDiagnosticExclusions.push(...checks.sourceDiagnosticExclusions)
 
 		if (scope) {
 			// Content and ordinary attribute expressions also need the loop's lexical scope.
-			let checked = new Set(parts.filter(part => part.type === TemplatePartType.Binding
-				|| part.type === TemplatePartType.Property).flatMap(part => !part.strings ? part.valueIndices?.map(v => v.index) ?? [] : []))
+			let checked = new Set(
+				parts.filter(part => {
+					return part.type === TemplatePartType.Binding
+						|| part.type === TemplatePartType.Property
+					}
+				).flatMap(part => !part.strings ? part.valueIndices?.map(v => v.index) ?? [] : [])
+			)
+			
 			for (let part of parts) {
 				if (controlNodes.has(part.node)) {
 					continue
 				}
+
 				let indices = part.valueIndices?.map(value => value.index) ?? []
+
 				if (part.type === TemplatePartType.FlowControl) {
-					indices.push(...(part.node.attrs ?? []).flatMap(attr =>
-						TemplateSlotPlaceholder.isCompleteSlotIndex(attr.name)
-							? [TemplateSlotPlaceholder.getUniqueSlotIndex(attr.name)!] : []))
+					indices.push(
+						...(part.node.attrs ?? []).flatMap(
+							attr =>
+								TemplateSlotPlaceholder.isCompleteSlotIndex(attr.name)
+									? [TemplateSlotPlaceholder.getUniqueSlotIndex(attr.name)!]
+									: []
+						)
+					)
 				}
+
 				for (let index of indices) {
 					if (checked.has(index)) {
 						continue
 					}
+
 					checked.add(index)
 					text += 'void ('; copy(values[index]); text += ');'
 				}
@@ -148,20 +182,32 @@ function buildTemplateChecks(
 				continue
 			}
 
-			emitControlFlow(control, values, helper, {
+			buildControlFlow(control, values, helper, {
 				write: value => { text += value },
 				copy,
 				position: () => text.length,
 				check: (start, node) => {
-					mappings.push({start, end: text.length,
-						originalStart: node.getStart(sourceFile), originalEnd: node.getEnd(),
-						kind: 'scaffold', capabilities: ['diagnostic']})
+					mappings.push({
+						start,
+						end: text.length,
+						originalStart: node.getStart(sourceFile),
+						originalEnd: node.getEnd(),
+						kind: 'scaffold',
+						capabilities: ['diagnostic']
+					})
 
-					checkSpans.push({start, end: text.length,
-						fallbackStart: node.getStart(sourceFile), fallbackEnd: node.getEnd()})
+					checkSpans.push({
+						start,
+						end: text.length,
+						fallbackStart: node.getStart(sourceFile),
+						fallbackEnd: node.getEnd()
+					})
 				},
 				exclude: node => {
-					sourceDiagnosticExclusions.push({start: node.getStart(sourceFile), length: node.getWidth(sourceFile)})
+					sourceDiagnosticExclusions.push({
+						start: node.getStart(sourceFile),
+						length: node.getWidth(sourceFile)
+					})
 				},
 				children: emitScope,
 				identifier: createIdentifier,

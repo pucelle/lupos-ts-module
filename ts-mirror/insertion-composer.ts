@@ -36,6 +36,7 @@ export function applyInsertions(
 		if (insertion.offset > originalOffset) {
 			let mirrorStart = output.length
 			output += sourceFile.text.slice(originalOffset, insertion.offset)
+
 			mappings.push({
 				mirrorStart,
 				mirrorEnd: output.length,
@@ -44,6 +45,7 @@ export function applyInsertions(
 				kind: 'source',
 				capabilities: AllCapabilities,
 			})
+			
 			originalOffset = insertion.offset
 		}
 

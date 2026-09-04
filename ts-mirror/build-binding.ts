@@ -4,11 +4,11 @@ import {LuposKnownInternalBindings} from '../complete-data'
 import {TemplateSlotPlaceholder} from '../html-syntax'
 import {TemplateBasis, TemplatePart} from '../template'
 import {AllCapabilities, MirrorCheck, RelativeMapping} from './mirror-builder'
-import {buildElementExpression} from './element-expression'
+import {buildElementExpression} from './build-element-expression'
 
 
 /** Model the constructor and update operations performed by the binding parsers. */
-export function buildBindingCheck(
+export function buildBinding(
 	part: TemplatePart,
 	template: TemplateBasis,
 	analyzer: Analyzer,

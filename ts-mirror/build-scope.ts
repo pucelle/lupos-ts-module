@@ -3,9 +3,9 @@ import {Analyzer, LuposComponent} from '../analyzer'
 import {HTMLNode, TemplateSlotPlaceholder} from '../html-syntax'
 import {TemplateBasis, TemplatePart, TemplatePartType} from '../template'
 import {MirrorCapability} from './types'
-import {buildBindingCheck} from './binding-check'
-import {buildPropertyCheck} from './property-check'
-import {buildElementExpression} from './element-expression'
+import {buildBinding} from './build-binding'
+import {buildProperty} from './build-property'
+import {buildElementExpression} from './build-element-expression'
 import {LuposKnownInternalBindings} from '../complete-data'
 import {MirrorInsertion, RelativeMapping, MirrorCheck} from './insertion-types'
 
@@ -23,7 +23,7 @@ interface ComponentUse {
 
 
 /** Build component, property, and binding checks within one lexical scope. */
-export function buildScopeChecks(parts: TemplatePart[], template: TemplateBasis, analyzer: Analyzer, createIdentifier: () => string) {
+export function buildScope(parts: TemplatePart[], template: TemplateBasis, analyzer: Analyzer, createIdentifier: () => string) {
 	let {helper, sourceFile, valueNodes: values} = template
 	let text = ''
 	let mappings: RelativeMapping[] = []
@@ -47,25 +47,41 @@ export function buildScopeChecks(parts: TemplatePart[], template: TemplateBasis,
 			&& (!!LuposKnownInternalBindings[part.mainName] || !!analyzer.getBindingByName(part.mainName, template))
 	})
 
-
 	emitComponents()
 	emitProperties()
 	emitBindings()
 
-	return {text, mappings, checks: checkSpans, sourceDiagnosticExclusions}
+	return {
+		text,
+		mappings,
+		checks: checkSpans,
+		sourceDiagnosticExclusions,
+	}
 
 	/** Append a mapped check and suppress its original diagnostic copy. */
 	function appendCheck(check: MirrorCheck, part: TemplatePart) {
 		let checkStart = text.length
 		text += check.text
+
 		mappings.push(...check.mappings.map(mapping => ({
-			...mapping, start: mapping.start + checkStart, end: mapping.end + checkStart,
+			...mapping,
+			start: mapping.start + checkStart,
+			end: mapping.end + checkStart,
 		})))
-		checkSpans.push({start: checkStart, end: text.length,
-			fallbackStart: check.fallbackStart, fallbackEnd: check.fallbackEnd})
+
+		checkSpans.push({
+			start: checkStart,
+			end: text.length,
+			fallbackStart: check.fallbackStart,
+			fallbackEnd: check.fallbackEnd
+		})
+
 		let value = template.getPartUniqueValue(part)
 		if (value) {
-			sourceDiagnosticExclusions.push({start: value.getStart(sourceFile), length: value.getWidth(sourceFile)})
+			sourceDiagnosticExclusions.push({
+				start: value.getStart(sourceFile),
+				length: value.getWidth(sourceFile)
+			})
 		}
 	}
 
@@ -91,6 +107,7 @@ export function buildScopeChecks(parts: TemplatePart[], template: TemplateBasis,
 				constructorValue: part.type === TemplatePartType.DynamicComponent
 					? values[TemplateSlotPlaceholder.getUniqueSlotIndex(tagName)!] : undefined,
 			}
+			
 			componentUses.push(use)
 			componentByNode.set(part.node, use)
 		}
@@ -100,14 +117,17 @@ export function buildScopeChecks(parts: TemplatePart[], template: TemplateBasis,
 	/** Emit component constructors and navigation anchors. */
 	function emitComponents() {
 		for (let use of componentUses) {
+			
 			// Constructor errors (required arguments, abstract classes, etc.) are mirror
 			// artifacts. Only navigation capabilities are mapped for this identifier,
 			// so the provider drops such diagnostics while retaining the symbol usage.
 			text += `let ${use.instanceName} = new `
 			let componentStart = text.length
+
 			text += use.constructorValue
 				? `(${sourceFile.text.slice(use.constructorValue.getStart(sourceFile), use.constructorValue.getEnd())})`
 				: use.tagName
+
 			let componentEnd = text.length
 			text += '();'
 
@@ -136,16 +156,18 @@ export function buildScopeChecks(parts: TemplatePart[], template: TemplateBasis,
 				? component.instanceName : elementsByNode.get(part.node)
 
 			if (!target) {
+
 				// Leave unresolved component tags to the structural component diagnostic.
 				if (!component && TemplateSlotPlaceholder.isComponent(part.node.tagName!)) {
 					continue
 				}
+
 				target = createIdentifier()
 				text += `let ${target} = ${buildElementExpression(part.node, template, component?.instanceName)};`
 				elementsByNode.set(part.node, target)
 			}
 
-			appendCheck(buildPropertyCheck(part, template, sourceFile, target), part)
+			appendCheck(buildProperty(part, template, sourceFile, target), part)
 		}
 
 	}
@@ -158,12 +180,11 @@ export function buildScopeChecks(parts: TemplatePart[], template: TemplateBasis,
 		for (let part of bindingParts) {
 			let instanceName = createIdentifier()
 
-			let check = buildBindingCheck(part, template, analyzer, instanceName,
+			let check = buildBinding(part, template, analyzer, instanceName,
 				componentByNode.get(part.node)?.instanceName, previousBindings.get(part.node), createIdentifier)
 
 			appendCheck(check, part)
 			previousBindings.set(part.node, instanceName)
 		}
-
 	}
 }

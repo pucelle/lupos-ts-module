@@ -31,17 +31,17 @@ export function isMirrorControl(node: HTMLNode, values: TS.Expression[], helper:
 }
 
 /** Emit the control construct around its component, binding, and expression checks. */
-export function emitControlFlow(node: HTMLNode, values: TS.Expression[], helper: Helper, output: ControlFlowOutput) {
+export function buildControlFlow(node: HTMLNode, values: TS.Expression[], helper: Helper, output: ControlFlowOutput) {
 	if (node.tagName === 'lu:for') {
-		emitFor(node, values, helper, output)
+		buildFor(node, values, helper, output)
 	}
 	else {
-		emitBranch(node, values, output)
+		buildBranch(node, values, output)
 	}
 }
 
 /** Model iteration with the iterable resolved in the enclosing scope. */
-function emitFor(node: HTMLNode, values: TS.Expression[], helper: Helper, output: ControlFlowOutput) {
+function buildFor(node: HTMLNode, values: TS.Expression[], helper: Helper, output: ControlFlowOutput) {
 	let header = parseForHeader(node, values, helper)!
 	let iterable = values[header.iterableIndex]
 	let start = output.position()
@@ -67,7 +67,7 @@ function emitFor(node: HTMLNode, values: TS.Expression[], helper: Helper, output
 }
 
 /** Preserve branch narrowing without evaluating mirror expressions at runtime. */
-function emitBranch(node: HTMLNode, values: TS.Expression[], output: ControlFlowOutput) {
+function buildBranch(node: HTMLNode, values: TS.Expression[], output: ControlFlowOutput) {
 	let tag = node.tagName
 	let condition = conditionOf(node, values)
 	let previousTag = node.previousSibling?.tagName

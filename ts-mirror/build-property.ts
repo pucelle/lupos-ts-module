@@ -8,7 +8,7 @@ import {AllCapabilities, MirrorCheck, RelativeMapping} from './mirror-builder'
  * Assignment delegates compatibility, readonly, setter, union, and generic
  * checks to TypeScript instead of reproducing them in the template analyzer.
  */
-export function buildPropertyCheck(
+export function buildProperty(
 	part: TemplatePart,
 	template: TemplateBasis,
 	sourceFile: TS.SourceFile,
@@ -57,11 +57,13 @@ export function buildPropertyCheck(
 	// - an unquoted single interpolation retains the expression's exact type;
 	// - a valueless property is boolean shorthand.
 	if (part.strings && part.valueIndices) {
+
 		// A quoted/interpolated attribute always produces a string, but its exact
 		// value is not known statically.
 		text += '("" as string)'
 	}
 	else if (part.strings) {
+
 		// Preserve a static attribute as a string literal so literal unions such as
 		// `"horizontal" | "vertical"` are checked with the real template value.
 		text += JSON.stringify(part.strings[0].text)
@@ -84,6 +86,7 @@ export function buildPropertyCheck(
 	else {
 		text += 'true'
 	}
+	
 	text += ');'
 
 	// Anything in the generated assignment that lacks a more precise property or
