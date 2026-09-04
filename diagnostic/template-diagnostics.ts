@@ -3,7 +3,7 @@ import {Analyzer} from '../analyzer'
 import {Helper} from '../helper'
 import {parseAllTemplatePartPieces, TemplateBasis, TemplatePart, TemplatePartPiece, TemplatePartType} from '../template'
 import {DiagnosticModifier} from './diagnostic-modifier'
-import {diagnoseComponent, diagnoseControl, diagnoseBinding, diagnoseProperty, diagnoseEvent} from './of-parts'
+import {diagnoseComponent, diagnoseControl, diagnoseBinding, diagnoseEvent} from './of-parts'
 import {HTMLSyntaxErrorType} from '../html-syntax'
 import {DiagnosticCode} from './codes'
 
@@ -160,11 +160,6 @@ export class TemplateDiagnostics {
 		// `:xxx`
 		else if (part.type === TemplatePartType.Binding) {
 			diagnoseBinding(piece, part, template, modifier, this.analyzer)
-		}
-
-		// `.xxx`
-		else if (part.type === TemplatePartType.Property) {
-			diagnoseProperty(piece, part, template, modifier, this.analyzer)
 		}
 
 		// `@xxx` or `@@xxx`

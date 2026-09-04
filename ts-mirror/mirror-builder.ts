@@ -5,10 +5,14 @@ import {HTMLNode, HTMLRoot, TemplateSlotPlaceholder} from '../html-syntax'
 import {ScopeTree} from '../scope'
 import {TemplateBasis, TemplatePart, TemplatePartParser, TemplatePartType} from '../template'
 import {MirrorCapability, MirrorCheckSpan, MirrorDocument, MirrorMapping, MirrorMappingKind} from './types'
+import {buildBindingCheck} from './binding-check'
+import {buildPropertyCheck} from './property-check'
+import {buildElementExpression} from './element-expression'
+import {LuposKnownInternalBindings} from '../complete-data'
 
 
 /** Exact source copies, property names, and values are safe for every consumer. */
-const AllCapabilities: readonly MirrorCapability[] = ['diagnostic', 'completion', 'definition', 'hover', 'references', 'rename']
+export const AllCapabilities: readonly MirrorCapability[] = ['diagnostic', 'completion', 'definition', 'hover', 'references', 'rename']
 
 /**
  * Component/binding anchors exist to give TypeScript a real symbol reference.
@@ -17,7 +21,7 @@ const AllCapabilities: readonly MirrorCapability[] = ['diagnostic', 'completion'
 const NavigationCapabilities: readonly MirrorCapability[] = ['completion', 'definition', 'hover', 'references', 'rename']
 
 /** Mapping whose mirror offsets are relative to the start of one insertion. */
-interface RelativeMapping {
+export interface RelativeMapping {
 	start: number
 	end: number
 	originalStart: number
@@ -27,7 +31,7 @@ interface RelativeMapping {
 }
 
 /** Generated assignment plus its mappings and original diagnostic fallback. */
-interface MirrorCheck {
+export interface MirrorCheck {
 	text: string
 	fallbackStart: number
 	fallbackEnd: number
@@ -45,6 +49,7 @@ interface MirrorInsertion {
 	text: string
 	mappings: RelativeMapping[]
 	checks: {start: number, end: number, fallbackStart: number, fallbackEnd: number}[]
+	sourceDiagnosticExclusions?: TS.TextSpan[]
 }
 
 /** One component element and the generated instance shared by its properties. */
@@ -53,7 +58,7 @@ interface ComponentUse {
 	tagName: string
 	component: LuposComponent
 	instanceName: string
-	propertyParts: TemplatePart[]
+	constructorValue?: TS.Expression
 }
 
 class MirrorTemplate extends TemplateBasis {}
@@ -65,8 +70,8 @@ class MirrorTemplate extends TemplateBasis {}
  * The traversal only records insertions. `applyInsertions` subsequently merges
  * all prefixes and suffixes with the untouched source, so nested tagged
  * templates remain structurally valid and retain precise source mappings.
- * Returns `null` when the file contains no resolvable component or binding
- * references and therefore does not need a mirror Program.
+ * Returns `null` when the file has no component, property, or binding use
+ * requiring a mirror Program.
  */
 export function buildTypeScriptMirror(
 	ts: typeof TS,
@@ -173,9 +178,8 @@ function buildTemplateInsertion(
 	let componentUses: ComponentUse[] = []
 	let componentByNode: Map<HTMLNode, ComponentUse> = new Map()
 
-	// Second pass: attach every `.property` to the instance for its owning tag.
 	for (let part of parts) {
-		if (part.type !== TemplatePartType.Component) {
+		if (part.type !== TemplatePartType.Component && part.type !== TemplatePartType.DynamicComponent) {
 			continue
 		}
 
@@ -190,28 +194,24 @@ function buildTemplateInsertion(
 			tagName,
 			component,
 			instanceName: createIdentifier(),
-			propertyParts: [],
+			constructorValue: part.type === TemplatePartType.DynamicComponent
+				? values[TemplateSlotPlaceholder.getUniqueSlotIndex(tagName)!] : undefined,
 		}
 		componentUses.push(use)
 		componentByNode.set(part.node, use)
 	}
 
-	for (let part of parts) {
-		if (part.type === TemplatePartType.Property) {
-			componentByNode.get(part.node)?.propertyParts.push(part)
-		}
-	}
+	let propertyParts = parts.filter(part => part.type === TemplatePartType.Property && !!part.mainName)
 
-	// Binding value checks still use the existing analyzer, but a generated
-	// `void BindingName` anchor is enough for unused imports and navigation.
+	// Every binding use needs its own instance and checked update call.
 	let bindingParts = parts.filter(part => {
 		return part.type === TemplatePartType.Binding
 			&& !!part.mainName
 			&& /^[$A-Z_a-z][$\w]*$/.test(part.mainName)
-			&& !!analyzer.getBindingByName(part.mainName, template)
+			&& (!!LuposKnownInternalBindings[part.mainName] || !!analyzer.getBindingByName(part.mainName, template))
 	})
 
-	if (componentUses.length === 0 && bindingParts.length === 0) {
+	if (componentUses.length === 0 && bindingParts.length === 0 && propertyParts.length === 0) {
 		return null
 	}
 
@@ -219,6 +219,7 @@ function buildTemplateInsertion(
 	let text = '((() => {'
 	let mappings: RelativeMapping[] = []
 	let checkSpans: MirrorInsertion['checks'] = []
+	let sourceDiagnosticExclusions: TS.TextSpan[] = []
 
 	for (let use of componentUses) {
 		// Constructor errors (required arguments, abstract classes, etc.) are mirror
@@ -226,75 +227,67 @@ function buildTemplateInsertion(
 		// so the provider drops such diagnostics while retaining the symbol usage.
 		text += `let ${use.instanceName} = new `
 		let componentStart = text.length
-		text += use.tagName
+		text += use.constructorValue
+			? `(${sourceFile.text.slice(use.constructorValue.getStart(sourceFile), use.constructorValue.getEnd())})`
+			: use.tagName
 		let componentEnd = text.length
 		text += '();'
 
 		mappings.push({
 			start: componentStart,
 			end: componentEnd,
-			originalStart: template.localOffsetToGlobal(use.node.nameStart),
-			originalEnd: template.localOffsetToGlobal(use.node.nameEnd),
+			originalStart: use.constructorValue?.getStart(sourceFile) ?? template.localOffsetToGlobal(use.node.nameStart),
+			originalEnd: use.constructorValue?.getEnd() ?? template.localOffsetToGlobal(use.node.nameEnd),
 			kind: 'symbol-anchor',
 			capabilities: NavigationCapabilities,
 		})
+	}
 
-		for (let part of use.propertyParts) {
-			// Missing properties stay with structural template diagnostics. Generating
-			// only resolvable properties avoids duplicate or misleading TS2339 errors.
-			let property = part.mainName && analyzer.getComponentProperty(use.component, part.mainName)
-			if (!property) {
-				continue
-			}
-
-			let check = buildPropertyCheck(part, template, sourceFile, use.instanceName)
-			let checkStart = text.length
-			text += check.text
-			let checkEnd = text.length
-
-			for (let mapping of check.mappings) {
-				mappings.push({
-					...mapping,
-					start: mapping.start + checkStart,
-					end: mapping.end + checkStart,
-				})
-			}
-
-			checkSpans.push({
-				start: checkStart,
-				end: checkEnd,
-				fallbackStart: check.fallbackStart,
-				fallbackEnd: check.fallbackEnd,
-			})
+	let appendCheck = (check: MirrorCheck, part: TemplatePart) => {
+		let checkStart = text.length
+		text += check.text
+		mappings.push(...check.mappings.map(mapping => ({
+			...mapping, start: mapping.start + checkStart, end: mapping.end + checkStart,
+		})))
+		checkSpans.push({start: checkStart, end: text.length,
+			fallbackStart: check.fallbackStart, fallbackEnd: check.fallbackEnd})
+		let value = template.getPartUniqueValue(part)
+		if (value) {
+			sourceDiagnosticExclusions.push({start: value.getStart(sourceFile), length: value.getWidth(sourceFile)})
 		}
 	}
 
-	// One anchor per binding name is sufficient even if it appears several times
-	// in the same template. Each template has its own IIFE scope.
-	let anchoredBindings: Set<string> = new Set()
+	let elementsByNode: Map<HTMLNode, string> = new Map()
+	for (let part of propertyParts) {
+		let component = componentByNode.get(part.node)
 
-	for (let part of bindingParts) {
-		let bindingName = part.mainName!
-		if (anchoredBindings.has(bindingName)) {
-			continue
+		// Match PropertySlotParser: '..' forces the component; '.' prefers an
+		// existing component member and otherwise assigns to its attached element.
+		let target = component && (part.namePrefix === '..'
+			|| helper.types.typeOf(component.component.declaration).getProperty(part.mainName!))
+			? component.instanceName : elementsByNode.get(part.node)
+
+		if (!target) {
+			// Leave unresolved component tags to the structural component diagnostic.
+			if (!component && TemplateSlotPlaceholder.isComponent(part.node.tagName!)) continue
+			target = createIdentifier()
+			text += `let ${target} = ${buildElementExpression(part.node, template, component?.instanceName)};`
+			elementsByNode.set(part.node, target)
 		}
 
-		anchoredBindings.add(bindingName)
+		appendCheck(buildPropertyCheck(part, template, sourceFile, target), part)
+	}
 
-		text += 'void '
-		let bindingStart = text.length
-		text += bindingName
-		let bindingEnd = text.length
-		text += ';'
+	let previousBindings: Map<HTMLNode, string> = new Map()
 
-		mappings.push({
-			start: bindingStart,
-			end: bindingEnd,
-			originalStart: template.localOffsetToGlobal(part.attr!.nameStart + (part.namePrefix?.length ?? 0)),
-			originalEnd: template.localOffsetToGlobal(part.attr!.nameStart + (part.namePrefix?.length ?? 0) + bindingName.length),
-			kind: 'symbol-anchor',
-			capabilities: NavigationCapabilities,
-		})
+	for (let part of bindingParts) {
+		let instanceName = createIdentifier()
+
+		let check = buildBindingCheck(part, template, analyzer, instanceName,
+			componentByNode.get(part.node)?.instanceName, previousBindings.get(part.node), createIdentifier)
+			
+		appendCheck(check, part)
+		previousBindings.set(part.node, instanceName)
 	}
 
 	// Close and invoke the IIFE, then leave a comma for the original template.
@@ -306,106 +299,10 @@ function buildTemplateInsertion(
 		text,
 		mappings,
 		checks: checkSpans,
+		sourceDiagnosticExclusions,
 	}
 }
 
-
-/**
- * Generate `instance.property = value` for one component property.
- * Assignment delegates compatibility, readonly, setter, union, and generic
- * checks to TypeScript instead of reproducing them in the template analyzer.
- */
-function buildPropertyCheck(
-	part: TemplatePart,
-	template: TemplateBasis,
-	sourceFile: TS.SourceFile,
-	instanceName: string
-): MirrorCheck {
-	let attr = part.attr!
-	let propertyName = part.mainName!
-	let fallbackStart = template.localOffsetToGlobal(attr.nameStart)
-	let fallbackEnd = template.localOffsetToGlobal(attr.nameEnd)
-	let originalPropertyStart = template.localOffsetToGlobal(attr.nameStart + (part.namePrefix?.length ?? 0))
-	let originalPropertyEnd = originalPropertyStart + propertyName.length
-	let text = instanceName
-	let mappings: RelativeMapping[] = []
-	let propertyStart: number
-	let propertyEnd: number
-
-	// Use bracket syntax for names that cannot be represented by a dot property.
-	if (/^[$A-Z_a-z][$\w]*$/.test(propertyName)) {
-		text += '.'
-		propertyStart = text.length
-		text += propertyName
-		propertyEnd = text.length
-	}
-	else {
-		text += '['
-		propertyStart = text.length
-		text += JSON.stringify(propertyName)
-		propertyEnd = text.length
-		text += ']'
-	}
-
-	mappings.push({
-		start: propertyStart,
-		end: propertyEnd,
-		originalStart: originalPropertyStart,
-		originalEnd: originalPropertyEnd,
-		kind: 'symbol-anchor',
-		capabilities: AllCapabilities,
-	})
-
-	text += ' = ('
-
-	// Match TemplateBasis.getPartValueType semantics:
-	// - quoted interpolation has the broad `string` type;
-	// - static text retains its literal type;
-	// - an unquoted single interpolation retains the expression's exact type;
-	// - a valueless property is boolean shorthand.
-	if (part.strings && part.valueIndices) {
-		// A quoted/interpolated attribute always produces a string, but its exact
-		// value is not known statically.
-		text += '("" as string)'
-	}
-	else if (part.strings) {
-		// Preserve a static attribute as a string literal so literal unions such as
-		// `"horizontal" | "vertical"` are checked with the real template value.
-		text += JSON.stringify(part.strings[0].text)
-	}
-	else if (part.valueIndices?.length === 1) {
-		let value = template.valueNodes[part.valueIndices[0].index]
-		let valueStart = text.length
-		text += sourceFile.text.slice(value.getStart(sourceFile), value.getEnd())
-		let valueEnd = text.length
-		
-		mappings.push({
-			start: valueStart,
-			end: valueEnd,
-			originalStart: value.getStart(sourceFile),
-			originalEnd: value.getEnd(),
-			kind: 'copied-expression',
-			capabilities: AllCapabilities,
-		})
-	}
-	else {
-		text += 'true'
-	}
-	text += ');'
-
-	// Anything in the generated assignment that lacks a more precise property or
-	// expression mapping is reported on the original `.property` attribute.
-	mappings.push({
-		start: 0,
-		end: text.length,
-		originalStart: fallbackStart,
-		originalEnd: fallbackEnd,
-		kind: 'scaffold',
-		capabilities: ['diagnostic'],
-	})
-
-	return {text, fallbackStart, fallbackEnd, mappings}
-}
 
 function createIdentifierFactory(sourceText: string): () => string {
 	let index = 0
@@ -506,5 +403,6 @@ function applyInsertions(sourceFile: TS.SourceFile, starts: MirrorInsertion[]): 
 		mirrorText: output,
 		mappings,
 		checkSpans,
+		sourceDiagnosticExclusions: starts.flatMap(insertion => insertion.sourceDiagnosticExclusions ?? []),
 	}
 }

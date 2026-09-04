@@ -43,6 +43,15 @@ export function mapMirrorSpanToOriginal(
 	if (!mapping) {
 		return null
 	}
+	if (capability === 'diagnostic' && mapping.kind === 'source') {
+		let originalStart = mapPosition(mapping, span.start, true)
+		
+		if (document.sourceDiagnosticExclusions?.some(exclusion =>
+			originalStart >= exclusion.start && originalStart < exclusion.start + exclusion.length
+		)) {
+			return null
+		}
+	}
 
 	if (mapping.kind === 'scaffold') {
 		return {
@@ -70,7 +79,7 @@ export function intersectsMirrorCheck(document: MirrorDocument, start: number, l
 
 	return document.checkSpans.some(span => {
 		let spanEnd = span.start + span.length
-		
+
 		return length === 0
 			? start >= span.start && start <= spanEnd
 			: start < spanEnd && end > span.start

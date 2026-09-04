@@ -79,4 +79,7 @@ export interface MirrorDocument {
 
 	/** Generated assignment ranges, primarily useful for diagnostics and tests. */
 	readonly checkSpans: readonly MirrorCheckSpan[]
+
+	/** Original expressions whose diagnostics are supplied by checked copies. */
+	readonly sourceDiagnosticExclusions?: readonly TS.TextSpan[]
 }
