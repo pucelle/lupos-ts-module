@@ -22,11 +22,6 @@ export function diagnoseBinding(
 	let modifiers = part.modifiers!
 
 	if (piece.type === TemplatePartPieceType.Name) {
-		let ref = template.getReferenceByName(mainName)
-		if (ref) {
-			modifier.deleteNeverRead(ref)
-		}
-
 		let binding = analyzer.getBindingByName(mainName, template)
 		if (!binding && !LuposKnownInternalBindings[mainName]) {
 			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Binding class '${mainName}' is not existing.`)

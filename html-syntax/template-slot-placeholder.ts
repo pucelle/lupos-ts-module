@@ -37,7 +37,7 @@ export namespace TemplateSlotPlaceholder {
 	let ts: typeof TS
 
 
-	/** Initialize ts. */
+	/** Initialize ts after getting transformer context. */
 	export function initialize(typescript: typeof TS) {
 		ts = typescript
 	}

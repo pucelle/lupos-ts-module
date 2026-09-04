@@ -19,11 +19,6 @@ export function diagnoseComponent(
 	let ts = helper.ts
 
 	if (TemplateSlotPlaceholder.isNamedComponent(tagName)) {
-		let ref = template.getReferenceByName(tagName)
-		if (ref) {
-			modifier.deleteNeverRead(ref)
-		}
-
 		let component = analyzer.getComponentByTagName(tagName, template)
 		if (!component) {
 			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Component '<${tagName}>' is not existing.`)
