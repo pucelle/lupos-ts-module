@@ -1,5 +1,4 @@
-import type TS from 'typescript'
-import {TemplateBasis, TemplatePart, TemplatePartPiece} from '../../template'
+import {TemplateBasis, TemplatePart, TemplatePartPiece, parseForHeader} from '../../template'
 import {DiagnosticModifier} from '../diagnostic-modifier'
 import {HTMLNode, HTMLNodeType, TemplateSlotPlaceholder} from '../../html-syntax'
 import {LuposFlowControlTags} from '../../complete-data'
@@ -92,78 +91,11 @@ function diagnoseFor(
 	template: TemplateBasis,
 	modifier: DiagnosticModifier
 ) {
-	let helper = template.helper
-	let types = helper.types
-
-	let ofValueIndex = getAttrValueIndex(part.node)
-	let fnValueIndex = getUniqueChildValueIndex(part.node)
-	let dataItemsType: TS.Type | undefined
-
-	if (ofValueIndex === null) {
-		modifier.add(start, length, DiagnosticCode.MissingArgument, `'<lu:for \${...}>' must accept a parameter as loop data.`)
-		return
+	if (!parseForHeader(part.node, template.valueNodes, template.helper)) {
+		modifier.add(start, length, DiagnosticCode.MissingArgument,
+			"Use '<lu:for ${item} of ${list}>' or '<lu:for ${item, index} of ${list}>'.")
 	}
-
-	let ofValueNode = template.valueNodes[ofValueIndex]
-	let ofValueStart = ofValueNode.pos
-	let ofValueLength = ofValueNode.end - ofValueNode.pos
-
-	dataItemsType = types.typeOf(ofValueNode)
-
-	if (!types.isIterableType(dataItemsType)) {
-		modifier.add(ofValueStart, ofValueLength, DiagnosticCode.NotAssignable, `'<lu:for \${iterable}>' can only accept iterable type of parameter.`)
-		return
-	}
-
-	if (fnValueIndex === null) {
-		modifier.add(start, length, DiagnosticCode.MissingArgument, `'<lu:for>\${...}</>' must accept a child item renderer as parameter.`)
-		return
-	}
-
-	
-	let fnValueNode = template.valueNodes[fnValueIndex]
-	let fnValueType = types.typeOf(fnValueNode)
-
-	if (!types.isFunctionType(fnValueType)) {
-		let fnValueStart = fnValueNode.pos
-		let fnValueLength = fnValueNode.end - fnValueNode.pos
-
-		modifier.add(fnValueStart, fnValueLength, DiagnosticCode.NotAssignable, `'<lu:for>\${renderer}</>' must accept a child item renderer as parameter.`)
-		return
-	}
-
-
-	// let returnType = decl ? types.getReturnType(decl) : undefined
-	// let parameterTypes = decl ? decl.parameters.map(param => types.typeOf(param)) : undefined
-
-	// let returnedTypeName = returnType ? types.getTypeReferenceName(returnType) : undefined
-	// if (returnedTypeName && returnedTypeName !== 'TemplateResult' && returnedTypeName !== 'any') {
-	// 	modifier.addNotAssignable(fnValueStart, fnValueLength, ''renderer' of '<lu:for ${renderer}>' must return a 'TemplateResult'.')
-	// 	return
-	// }
-
-	// if (parameterTypes) {
-
-	// 	// Always return `any`...
-	// 	let dataItemType = dataItemsType ? types.getTypeParameters(dataItemsType)?.[0] : undefined
-	// 	let dataItemParamType1 = parameterTypes[0]
-	// 	let dataItemParamType2 = parameterTypes[1]
-
-	// 	if (dataItemType && dataItemParamType1 && !types.isAssignableTo(dataItemParamType1, dataItemType)) {
-	// 		let fromText = types.getTypeFullText(dataItemParamType1)
-	// 		let toText = types.getTypeFullText(dataItemType)
-
-	// 		modifier.addNotAssignable(fnValueStart, fnValueLength, `Render item parameter '${fromText}' is not assignable to '${toText}'.`)
-	// 		return
-	// 	}
-
-	// 	if (dataItemParamType2 && !types.isAssignableTo(dataItemParamType2, typeChecker.getNumberType())) {
-	// 		let fromText = types.getTypeFullText(dataItemParamType2)
-	// 		modifier.addNotAssignable(fnValueStart, fnValueLength, `Render index parameter '${fromText}' is not assignable to 'number'.`)
-	// 	}
-	// }
 }
-
 
 function diagnoseIf(
 	part: TemplatePart,
@@ -316,21 +248,3 @@ function getAttrValueIndex(node: HTMLNode): number | null {
 	let index = attr ? TemplateSlotPlaceholder.getUniqueSlotIndex(attr.name) : null
 	return index
 }
-
-
-/** Get value index of slot `<lu:xx>${...}<>`. */
-function getUniqueChildValueIndex(node: HTMLNode): number | null {
-	if (node.children.length === 0) {
-		return null
-	}
-
-	let childNode = node.children.find(n => {
-		return n.type === HTMLNodeType.Text
-			&& TemplateSlotPlaceholder.isCompleteSlotIndex(n.text!.trim())
-	})
-
-	let index = childNode ? TemplateSlotPlaceholder.getUniqueSlotIndex(childNode.text!.trim()) : null
-
-	return index
-}
-

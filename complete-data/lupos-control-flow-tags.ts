@@ -5,7 +5,7 @@ export const LuposFlowControlTags: CompletionDataItem[] = [
 	},
 	{
 		name: "lu:for",
-		description: "`<lu:for ${iterable}>(item, index) => {...}`, map an iterable and get mapped contents.",
+		description: "`<lu:for ${item, index} of ${list}>Content</lu:for>`, render a subtemplate for each item. The index is optional.",
 	},
 	{
 		name: "lu:if",

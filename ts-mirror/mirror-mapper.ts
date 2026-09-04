@@ -45,7 +45,7 @@ export function mapMirrorSpanToOriginal(
 	}
 	if (capability === 'diagnostic' && mapping.kind === 'source') {
 		let originalStart = mapPosition(mapping, span.start, true)
-		
+
 		if (document.sourceDiagnosticExclusions?.some(exclusion =>
 			originalStart >= exclusion.start && originalStart < exclusion.start + exclusion.length
 		)) {
@@ -100,7 +100,11 @@ function chooseMapping(
 
 		let start = fromMirror ? mapping.mirrorStart : mapping.originalStart
 		let end = fromMirror ? mapping.mirrorEnd : mapping.originalEnd
-		return position >= start && position <= end
+		
+		// A diagnostic at the next token must not select a range ending there.
+		// Cursor features still accept token ends for completion/navigation.
+		return position >= start && (position < end || position === end
+			&& (!fromMirror || capability !== 'diagnostic' || start === end))
 	})
 
 	return candidates.sort((a, b) => {

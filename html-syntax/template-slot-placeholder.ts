@@ -225,7 +225,10 @@ export namespace TemplateSlotPlaceholder {
 	}
 
 
-	/** Get slot index from placeholder string `$LUPOS_SLOT_INDEX_\d_. */
+	/** 
+	 * Get slot index from placeholder string `$LUPOS_SLOT_INDEX_\d_.
+	 * The slot must be the complete of whole content.
+	 */
 	export function getUniqueSlotIndex(content: string): number | null {
 		return Number(content.match(/^\$LUPOS_SLOT_INDEX_(\d+)\$$/)?.[1] ?? null)
 	}
