@@ -14,7 +14,7 @@ export class Scope {
 	readonly ts: typeof TS
 
 	/** All variables declared here, by `variable name -> declaration`. */
-	protected variables: Map<string, TS.Declaration | null> = new Map()
+	protected variables: Map<string, TS.Declaration | TS.Identifier | null> = new Map()
 
 	constructor(node: ScopeNode, parent: Scope | null, helper: Helper) {
 		this.node = node
@@ -29,38 +29,38 @@ export class Scope {
 		// Variable declaration.
 		if (this.ts.isVariableDeclaration(node)) {
 			for (let {name} of this.helper.variable.walkDeconstructedDeclarationItems(node)) {
-				this.variables.set(name, node)
+				this.setLocalVariable(name, node)
 			}
 		}
 
 		// Parameter declarations.
 		else if (this.ts.isParameter(node)) {
 			for (let {name} of this.helper.parameter.walkDeconstructedDeclarationItems(node)) {
-				this.variables.set(name, node)
+				this.setLocalVariable(name, node)
 			}
 		}
 
 		// `import {a as b}`,  `import {a}`
 		else if (this.ts.isImportSpecifier(node)) {
-			this.variables.set(this.helper.getFullText(node.name), node)
+			this.setLocalVariable(this.helper.getFullText(node.name), node)
 		}
 
 		// `import a`
 		else if (this.ts.isImportClause(node)) {
 			if (node.name) {
-				this.variables.set(this.helper.getFullText(node.name), node)
+				this.setLocalVariable(this.helper.getFullText(node.name), node)
 			}
 		}
 
 		// `import * as a`
 		else if (this.ts.isNamespaceImport(node)) {
-			this.variables.set(this.helper.getFullText(node.name), node)
+			this.setLocalVariable(this.helper.getFullText(node.name), node)
 		}
 
 		// Class or function declaration
 		else if (this.ts.isClassDeclaration(node) || this.ts.isFunctionDeclaration(node)) {
 			if (node.name) {
-				this.variables.set(this.helper.getFullText(node.name), node)
+				this.setLocalVariable(this.helper.getFullText(node.name), node)
 			}
 		}
 	}
@@ -73,6 +73,11 @@ export class Scope {
 	/** Whether has declared a specified named local variable. */
 	hasLocalVariable(name: string): boolean {
 		return this.variables.has(name)
+	}
+
+	/** Set an local variable. */
+	setLocalVariable(name: string, node: TS.Declaration | TS.Identifier) {
+		this.variables.set(name, node)
 	}
 
 	/** 

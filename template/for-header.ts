@@ -1,6 +1,7 @@
 import type TS from 'typescript'
 import {HTMLNode, TemplateSlotPlaceholder} from '../html-syntax'
 import {Helper} from '../helper'
+import {ScopeTree} from '../scope'
 
 
 /** Declaration and iterable interpolations in `<lu:for ${item, index} of ${list}>`. */
@@ -42,6 +43,12 @@ export function parseForHeader(node: HTMLNode, values: TS.Expression[], helper: 
 		|| new Set(names.map(name => name.text)).size !== names.length
 	) {
 		return null
+	}
+
+	// Declare the parameters to avoid them get hoisted.
+	let scope = ScopeTree.current.findClosest(declaration)
+	for (let name of names) {
+		scope.setLocalVariable(name.text, name)
 	}
 
 	return {declarationIndex, iterableIndex, names}
