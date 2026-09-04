@@ -15,6 +15,17 @@ export interface ForHeader {
 	names: TS.Identifier[]
 }
 
+
+/** Iterable and render callback in `<lu:for ${items}>${render}</lu:for>`. */
+export interface ForRenderer {
+
+	/** Index of the iterable expression. */
+	iterableIndex: number
+
+	/** Index of the render callback expression. */
+	rendererIndex: number
+}
+
 /** Parse `<lu:for ${item, index} of ${list}>` for headers. */
 export function parseForHeader(node: HTMLNode, values: TS.Expression[], helper: Helper): ForHeader | null {
 	let attrs = node.attrs ?? []
@@ -45,4 +56,23 @@ export function parseForHeader(node: HTMLNode, values: TS.Expression[], helper: 
 	}
 
 	return {declarationIndex, iterableIndex, names}
+}
+
+
+/** Parse the shorthand with one iterable attribute and one callback body. */
+export function parseForRenderer(node: HTMLNode): ForRenderer | null {
+	let attrs = node.attrs ?? []
+	let content = node.getContentString().trim()
+
+	if (attrs.length !== 1 || attrs[0].value !== null
+		|| !TemplateSlotPlaceholder.isCompleteSlotIndex(attrs[0].name)
+		|| !TemplateSlotPlaceholder.isCompleteSlotIndex(content)
+	) {
+		return null
+	}
+
+	return {
+		iterableIndex: TemplateSlotPlaceholder.getUniqueSlotIndex(attrs[0].name)!,
+		rendererIndex: TemplateSlotPlaceholder.getUniqueSlotIndex(content)!,
+	}
 }

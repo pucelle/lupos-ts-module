@@ -1,4 +1,4 @@
-import {TemplateBasis, TemplatePart, TemplatePartPiece, parseForHeader} from '../../template'
+import {TemplateBasis, TemplatePart, TemplatePartPiece, parseForHeader, parseForRenderer} from '../../template'
 import {DiagnosticModifier} from '../diagnostic-modifier'
 import {HTMLNode, HTMLNodeType, TemplateSlotPlaceholder} from '../../html-syntax'
 import {LuposFlowControlTags} from '../../complete-data'
@@ -77,9 +77,9 @@ function diagnoseFor(
 	template: TemplateBasis,
 	modifier: DiagnosticModifier
 ) {
-	if (!parseForHeader(part.node, template.valueNodes, template.helper)) {
+	if (!parseForHeader(part.node, template.valueNodes, template.helper) && !parseForRenderer(part.node)) {
 		modifier.add(start, length, DiagnosticCode.MissingArgument,
-			"Use '<lu:for ${item} of ${list}>' or '<lu:for ${item, index} of ${list}>'.")
+			"Use '<lu:for ${item} of ${list}>', '<lu:for ${item, index} of ${list}>', or '<lu:for ${list}>${render}</lu:for>'.")
 	}
 }
 

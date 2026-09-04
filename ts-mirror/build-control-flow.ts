@@ -1,7 +1,7 @@
 import type TS from 'typescript'
 import {HTMLNode, TemplateSlotPlaceholder} from '../html-syntax'
 import {Helper} from '../helper'
-import {parseForHeader} from '../template'
+import {ForRenderer, parseForHeader, parseForRenderer} from '../template'
 
 
 /** Operations shared with the template writer while emitting lexical scopes. */
@@ -33,7 +33,7 @@ export interface ControlFlowOutput {
 /** Whether a control node has enough syntax to emit a valid mirror scope. */
 export function isMirrorControl(node: HTMLNode, values: TS.Expression[], helper: Helper): boolean {
 	if (node.tagName === 'lu:for') {
-		return parseForHeader(node, values, helper) !== null
+		return parseForHeader(node, values, helper) !== null || parseForRenderer(node) !== null
 	}
 	else if (node.tagName === 'lu:else' || node.tagName === 'lu:default' || node.tagName === 'lu:cache') {
 		return true
@@ -47,7 +47,14 @@ export function isMirrorControl(node: HTMLNode, values: TS.Expression[], helper:
 /** Emit the control construct around its component, binding, and expression checks. */
 export function buildControlFlow(node: HTMLNode, values: TS.Expression[], helper: Helper, output: ControlFlowOutput) {
 	if (node.tagName === 'lu:for') {
-		buildFor(node, values, helper, output)
+		let renderer = parseForRenderer(node)
+
+		if (renderer) {
+			buildForRenderer(renderer, values, output)
+		}
+		else {
+			buildForOf(node, values, helper, output)
+		}
 	}
 	else if (node.tagName === 'lu:await') {
 		buildAwait(node, values, output)
@@ -57,8 +64,22 @@ export function buildControlFlow(node: HTMLNode, values: TS.Expression[], helper
 	}
 }
 
+/** Infer callback parameters from the iterable without emitting a second body copy. */
+function buildForRenderer(renderer: ForRenderer, values: TS.Expression[], output: ControlFlowOutput) {
+	let iterable = values[renderer.iterableIndex]
+	let callback = values[renderer.rendererIndex]
+	let start = output.position()
+
+	output.write('[...(')
+	output.copy(iterable)
+	output.write(')].map((')
+	output.copy(callback)
+	output.write('));')
+	output.check(start, iterable)
+}
+
 /** Model iteration with the iterable resolved in the enclosing scope. */
-function buildFor(node: HTMLNode, values: TS.Expression[], helper: Helper, output: ControlFlowOutput) {
+function buildForOf(node: HTMLNode, values: TS.Expression[], helper: Helper, output: ControlFlowOutput) {
 	let header = parseForHeader(node, values, helper)!
 	let iterable = values[header.iterableIndex]
 	let start = output.position()
