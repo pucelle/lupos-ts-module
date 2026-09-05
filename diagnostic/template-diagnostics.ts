@@ -95,7 +95,9 @@ export class TemplateDiagnostics {
 					return
 				}
 
-				if (ts.isReturnStatement(node)) {
+				if (ts.isReturnStatement(node)
+					&& node.expression?.kind !== ts.SyntaxKind.NullKeyword
+				) {
 					returnCount++
 				}
 
