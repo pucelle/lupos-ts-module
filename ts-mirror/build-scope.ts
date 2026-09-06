@@ -127,8 +127,37 @@ export function buildScope(parts: TemplatePart[], template: TemplateBasis, analy
 				kind: 'symbol-anchor',
 				capabilities: NAVIGATION_CAPABILITIES,
 			})
+
+			if (!use.constructorValue) {
+				writeClosingComponentAnchor(use)
+			}
 		}
 
+	}
+
+	/** Emit the closing tag as another reference to the component symbol. */
+	function writeClosingComponentAnchor(use: ComponentUse) {
+		let closingEnd = use.node.closureEnd
+		let closingStart = closingEnd - use.tagName.length
+
+		if (closingEnd < 0 || template.content.slice(closingStart, closingEnd) !== use.tagName) {
+			return
+		}
+
+		text += 'void '
+		let mirrorStart = text.length
+		text += use.tagName
+
+		mappings.push({
+			start: mirrorStart,
+			end: text.length,
+			originalStart: template.localOffsetToGlobal(closingStart),
+			originalEnd: template.localOffsetToGlobal(closingEnd),
+			kind: 'symbol-anchor',
+			capabilities: NAVIGATION_CAPABILITIES,
+		})
+
+		text += ';'
 	}
 
 	/** Emit property assignments against component or element instances. */

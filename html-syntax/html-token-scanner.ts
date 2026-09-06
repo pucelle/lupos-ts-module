@@ -15,6 +15,9 @@ export enum HTMLTokenType {
 	/** End tag name exclude `</` and `>`. */
 	EndTagName,
 
+	/** End tag name whose closing `>` is missing. */
+	EndTagNameMissingEnd,
+
 	/** `<... >`, not include tag end of close tag. */
 	TagEnd,
 
@@ -278,20 +281,30 @@ export class HTMLTokenScanner {
 			else if (this.state === ScanState.WithinEndTag) {
 
 				// `</abc|>` or `</|>`
-				if (!this.readUntil(IsNotTagName)) {
+				let hasFollowingCharacter = !!this.readUntil(IsNotTagName)
+				let token = this.makeToken(HTMLTokenType.EndTagName)
+
+				if (!hasFollowingCharacter) {
+					token.type = HTMLTokenType.EndTagNameMissingEnd
+					yield token
 					break
 				}
 
-				// This token may be empty.
-				yield this.makeToken(HTMLTokenType.EndTagName)
+				let hasTagEndCandidate = this.readWhiteSpaces()
 
-				// `</abc>|`, skip `>`
-				if (!this.readOut(/>/g)) {
-					break
+				if (this.peekChar() === '>') {
+					this.offset++
+					yield token
+				}
+				else {
+					token.type = HTMLTokenType.EndTagNameMissingEnd
+					yield token
 				}
 
 				this.sync()
-				this.state = ScanState.AnyContent
+				if (hasTagEndCandidate) {
+					this.state = ScanState.AnyContent
+				}
 			}
 
 			else if (this.state === ScanState.AfterStartTag) {

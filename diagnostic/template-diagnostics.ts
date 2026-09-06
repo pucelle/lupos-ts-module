@@ -30,6 +30,9 @@ export class TemplateDiagnostics {
 			if (error.type === HTMLSyntaxErrorType.TagNotClosed) {
 				modifier.add(start, length, DiagnosticCode.HTMLTagNotClosed, `Tag '<${error.tagName}>' is not closed.`, category)
 			}
+			else if (error.type === HTMLSyntaxErrorType.EndTagEndMissing) {
+				modifier.add(start, length, DiagnosticCode.HTMLEndTagEndMissing, `Closing tag '</${error.tagName}' is missing '>'.`, category)
+			}
 			else if (error.expectedTagName) {
 				modifier.add(
 					start,

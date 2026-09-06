@@ -20,5 +20,6 @@ export enum DiagnosticCode {
 	ControlTagMustBeLastChild = 30004,
 	HTMLTagNotMatched = 30005,
 	HTMLTagNotClosed = 30006,
-	ContextTemplateMustBeOnlyReturn = 30007,
+	HTMLEndTagEndMissing = 30007,
+	ContextTemplateMustBeOnlyReturn = 30008,
 }

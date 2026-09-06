@@ -8,6 +8,7 @@ import {HTMLTokenScanner, HTMLTokenType, SelfClosingTags} from './html-token-sca
 export enum HTMLSyntaxErrorType {
 	TagNotMatched,
 	TagNotClosed,
+	EndTagEndMissing,
 }
 
 export interface HTMLSyntaxError {
@@ -43,9 +44,20 @@ export class HTMLRoot extends HTMLNode {
 				current = node
 			}
 
-			else if (token.type === HTMLTokenType.EndTagName) {
+			else if (token.type === HTMLTokenType.EndTagName
+				|| token.type === HTMLTokenType.EndTagNameMissingEnd
+			) {
 				let toMatch = current
 				let expected = current !== tree ? current : null
+
+				if (token.type === HTMLTokenType.EndTagNameMissingEnd) {
+					tree.syntaxErrors.push({
+						type: HTMLSyntaxErrorType.EndTagEndMissing,
+						start,
+						end,
+						tagName: token.text,
+					})
+				}
 
 				do {
 
