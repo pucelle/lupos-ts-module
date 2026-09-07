@@ -1,5 +1,5 @@
 import {TemplateBasis, TemplatePart} from '../template'
-import {buildElementExpression} from './build-element-expression'
+import {buildElementExpression} from './build-element'
 import {MirrorCheck, RelativeMapping} from './insertion-types'
 import {AllCapabilities} from './mirror-builder'
 

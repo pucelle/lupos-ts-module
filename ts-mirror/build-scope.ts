@@ -6,7 +6,7 @@ import {MirrorCapability} from './types'
 import {buildBinding} from './build-binding'
 import {buildProperty} from './build-property'
 import {buildEvent} from './build-event'
-import {buildElementExpression} from './build-element-expression'
+import {buildElementExpression} from './build-element'
 import {LuposKnownInternalBindings} from '../complete-data'
 import {MirrorInsertion, RelativeMapping, MirrorCheck} from './insertion-types'
 

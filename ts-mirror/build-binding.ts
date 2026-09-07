@@ -4,7 +4,7 @@ import {LuposKnownInternalBindings} from '../complete-data'
 import {TemplateSlotPlaceholder} from '../html-syntax'
 import {TemplateBasis, TemplatePart} from '../template'
 import {AllCapabilities, MirrorCheck, RelativeMapping} from './mirror-builder'
-import {buildElementExpression} from './build-element-expression'
+import {buildElementExpression, buildElementType} from './build-element'
 
 
 /** Model the constructor and update operations performed by the binding parsers. */
@@ -132,6 +132,12 @@ export function buildBinding(
 
 		if (internal) {
 			text += ')'
+		}
+
+		// Add a element type connect in the transition binding,
+		// to avoid some narrower element transition result like `fold()` cause type errors.
+		if (internal?.name === 'TransitionBinding') {
+			text += `<${buildElementType(part.node, template)}>`
 		}
 
 		let constructorParameters = binding && helper.class.getConstructorParameters(binding.declaration, true)
