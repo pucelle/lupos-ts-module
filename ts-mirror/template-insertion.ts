@@ -1,7 +1,7 @@
 import type TS from 'typescript'
 import {Analyzer} from '../analyzer'
 import {Helper} from '../helper'
-import {HTMLNode, HTMLRoot, TemplateSlotPlaceholder} from '../html-syntax'
+import {HTMLNode, HTMLNodeType, HTMLRoot, TemplateSlotPlaceholder} from '../html-syntax'
 import {ScopeTree} from '../scope'
 import {TemplateBasis, TemplatePart, TemplatePartParser, TemplatePartType} from '../template'
 import {buildScope} from './build-scope'
@@ -46,6 +46,7 @@ export function buildTemplateInsertion(
 	let {string, mapper} = TemplateSlotPlaceholder.toTemplateContent(node.template)
 	let values = TemplateSlotPlaceholder.extractTemplateValues(node.template)
 	let root = HTMLRoot.fromString(string)
+	let commentValueIndices = getCommentValueIndices(root)
 
 	let template = new MirrorTemplate(
 		imported.memberName as 'html' | 'svg',
@@ -67,7 +68,21 @@ export function buildTemplateInsertion(
 	}, helper)
 
 	parser.parse()
-	return buildTemplateChecks(node, template, parts, analyzer, createIdentifier)
+	return buildTemplateChecks(node, template, parts, commentValueIndices, analyzer, createIdentifier)
+}
+
+
+/** Collect interpolations located inside HTML comments. */
+function getCommentValueIndices(root: HTMLRoot): number[] {
+	let indices: number[] = []
+
+	root.visit(node => {
+		if (node.type === HTMLNodeType.Comment) {
+			indices.push(...TemplateSlotPlaceholder.getSlotIndices(node.text ?? '') ?? [])
+		}
+	})
+
+	return indices
 }
 
 
@@ -76,6 +91,7 @@ function buildTemplateChecks(
 	node: TS.TaggedTemplateExpression,
 	template: TemplateBasis,
 	parts: TemplatePart[],
+	commentValueIndices: number[],
 	analyzer: Analyzer,
 	createIdentifier: () => string
 ): MirrorInsertion | null {
@@ -85,7 +101,15 @@ function buildTemplateChecks(
 	let text = '((() => {'
 	let mappings: RelativeMapping[] = []
 	let checkSpans: MirrorInsertion['checks'] = []
-	let sourceDiagnosticExclusions: TS.TextSpan[] = []
+	
+	let sourceDiagnosticExclusions: TS.TextSpan[] = commentValueIndices.map(index => {
+		let value = values[index]
+
+		return {
+			start: value.getStart(sourceFile),
+			length: value.getWidth(sourceFile),
+		}
+	})
 
 	let controlNodes = new Set(
 		parts.filter(part => {
@@ -98,7 +122,7 @@ function buildTemplateChecks(
 
 	emitScope(null)
 
-	if (text === '((() => {') {
+	if (text === '((() => {' && sourceDiagnosticExclusions.length === 0) {
 		return null
 	}
 
