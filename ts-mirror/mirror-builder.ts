@@ -65,7 +65,6 @@ function buildSourceMirror(
 	let visit = (node: TS.Node) => {
 		if (ts.isTaggedTemplateExpression(node)) {
 			let insertion = buildTemplateInsertion(node, helper, scopeTree, analyzer, createIdentifier)
-
 			if (insertion) {
 				insertions.push(insertion)
 			}
@@ -76,6 +75,7 @@ function buildSourceMirror(
 
 	visit(sourceFile)
 
+	// No need to mirror.
 	if (insertions.length === 0) {
 		return null
 	}
