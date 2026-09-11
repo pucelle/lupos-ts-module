@@ -44,8 +44,9 @@ export namespace TemplateSlotPlaceholder {
 
 
 	/** 
-	 * Get whole string part of a tagged template.
-	 * Will add `$LUPOS_START_\d$ to indicate start of each template part.
+	 * Get whole string part of a tagged template like:
+	 * `<div>$LUPOS_SLOT_INDEX_0$</div>`
+	 * Will add `$LUPOS_SLOT_INDEX_\d$ to indicate start of each template part.
 	 * Template slots have been replaced to placeholder `$LUPOS_SLOT_INDEX_\d$`.
 	 * 
 	 * Odd indices are value interpolation start.
@@ -85,7 +86,8 @@ export namespace TemplateSlotPlaceholder {
 
 	
 	/** 
-	 * Split a full template string by template slot placeholder `$LUPOS_SLOT_INDEX_\d_.
+	 * Part a full template string by template slot placeholder `$LUPOS_SLOT_INDEX_\d_,
+	 * to get a string list and value indices.
 	 * If `quoted`, must return a string list.
 	 */
 	export function parseTemplateContent(content: string, quoted: boolean = false, startOffset: number = 0): TemplateContentParsed {
@@ -104,7 +106,7 @@ export namespace TemplateSlotPlaceholder {
 			let index = Number(match[1])
 
 			strings.push({
-				text,
+				text: decodeHtmlEntities(text),
 				start: stringStart + startOffset,
 				end: stringEnd + startOffset,
 			})
@@ -119,7 +121,7 @@ export namespace TemplateSlotPlaceholder {
 		}
 
 		strings.push({
-			text: content.slice(stringStart, content.length),
+			text: decodeHtmlEntities(content.slice(stringStart, content.length)),
 			start: stringStart + startOffset,
 			end: content.length + startOffset,
 		})
@@ -141,7 +143,45 @@ export namespace TemplateSlotPlaceholder {
 	}
 
 
-	/** Join strings and value indices to template string. */
+	function decodeHtmlEntities(text: string): string {
+		const named: Record<string, string> = {
+			amp: '&',
+			lt: '<',
+			gt: '>',
+			quot: '"',
+			apos: "'",
+			nbsp: '\u00A0',
+		}
+
+		return text.replace(
+			/&(#x?[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]+);/g,
+			(match, entity) => {
+				if (entity[0] === '#') {
+					const hex = entity[1]?.toLowerCase() === 'x'
+					const value = parseInt(entity.slice(hex ? 2 : 1), hex ? 16 : 10)
+
+					if (!Number.isFinite(value)) {
+						return match
+					}
+
+					try {
+						return String.fromCodePoint(value)
+					}
+					catch {
+						return match
+					}
+				}
+
+				return named[entity] ?? match
+			},
+		)
+	}
+
+
+	/** 
+	 * Join strings and value indices to template string.
+	 * Normally to generate a description.
+	 */
 	export function joinStringsAndValueIndices(strings: TemplateSlotString[] | null, valueIndices: TemplateSlotValueIndex[] | null): string {
 		let joined = ''
 
