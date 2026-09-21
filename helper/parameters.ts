@@ -41,7 +41,7 @@ export function createParameterHelpers(ts: typeof TS, core: HelperCore, context:
 
 
 		/** 
-		 * Walk for all mapped deconstructed argument expression and parameter type node.
+		 * Walk for all mapped deconstructed argument expression and parameter type node from an expression list.
 		 * `f({a})` ~ `function f(p: {a:T})` -> `{arg: a, type: T}`
 		 * `f([a])` ~ `function f(p: [T])` -> `{arg: a, type: T}`
 		 */
@@ -59,16 +59,16 @@ export function createParameterHelpers(ts: typeof TS, core: HelperCore, context:
 
 					// `function f(...p)`
 					if (param && param.dotDotDotToken) {
-						yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(arg.expression, param.type)
+						yield* parameter.walkDeconstructedArgumentTypeItemsOf(arg.expression, param.type)
 					}
 
 					// Should be type of `param.type[]`, simply ignores it.
 					else {
-						yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(arg.expression, undefined)
+						yield* parameter.walkDeconstructedArgumentTypeItemsOf(arg.expression, undefined)
 					}
 				}
 				else {
-					yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(arg, param?.type)
+					yield* parameter.walkDeconstructedArgumentTypeItemsOf(arg, param?.type)
 				}
 
 				// `function f(...p)`
@@ -80,14 +80,42 @@ export function createParameterHelpers(ts: typeof TS, core: HelperCore, context:
 		},
 
 		/** 
-		 * Walk for all mapped deconstructed argument and parameter type node.
+		 * Walk for all mapped deconstructed argument and parameter type node from an expression.
 		 * `f({a})` ~ `function f(p: {a:T})` -> `{arg: a, type: T}`
 		 * `f([a])` ~ `function f(p: [T])` -> `{arg: a, type: T}`
 		 */
-		*_walkDeconstructedArgumentTypeItemsRecursively(arg: TS.Expression, paramType: TS.TypeNode | undefined): Iterable<DeconstructedArgumentTypeItem> {
+		*walkDeconstructedArgumentTypeItemsOf(arg: TS.Expression, paramType: TS.TypeNode | undefined): Iterable<DeconstructedArgumentTypeItem> {
+			if (ts.isParenthesizedExpression(arg)) {
+				yield* parameter.walkDeconstructedArgumentTypeItemsOf(arg.expression, paramType)
+			}
+			else if (ts.isBinaryExpression(arg) && arg.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+				yield* parameter.walkDeconstructedArgumentTypeItemsOf(arg.left, paramType)
+			}
+			else if (ts.isSpreadElement(arg)) {
+				yield* parameter.walkDeconstructedArgumentTypeItemsOf(arg.expression, paramType)
+			}
+			else if (ts.isOmittedExpression(arg)) {
+				return
+			}
 
 			//`f({a})` ~ `function f(p: {a:T})`
-			if (ts.isObjectLiteralExpression(arg)) {
+			else if (ts.isObjectLiteralExpression(arg)) {
+				if (!paramType) {
+					for (let property of arg.properties) {
+						if (ts.isShorthandPropertyAssignment(property)) {
+							yield* parameter.walkDeconstructedArgumentTypeItemsOf(property.name, undefined)
+						}
+						else if (ts.isPropertyAssignment(property)) {
+							yield* parameter.walkDeconstructedArgumentTypeItemsOf(property.initializer, undefined)
+						}
+						else if (ts.isSpreadAssignment(property)) {
+							yield* parameter.walkDeconstructedArgumentTypeItemsOf(property.expression, undefined)
+						}
+					}
+
+					return
+				}
+
 				let {map, rest} = variable._makeObjectLiteralMap(arg)
 				let typeMap: Map<string, TS.TypeNode> = new Map()
 
@@ -109,11 +137,11 @@ export function createParameterHelpers(ts: typeof TS, core: HelperCore, context:
 
 				for (let [key, arg] of map.entries()) {
 					let type = typeMap.get(key)
-					yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(arg, type)
+					yield* parameter.walkDeconstructedArgumentTypeItemsOf(arg, type)
 				}
 	
 				for (let restItem of rest) {
-					yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(restItem, paramType)
+					yield* parameter.walkDeconstructedArgumentTypeItemsOf(restItem, paramType)
 				}
 			}
 
@@ -126,14 +154,14 @@ export function createParameterHelpers(ts: typeof TS, core: HelperCore, context:
 					for (let i = 0; i < list.length; i++) {
 						let item = list[i]
 						let type = i < paramType.elements.length ? paramType.elements[i] : undefined
-						yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(item, type)
+						yield* parameter.walkDeconstructedArgumentTypeItemsOf(item, type)
 					}
 				}
 
 				// `T[]`
 				else if (paramType && ts.isArrayTypeNode(paramType)) {
 					for (let item of list) {
-						yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(item, paramType.elementType)
+						yield* parameter.walkDeconstructedArgumentTypeItemsOf(item, paramType.elementType)
 					}
 				}
 
@@ -144,13 +172,20 @@ export function createParameterHelpers(ts: typeof TS, core: HelperCore, context:
 						&& paramType.typeArguments?.length === 1
 					) {
 						for (let item of list) {
-							yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(item, paramType.typeArguments[0])
+							yield* parameter.walkDeconstructedArgumentTypeItemsOf(item, paramType.typeArguments[0])
 						}
 					}
 				}
 
+				// Other iterable.
+				else {
+					for (let item of list) {
+						yield* parameter.walkDeconstructedArgumentTypeItemsOf(item, undefined)
+					}
+				}
+
 				for (let restItem of rest) {
-					yield* parameter._walkDeconstructedArgumentTypeItemsRecursively(restItem, paramType)
+					yield* parameter.walkDeconstructedArgumentTypeItemsOf(restItem, paramType)
 				}
 			}
 

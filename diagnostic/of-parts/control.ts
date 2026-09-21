@@ -79,7 +79,7 @@ function diagnoseFor(
 ) {
 	if (!parseForHeader(part.node, template.valueNodes, template.helper) && !parseForRenderer(part.node)) {
 		modifier.add(start, length, DiagnosticCode.MissingArgument,
-			"Use '<lu:for ${item} of ${list}>', '<lu:for ${item, index} of ${list}>', or '<lu:for ${list}>${render}</lu:for>'.")
+			"Use '<lu:for ${item} of ${list}>', '<lu:for ${item, index} of ${list}>', '<lu:for ${[key, value]} of ${list}>', or '<lu:for ${list}>${render}</lu:for>'.")
 	}
 }
 

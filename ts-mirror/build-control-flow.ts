@@ -88,15 +88,18 @@ function buildForOf(node: HTMLNode, values: TS.Expression[], helper: Helper, out
 	output.write(`let ${name} = (`)
 	output.copy(iterable)
 	output.write(');for (let ')
-	output.copy(header.names[0])
+	output.copy(header.declaration)
 	output.write(` of ${name}) {`)
 	output.check(start, iterable)
-	output.write(`void ${header.names[0].text};`)
 
-	if (header.names[1]) {
+	for (let valueName of header.valueNames) {
+		output.write(`void ${valueName.text};`)
+	}
+
+	if (header.indexName) {
 		output.write('let ')
-		output.copy(header.names[1])
-		output.write(` = 0; void ${header.names[1].text};`)
+		output.copy(header.indexName)
+		output.write(` = 0; void ${header.indexName.text};`)
 	}
 
 	output.exclude(values[header.declarationIndex])

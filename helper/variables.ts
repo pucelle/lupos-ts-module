@@ -119,6 +119,9 @@ export function createVariableHelpers(ts: typeof TS, core: HelperCore) {
 					let key = getText(property.name)
 					map.set(key, property.initializer)
 				}
+				else if (ts.isShorthandPropertyAssignment(property)) {
+					map.set(property.name.text, property.name)
+				}
 				else if (ts.isSpreadAssignment(property)) {
 					if (ts.isObjectLiteralExpression(property.expression)) {
 						variable._makeObjectLiteralMapRecursively(property.expression, map, rest)

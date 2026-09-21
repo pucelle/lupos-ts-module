@@ -5,7 +5,7 @@ export const LuposFlowControlTags: CompletionDataItem[] = [
 	},
 	{
 		name: "lu:for",
-		description: "`<lu:for ${item, index} of ${list}>Content</lu:for>`, render a subtemplate for each item. The index is optional.",
+		description: "`<lu:for ${item, index} of ${list}>Content</lu:for>`, render a subtemplate for each item. The item may use array or object destructuring, and the index is optional.",
 	},
 	{
 		name: "lu:if",
