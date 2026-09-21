@@ -13,22 +13,21 @@ export interface ForHeader {
 	iterableIndex: number
 
 	/** 
-	 * Generated first callback parameter.
-	 * `for ${[...]} of` ->
-	 * function([...]) {}
+	 * Generated first callback parameter, converted from expression to binding name.
+	 * `for ${[...]} of` -> `function([...]) {}`
 	 */
 	bindingName: TS.BindingName
 
-	/** Source expression representing the first callback parameter. */
+	/** Source expression representing the first for parameter `lu:for ${...}`. */
 	declaration: TS.Expression
 
-	/** All names declared by the value pattern and optional index. */
+	/** All names declared by the `lu:for ${..., index?}` value pattern and optional index. */
 	names: TS.Identifier[]
 
-	/** Names declared by the value pattern. */
+	/** Names declared by the `lu:for ${...}` value pattern. */
 	valueNames: TS.Identifier[]
 
-	/** Optional iteration index. */
+	/** Optional iteration index from `lu:for ${..., index?}` of .... */
 	indexName: TS.Identifier | null
 }
 
