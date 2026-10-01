@@ -34,7 +34,8 @@ export function createAccessHelpers(ts: typeof TS, core: HelperCore, context: He
 		/** Read the object and dependency key checked by a native own-property call. */
 		getOwnPropertyReadAccess(node: TS.CallExpression): {
 			exp: TS.Expression,
-			key: string | number | TS.Expression
+			key: string | number | TS.Expression,
+			keyNode: TS.Expression
 		} | null {
 			let method = node.expression
 			if (!access.isAccess(method) || !symbol.isOfTypescriptLib(method)) {
@@ -73,6 +74,7 @@ export function createAccessHelpers(ts: typeof TS, core: HelperCore, context: He
 			return {
 				exp,
 				key: dependencyKey,
+				keyNode: key,
 			}
 		},
 
