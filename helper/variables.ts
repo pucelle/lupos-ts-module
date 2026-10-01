@@ -45,7 +45,13 @@ export function createVariableHelpers(ts: typeof TS, core: HelperCore) {
 					// `b`
 					let key = getText(element.propertyName ?? element.name)
 
-					if (initMap?.has(key)) {
+					// A rest binding copies the remaining properties, not a property named after its variable.
+					if (element.dotDotDotToken) {
+						let restInitializer = restObj ?? initializer
+						let restKeys = restObj ? [''] : [...keys, '']
+						yield* variable._walkDeconstructedArgumentTypeItemsRecursively(element, restInitializer, restKeys)
+					}
+					else if (initMap?.has(key)) {
 						let subInitializer = initMap.get(key)!
 						yield* variable._walkDeconstructedArgumentTypeItemsRecursively(element, subInitializer, [])
 					}
@@ -75,7 +81,13 @@ export function createVariableHelpers(ts: typeof TS, core: HelperCore) {
 				for (let i = 0; i < node.elements.length; i++) {
 					let element = node.elements[i]
 
-					if (initList && initList.length > i) {
+					// A rest binding consumes all remaining elements and preserves its nested receiver path.
+					if (ts.isBindingElement(element) && element.dotDotDotToken) {
+						let restInitializer = initRest ?? initializer
+						let restKeys = initRest ? [''] : [...keys, '']
+						yield* variable._walkDeconstructedArgumentTypeItemsRecursively(element, restInitializer, restKeys)
+					}
+					else if (initList && initList.length > i) {
 						let subInitializer = initList[i]
 						yield* variable._walkDeconstructedArgumentTypeItemsRecursively(element, subInitializer, [])
 					}
