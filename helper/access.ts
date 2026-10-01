@@ -15,6 +15,67 @@ export function createAccessHelpers(ts: typeof TS, core: HelperCore, context: He
 				|| ts.isElementAccessExpression(node)
 		},
 
+		/** 
+		 * Split an access into its receiver, dependency key, and optional state.
+		 * Will try to convert access key to a string pr numeric value.
+		 */
+		getAccessParts(node: AccessNode): {
+			exp: TS.Expression,
+			key: string | number | TS.Expression,
+			optional: boolean
+		} {
+			return {
+				exp: node.expression,
+				key: this.getPropertyKey(node),
+				optional: !!node.questionDotToken,
+			}
+		},
+
+		/** Read the object and dependency key checked by a native own-property call. */
+		getOwnPropertyReadAccess(node: TS.CallExpression): {
+			exp: TS.Expression,
+			key: string | number | TS.Expression
+		} | null {
+			let method = node.expression
+			if (!access.isAccess(method) || !symbol.isOfTypescriptLib(method)) {
+				return null
+			}
+
+			let name = access.getPropertyText(method)
+			let exp: TS.Expression
+			let key: TS.Expression | undefined
+	
+			if (name === 'hasOwnProperty') {
+				exp = method.expression
+				key = node.arguments[0]
+			}
+			else if (name === 'hasOwn' && symbol.isOfTypescriptLib(method.expression)
+				&& getText(method.expression) === 'Object'
+				&& node.arguments.length >= 2
+			) {
+				exp = node.arguments[0]
+				key = node.arguments[1]
+			}
+			else {
+				return null
+			}
+
+			if (!key || ts.isSpreadElement(key)) {
+				return null
+			}
+
+			let dependencyKey = ts.isStringLiteralLike(key)
+				? key.text
+				: ts.isNumericLiteral(key)
+				? Number(key.text)
+				: key
+
+			return {
+				exp,
+				key: dependencyKey,
+			}
+		},
+
 		/** get accessing property node. */
 		getPropertyNode(node: AccessNode): TS.Expression {
 			return ts.isPropertyAccessExpression(node)
@@ -26,6 +87,24 @@ export function createAccessHelpers(ts: typeof TS, core: HelperCore, context: He
 		getPropertyText(node: AccessNode): string {
 			let nameNode = access.getPropertyNode(node)
 			return getText(nameNode)
+		},
+
+		/** get property accessing property key, a fixed value or a node. */
+		getPropertyKey(node: AccessNode): string | number | TS.Expression {
+			if (ts.isPropertyAccessExpression(node)) {
+				return node.name.text
+			}
+			else {
+				if (ts.isStringLiteral(node.argumentExpression)) {
+					return node.argumentExpression.text
+				}
+				else if (ts.isNumericLiteral(node.argumentExpression)) {
+					return Number(node.argumentExpression.text)
+				}
+				else {
+					return node.argumentExpression
+				}
+			}
 		},
 
 		/** 
