@@ -322,12 +322,7 @@ export function createAccessHelpers(ts: typeof TS, core: HelperCore, context: He
 				return propName === 'has' || propName === 'size' || propName === 'keys' || propName === 'values'
 			}
 			else if (objName === 'Array' || objName === 'ReadonlyArray') {
-				return !(
-					propName === 'push'
-					|| propName === 'unshift'
-					|| propName === 'sort'
-					|| propName === 'splice'
-				)
+				return !access.isOfElementsWriteAccess(rawNode)
 			}
 			else if (ts.isClassDeclaration(classDecl)) {
 				return access._isOfMethodsObserved(classDecl, propName, 0)
@@ -395,9 +390,14 @@ export function createAccessHelpers(ts: typeof TS, core: HelperCore, context: He
 			}
 			else if (objName === 'Array' || objName === 'ReadonlyArray') {
 				return propName === 'push'
+					|| propName === 'pop'
 					|| propName === 'unshift'
+					|| propName === 'shift'
 					|| propName === 'sort'
 					|| propName === 'splice'
+					|| propName === 'reverse'
+					|| propName === 'fill'
+					|| propName === 'copyWithin'
 			}
 			else if (ts.isClassDeclaration(classDecl)) {
 				return access._isOfMethodsObserved(classDecl, propName, 1)

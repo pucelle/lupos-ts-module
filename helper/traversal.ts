@@ -79,7 +79,7 @@ export function createTraversalHelpers(ts: typeof TS, ast: ASTHelpers) {
 		}
 
 		if (fromNode.parent) {
-			return findOutward(fromNode.parent, test)
+			return findOutwardUntil(fromNode.parent, untilNode, test)
 		}
 
 		return undefined
