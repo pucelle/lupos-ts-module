@@ -129,6 +129,7 @@ export function buildScope(parts: TemplatePart[], template: TemplateBasis, analy
 			})
 
 			if (!use.constructorValue) {
+				writeComponentAnchor(use, use.node.nameStart, use.node.nameEnd, ['diagnostic'])
 				writeClosingComponentAnchor(use)
 			}
 		}
@@ -144,6 +145,17 @@ export function buildScope(parts: TemplatePart[], template: TemplateBasis, analy
 			return
 		}
 
+		writeComponentAnchor(use, closingStart, closingEnd, NAVIGATION_CAPABILITIES)
+	}
+
+	/** Check runtime component values separately from generated constructor calls. */
+	function writeComponentAnchor(
+		use: ComponentUse,
+		start: number,
+		end: number,
+		capabilities: readonly MirrorCapability[]
+	) {
+
 		text += 'void '
 		let mirrorStart = text.length
 		text += use.tagName
@@ -151,10 +163,10 @@ export function buildScope(parts: TemplatePart[], template: TemplateBasis, analy
 		mappings.push({
 			start: mirrorStart,
 			end: text.length,
-			originalStart: template.localOffsetToGlobal(closingStart),
-			originalEnd: template.localOffsetToGlobal(closingEnd),
+			originalStart: template.localOffsetToGlobal(start),
+			originalEnd: template.localOffsetToGlobal(end),
 			kind: 'symbol-anchor',
-			capabilities: NAVIGATION_CAPABILITIES,
+			capabilities,
 		})
 
 		text += ';'
