@@ -42,9 +42,36 @@ export interface ForRenderer {
 	rendererIndex: number
 }
 
+/** A literal property name or an interpolated property name/key extractor. */
+export interface ForKey {
+
+	/** Literal attribute value, or null for an interpolation. */
+	property: string | null
+
+	/** Interpolation index, or null for a literal property name. */
+	valueIndex: number | null
+}
+
+/** Parse the optional loop identity attribute independently of the header form. */
+export function parseForKey(node: HTMLNode): ForKey | null {
+	let attribute = node.attrs?.find(attr => attr.name === 'key')
+	if (!attribute || attribute.value === null) {
+		return null
+	}
+
+	let valueIndex = TemplateSlotPlaceholder.isCompleteSlotIndex(attribute.value)
+		? TemplateSlotPlaceholder.getUniqueSlotIndex(attribute.value)
+		: null
+		
+	return {
+		property: valueIndex === null ? attribute.value : null,
+		valueIndex,
+	}
+}
+
 /** Parse `<lu:for ${item, index} of ${list}>` for headers. */
 export function parseForHeader(node: HTMLNode, values: TS.Expression[], helper: Helper): ForHeader | null {
-	let attrs = node.attrs ?? []
+	let attrs = node.attrs?.filter(attr => attr.name !== 'key') ?? []
 	if (attrs.length !== 3 || attrs[1].name !== 'of' || attrs.some(attr => attr.value !== null)) {
 		return null
 	}
@@ -222,7 +249,7 @@ function parseBindingValue(
 
 /** Parse the shorthand with one iterable attribute and one callback body. */
 export function parseForRenderer(node: HTMLNode): ForRenderer | null {
-	let attrs = node.attrs ?? []
+	let attrs = node.attrs?.filter(attr => attr.name !== 'key') ?? []
 	let content = node.getContentString().trim()
 
 	if (attrs.length !== 1 || attrs[0].value !== null

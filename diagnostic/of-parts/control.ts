@@ -77,6 +77,19 @@ function diagnoseFor(
 	template: TemplateBasis,
 	modifier: DiagnosticModifier
 ) {
+	let keyAttributes = part.node.attrs?.filter(attr => attr.name === 'key') ?? []
+
+	let invalidKey = keyAttributes.some(attr => {
+		return attr.value === null
+			|| !!TemplateSlotPlaceholder.getSlotIndices(attr.value)?.length
+				&& !TemplateSlotPlaceholder.isCompleteSlotIndex(attr.value)
+	})
+
+	if (keyAttributes.length > 1 || invalidKey) {
+		modifier.add(start, length, DiagnosticCode.NotAssignable,
+			"The loop 'key' must be one property name or one function type key extractor.")
+	}
+
 	if (!parseForHeader(part.node, template.valueNodes, template.helper) && !parseForRenderer(part.node)) {
 		modifier.add(start, length, DiagnosticCode.MissingArgument,
 			"Use '<lu:for ${item} of ${list}>', '<lu:for ${item, index} of ${list}>', '<lu:for ${[key, value]} of ${list}>', or '<lu:for ${list}>${render}</lu:for>'.")

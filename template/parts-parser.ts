@@ -191,6 +191,12 @@ export class TemplatePartParser {
 
 		for (let attr of attrs) {
 			let {name, value, quoted} = attr
+
+			// Loop identity is consumed by ForBlock, not emitted as a DOM attribute.
+			if (node.tagName === 'lu:for' && name === 'key') {
+				continue
+			}
+
 			let type: TemplatePartType | null = null
 			let namePrefix = name.match(/^[.:?@]{1,2}/)?.[0] ?? ''
 			let nameAfterPrefix = namePrefix ? name.slice(namePrefix.length) : name

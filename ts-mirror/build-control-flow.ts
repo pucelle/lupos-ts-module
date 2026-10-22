@@ -1,7 +1,7 @@
 import type TS from 'typescript'
 import {HTMLNode, TemplateSlotPlaceholder} from '../html-syntax'
 import {Helper} from '../helper'
-import {ForRenderer, parseForHeader, parseForRenderer} from '../template'
+import {ForRenderer, parseForHeader, parseForKey, parseForRenderer} from '../template'
 
 
 /** Operations shared with the template writer while emitting lexical scopes. */
@@ -48,6 +48,11 @@ export function isMirrorControl(node: HTMLNode, values: TS.Expression[], helper:
 export function buildControlFlow(node: HTMLNode, values: TS.Expression[], helper: Helper, output: ControlFlowOutput) {
 	if (node.tagName === 'lu:for') {
 		let renderer = parseForRenderer(node)
+		
+		let iterableIndex = renderer?.iterableIndex ?? parseForHeader(node, values, helper)?.iterableIndex
+		if (iterableIndex !== undefined) {
+			buildForKey(node, values[iterableIndex], values, output)
+		}
 
 		if (renderer) {
 			buildForRenderer(renderer, values, output)
@@ -62,6 +67,30 @@ export function buildControlFlow(node: HTMLNode, values: TS.Expression[], helper
 	else {
 		buildBranch(node, values, output)
 	}
+}
+
+/** Contextually type key extractors against the full loop item, including destructured loops. */
+function buildForKey(node: HTMLNode, iterable: TS.Expression, values: TS.Expression[], output: ControlFlowOutput) {
+	let key = parseForKey(node)
+	if (!key) {
+		return
+	}
+
+	let start = output.position()
+	output.write('((<T>(items: Iterable<T> | null | undefined, key: keyof T | ((item: T) => unknown) | null | undefined) => {void items; void key;}))((')
+	output.copy(iterable)
+	output.write('), (')
+
+	if (key.valueIndex === null) {
+		output.write(JSON.stringify(key.property))
+	}
+	else {
+		output.copy(values[key.valueIndex])
+		output.exclude(values[key.valueIndex])
+	}
+
+	output.write('));')
+	output.check(start, key.valueIndex === null ? iterable : values[key.valueIndex])
 }
 
 /** Infer callback parameters from the iterable without emitting a second body copy. */
