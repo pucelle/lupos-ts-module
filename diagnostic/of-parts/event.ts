@@ -1,5 +1,5 @@
 import {Analyzer} from '../../analyzer'
-import {findCompletionDataItem, LuposDOMEventCategories, LuposDOMEventModifiers} from '../../complete-data'
+import {findCompletionDataItem, LUPOS_DOM_EVENT_CATEGORIES, LUPOS_DOM_EVENT_MODIFIERS} from '../../complete-data'
 import {TemplateSlotPlaceholder} from '../../html-syntax'
 import {TemplateBasis, TemplatePart, TemplatePartPiece, TemplatePartPieceType} from '../../template'
 import {DiagnosticCode} from '../codes'
@@ -31,13 +31,13 @@ export function diagnoseEvent(
 			let modifierValue = modifiers[modifierIndex]
 	
 			// `.passive`, `.stop`, ...
-			let beGlobal = !!findCompletionDataItem(LuposDOMEventModifiers.global, modifierValue)
+			let beGlobal = !!findCompletionDataItem(LUPOS_DOM_EVENT_MODIFIERS.global, modifierValue)
 	
 			// `@keydown.enter`, `@click.left`.
 			// Not provide control keys completion.
-			if (!beGlobal && LuposDOMEventCategories[mainName]) {
-				let category = LuposDOMEventCategories[mainName]
-				let inCategory = !!findCompletionDataItem(LuposDOMEventModifiers[category], modifierValue)
+			if (!beGlobal && LUPOS_DOM_EVENT_CATEGORIES[mainName]) {
+				let category = LUPOS_DOM_EVENT_CATEGORIES[mainName]
+				let inCategory = !!findCompletionDataItem(LUPOS_DOM_EVENT_MODIFIERS[category], modifierValue)
 
 				if (!inCategory) {
 					modifier.add(start, length, DiagnosticCode.NotExistOn, `Modifier '${modifierValue}' is not supported by event '${mainName}'.`)

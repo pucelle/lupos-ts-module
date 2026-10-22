@@ -1,4 +1,4 @@
-import {AllCapabilities} from './mirror-builder'
+import {ALL_CAPABILITIES} from './mirror-builder'
 import type TS from 'typescript'
 import {MirrorDocument, MirrorMapping, MirrorCheckSpan} from './types'
 import {MirrorInsertion, RelativeMapping} from './insertion-types'
@@ -45,7 +45,7 @@ export function applyInsertions(
 				originalStart: originalOffset,
 				originalEnd: insertion.offset,
 				kind: 'source',
-				capabilities: AllCapabilities,
+				capabilities: ALL_CAPABILITIES,
 			})
 
 			originalOffset = insertion.offset
@@ -87,7 +87,7 @@ export function applyInsertions(
 			originalStart: originalOffset,
 			originalEnd: rangeEnd,
 			kind: 'source',
-			capabilities: AllCapabilities,
+			capabilities: ALL_CAPABILITIES,
 		})
 	}
 

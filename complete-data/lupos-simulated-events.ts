@@ -1,4 +1,4 @@
-export const LuposSimulatedEvents: CompletionDataItem[] = [
+export const LUPOS_SIMULATED_EVENTS: CompletionDataItem[] = [
 	{
 		name: 'tap',
 		description: 'Quickly touch the screen and then lifts.',

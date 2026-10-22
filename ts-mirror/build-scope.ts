@@ -7,7 +7,7 @@ import {buildBinding} from './build-binding'
 import {buildProperty} from './build-property'
 import {buildEvent} from './build-event'
 import {buildElementExpression} from './build-element'
-import {LuposKnownInternalBindings} from '../complete-data'
+import {LUPOS_KNOWN_INTERNAL_BINDINGS} from '../complete-data'
 import {MirrorInsertion, RelativeMapping, MirrorCheck} from './insertion-types'
 
 
@@ -58,7 +58,7 @@ export function buildScope(parts: TemplatePart[], template: TemplateBasis, analy
 		return part.type === TemplatePartType.Binding
 			&& !!part.mainName
 			&& /^[$A-Z_a-z][$\w]*$/.test(part.mainName)
-			&& (!!LuposKnownInternalBindings[part.mainName] || !!analyzer.getBindingByName(part.mainName, template))
+			&& (!!LUPOS_KNOWN_INTERNAL_BINDINGS[part.mainName] || !!analyzer.getBindingByName(part.mainName, template))
 	})
 
 	emitComponents()

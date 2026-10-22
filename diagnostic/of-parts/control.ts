@@ -1,7 +1,7 @@
 import {TemplateBasis, TemplatePart, TemplatePartPiece, parseForHeader, parseForRenderer} from '../../template'
 import {DiagnosticModifier} from '../diagnostic-modifier'
 import {HTMLNode, HTMLNodeType, TemplateSlotPlaceholder} from '../../html-syntax'
-import {LuposFlowControlTags} from '../../complete-data'
+import {LUPOS_FLOW_CONTROL_TAGS} from '../../complete-data'
 import {DiagnosticCode} from '../codes'
 
 
@@ -15,7 +15,7 @@ export function diagnoseControl(
 	let length = template.localOffsetToGlobal(piece.end) - start
 	let tagName = part.node.tagName!
 
-	if (!LuposFlowControlTags.find(item => item.name === tagName)) {
+	if (!LUPOS_FLOW_CONTROL_TAGS.find(item => item.name === tagName)) {
 		modifier.add(start, length, DiagnosticCode.ControlTagNotValid, `'<${tagName}>' is not a valid control tag.`)
 	}
 	

@@ -6,7 +6,7 @@ import {ScopeTree} from '../scope'
 import {TemplateBasis, TemplatePart, TemplatePartParser, TemplatePartType} from '../template'
 import {buildScope} from './build-scope'
 import {buildControlFlow, isMirrorControl} from './build-control-flow'
-import {AllCapabilities} from './mirror-builder'
+import {ALL_CAPABILITIES} from './mirror-builder'
 import {MirrorInsertion, RelativeMapping} from './insertion-types'
 
 
@@ -272,7 +272,7 @@ function buildTemplateChecks(
 			originalStart: value.getStart(sourceFile),
 			originalEnd: value.getEnd(),
 			kind: 'copied-expression',
-			capabilities: AllCapabilities
+			capabilities: ALL_CAPABILITIES
 		})
 
 		sourceDiagnosticExclusions.push({start: value.getStart(sourceFile), length: value.getWidth(sourceFile)})

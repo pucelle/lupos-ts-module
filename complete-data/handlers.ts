@@ -1,5 +1,5 @@
-import {LuposBindingModifiers} from './lupos-binding-modifiers'
-import {LuposSimulatedEvents} from './lupos-simulated-events'
+import {LUPOS_BINDING_MODIFIERS} from './lupos-binding-modifiers'
+import {LUPOS_SIMULATED_EVENTS} from './lupos-simulated-events'
 
 
 /** 
@@ -23,15 +23,15 @@ export function getBindingModifierCompletionItems(mainName: string, modifiers: s
 	
 	// Use known binding modifiers.
 	if (!available) {
-		available = LuposBindingModifiers[mainName]?.map(item => item.name)
+		available = LUPOS_BINDING_MODIFIERS[mainName]?.map(item => item.name)
 	}
 
 	// Filter out existing group when current modifier is empty.
-	if (available && LuposBindingModifiers[mainName]) {
-		let existingGroups = modifiers.map(m => LuposBindingModifiers[mainName].find(item => item.name === m)?.group).filter(v => v !== undefined)
+	if (available && LUPOS_BINDING_MODIFIERS[mainName]) {
+		let existingGroups = modifiers.map(m => LUPOS_BINDING_MODIFIERS[mainName].find(item => item.name === m)?.group).filter(v => v !== undefined)
 
 		available = available.filter(m => {
-			let group = LuposBindingModifiers[mainName].find(item => item.name === m)?.group
+			let group = LUPOS_BINDING_MODIFIERS[mainName].find(item => item.name === m)?.group
 			if (group === undefined) {
 				return true
 			}
@@ -46,7 +46,7 @@ export function getBindingModifierCompletionItems(mainName: string, modifiers: s
 
 	// Make modifier completion items by names.
 	let items: CompletionDataItem[] = available.map(m => {
-		let luposBindingItem = LuposBindingModifiers[mainName].find(item => item.name === m)
+		let luposBindingItem = LUPOS_BINDING_MODIFIERS[mainName].find(item => item.name === m)
 
 		return {
 			name: m,
@@ -60,5 +60,5 @@ export function getBindingModifierCompletionItems(mainName: string, modifiers: s
 
 /** Test whether an event name represents a simulated event. */
 export function isSimulatedEventName(name: string): boolean {
-	return !!LuposSimulatedEvents.find(item => item.name === name)
+	return !!LUPOS_SIMULATED_EVENTS.find(item => item.name === name)
 }

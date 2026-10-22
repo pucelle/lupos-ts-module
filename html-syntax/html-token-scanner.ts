@@ -42,7 +42,7 @@ export enum HTMLTokenType {
  * Tags that self closing.
  * Reference from https://developer.mozilla.org/en-US/docs/Glossary/Void_element
  */
-export const SelfClosingTags = [
+export const SELF_CLOSING_TAGS = [
 	'area',
 	'base',
 	'br',
@@ -75,26 +75,26 @@ enum ScanState {
 
 
 /** Match tag name, Add `$` to match template interpolation. */
-const IsTagName = /[\w:$-]/g
+const IS_TAG_NAME = /[\w:$-]/g
 
 /** Match not tag name. */
-const IsNotTagName = /[^\w:$-]/g
+const IS_NOT_TAG_NAME = /[^\w:$-]/g
 
 /** Match attribute name. */
-const IsAttrName = /[\w@:.?$-]/g
+const IS_ATTR_NAME = /[\w@:.?$-]/g
 
 /** Match not attribute name. */
-const IsNotAttrName = /[^\w@:.?$-]/g
+const IS_NOT_ATTR_NAME = /[^\w@:.?$-]/g
 
 
 function isTagName(char: string): boolean {
-	IsTagName.lastIndex = 0
-	return IsTagName.test(char)
+	IS_TAG_NAME.lastIndex = 0
+	return IS_TAG_NAME.test(char)
 }
 
 function isAttrName(char: string): boolean {
-	IsAttrName.lastIndex = 0
-	return IsAttrName.test(char)
+	IS_ATTR_NAME.lastIndex = 0
+	return IS_ATTR_NAME.test(char)
 }
 
 
@@ -269,7 +269,7 @@ export class HTMLTokenScanner {
 			else if (this.state === ScanState.WithinStartTag) {
 
 				// `<abc|`
-				if (!this.readUntil(IsNotTagName)) {
+				if (!this.readUntil(IS_NOT_TAG_NAME)) {
 					break
 				}
 
@@ -281,7 +281,7 @@ export class HTMLTokenScanner {
 			else if (this.state === ScanState.WithinEndTag) {
 
 				// `</abc|>` or `</|>`
-				let hasFollowingCharacter = !!this.readUntil(IsNotTagName)
+				let hasFollowingCharacter = !!this.readUntil(IS_NOT_TAG_NAME)
 				let token = this.makeToken(HTMLTokenType.EndTagName)
 
 				if (!hasFollowingCharacter) {
@@ -346,7 +346,7 @@ export class HTMLTokenScanner {
 			else if (this.state === ScanState.WithinAttributeName) {
 
 				// `name|`
-				this.readUntil(IsNotAttrName)
+				this.readUntil(IS_NOT_ATTR_NAME)
 				yield this.makeToken(HTMLTokenType.AttributeName)
 
 				this.state = ScanState.AfterAttributeName
@@ -395,7 +395,7 @@ export class HTMLTokenScanner {
 				else {
 
 					// name=value|
-					this.readUntil(IsNotTagName)
+					this.readUntil(IS_NOT_TAG_NAME)
 					yield this.makeToken(HTMLTokenType.AttributeValue)
 
 					this.state = ScanState.AfterStartTag

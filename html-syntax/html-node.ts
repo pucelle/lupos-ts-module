@@ -1,5 +1,5 @@
 import {TemplateSlotPlaceholder} from './template-slot-placeholder'
-import {SelfClosingTags} from './html-token-scanner'
+import {SELF_CLOSING_TAGS} from './html-token-scanner'
 import {generateFingerPrint} from '../utils'
 import {Analyzer} from '../analyzer'
 import {TemplateBasis} from '../template'
@@ -410,7 +410,7 @@ export class HTMLNode {
 				}
 			}
 
-			if (SelfClosingTags.includes(tagName)) {
+			if (SELF_CLOSING_TAGS.includes(tagName)) {
 				return `<${tagName}${this.toStringOfAttrs(true)} />`
 			}
 

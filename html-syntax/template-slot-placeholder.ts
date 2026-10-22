@@ -36,6 +36,16 @@ export namespace TemplateSlotPlaceholder {
 
 	let ts: typeof TS
 
+	/** Named entities supported when decoding template text. */
+	const NAMED_HTML_ENTITIES: Record<string, string> = {
+		amp: '&',
+		lt: '<',
+		gt: '>',
+		quot: '"',
+		apos: "'",
+		nbsp: '\u00A0',
+	}
+
 
 	/** Initialize ts after getting transformer context. */
 	export function initialize(typescript: typeof TS) {
@@ -144,15 +154,6 @@ export namespace TemplateSlotPlaceholder {
 
 
 	function decodeHtmlEntities(text: string): string {
-		const named: Record<string, string> = {
-			amp: '&',
-			lt: '<',
-			gt: '>',
-			quot: '"',
-			apos: "'",
-			nbsp: '\u00A0',
-		}
-
 		return text.replace(
 			/&(#x?[0-9a-fA-F]+|[a-zA-Z][a-zA-Z0-9]+);/g,
 			(match, entity) => {
@@ -172,7 +173,7 @@ export namespace TemplateSlotPlaceholder {
 					}
 				}
 
-				return named[entity] ?? match
+				return NAMED_HTML_ENTITIES[entity] ?? match
 			},
 		)
 	}

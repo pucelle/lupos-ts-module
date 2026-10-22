@@ -1,7 +1,7 @@
 import {TemplateBasis, TemplatePart} from '../template'
 import {buildElementExpression} from './build-element'
 import {MirrorCheck, RelativeMapping} from './insertion-types'
-import {AllCapabilities} from './mirror-builder'
+import {ALL_CAPABILITIES} from './mirror-builder'
 
 
 /** Model component registration or the DOM event binding's update call. */
@@ -32,7 +32,7 @@ export function buildEvent(
 		originalStart: fallbackStart + part.namePrefix!.length,
 		originalEnd: fallbackStart + part.namePrefix!.length + part.mainName!.length,
 		kind: 'symbol-anchor',
-		capabilities: AllCapabilities
+		capabilities: ALL_CAPABILITIES
 	})
 
 	text += ', '
@@ -63,7 +63,7 @@ export function buildEvent(
 			originalStart: value.getStart(sourceFile),
 			originalEnd: value.getEnd(),
 			kind: 'copied-expression',
-			capabilities: AllCapabilities
+			capabilities: ALL_CAPABILITIES
 		})
 	}
 	else if (part.strings) {

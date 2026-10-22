@@ -1,9 +1,9 @@
 import type TS from 'typescript'
 import {Analyzer} from '../analyzer'
-import {LuposKnownInternalBindings} from '../complete-data'
+import {LUPOS_KNOWN_INTERNAL_BINDINGS} from '../complete-data'
 import {TemplateSlotPlaceholder} from '../html-syntax'
 import {TemplateBasis, TemplatePart} from '../template'
-import {AllCapabilities, MirrorCheck, RelativeMapping} from './mirror-builder'
+import {ALL_CAPABILITIES, MirrorCheck, RelativeMapping} from './mirror-builder'
 import {buildElementExpression, buildElementType} from './build-element'
 
 
@@ -22,7 +22,7 @@ export function buildBinding(
 	let attr = part.attr!
 	let name = part.mainName!
 	let modifiers = [...part.modifiers ?? []]
-	let internal = LuposKnownInternalBindings[name]
+	let internal = LUPOS_KNOWN_INTERNAL_BINDINGS[name]
 	let binding = analyzer.getBindingByName(name, template)
 	let fallbackStart = template.localOffsetToGlobal(attr.nameStart)
 	let fallbackEnd = template.localOffsetToGlobal(attr.nameEnd)
@@ -127,7 +127,7 @@ export function buildBinding(
 			originalStart: template.localOffsetToGlobal(attr.nameStart + (part.namePrefix?.length ?? 0)),
 			originalEnd: template.localOffsetToGlobal(attr.nameStart + (part.namePrefix?.length ?? 0) + name.length),
 			kind: 'symbol-anchor',
-			capabilities: AllCapabilities
+			capabilities: ALL_CAPABILITIES
 		})
 
 		if (internal) {
@@ -271,7 +271,7 @@ export function buildBinding(
 			originalStart: node.getStart(sourceFile),
 			originalEnd: node.getEnd(),
 			kind: 'copied-expression',
-			capabilities: AllCapabilities
+			capabilities: ALL_CAPABILITIES
 		})
 	}
 
@@ -290,7 +290,7 @@ export function buildBinding(
 				originalStart: template.localOffsetToGlobal(localStart),
 				originalEnd: template.localOffsetToGlobal(localStart + modifier.length),
 				kind: 'symbol-anchor',
-				capabilities: AllCapabilities
+				capabilities: ALL_CAPABILITIES
 			})
 		}
 	}

@@ -1,4 +1,4 @@
-export const LuposFlowControlTags: CompletionDataItem[] = [
+export const LUPOS_FLOW_CONTROL_TAGS: CompletionDataItem[] = [
 	{
 		name: "lu:await",
 		description: "`<lu:await ${AsyncContent}>DefaultContent</>`, shows contents before promise resolved or rejected.",

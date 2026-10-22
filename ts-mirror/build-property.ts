@@ -1,6 +1,6 @@
 import type TS from 'typescript'
 import {TemplateBasis, TemplatePart} from '../template'
-import {AllCapabilities, MirrorCheck, RelativeMapping} from './mirror-builder'
+import {ALL_CAPABILITIES, MirrorCheck, RelativeMapping} from './mirror-builder'
 
 
 /**
@@ -46,7 +46,7 @@ export function buildProperty(
 		originalStart: originalPropertyStart,
 		originalEnd: originalPropertyEnd,
 		kind: 'symbol-anchor',
-		capabilities: AllCapabilities,
+		capabilities: ALL_CAPABILITIES,
 	})
 
 	text += ' = ('
@@ -80,7 +80,7 @@ export function buildProperty(
 			originalStart: value.getStart(sourceFile),
 			originalEnd: value.getEnd(),
 			kind: 'copied-expression',
-			capabilities: AllCapabilities,
+			capabilities: ALL_CAPABILITIES,
 		})
 	}
 	else {

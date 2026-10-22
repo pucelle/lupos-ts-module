@@ -1,7 +1,7 @@
 type EventCategory = 'global' | 'keyCode' | 'mouse' | 'change' | 'wheel'
 
 
-const KeyCodes = [
+const KEY_CODES = [
 	'Backspace',
 	'Tab',
 	'Clear',
@@ -98,7 +98,7 @@ const KeyCodes = [
 //const ControlKeys = ['Ctrl+', 'Alt+', 'Shift+', 'Ctrl+Alt+', 'Ctrl+Shift+', 'Alt+Shift+', 'Ctrl+Alt+Shift+']
 
 
-export const LuposDOMEventModifiers: Record<EventCategory, CompletionDataItem[]> = {
+export const LUPOS_DOM_EVENT_MODIFIERS: Record<EventCategory, CompletionDataItem[]> = {
 	global: [
 		{name: 'capture', description: 'Trigger event only on capture phase, not bubble phase.'},
 		{name: 'self', description: 'Trigger event only when event target is current element, not descendant elements.'},
@@ -108,7 +108,7 @@ export const LuposDOMEventModifiers: Record<EventCategory, CompletionDataItem[]>
 		{name: 'passive', description: 'Browser will not wait listener to execute completed before painting.'},
 	],
 	//controlKey: ControlKeys.map(key => ({name: key, description: ''})),
-	keyCode: KeyCodes.map(key => ({name: key, description: ''})),
+	keyCode: KEY_CODES.map(key => ({name: key, description: ''})),
 	mouse: [
 		{name: 'left', description: 'Trigger mouse event only when interact with left button.'},
 		{name: 'middle', description: 'Trigger mouse event only when interact with middle button.'},
@@ -128,7 +128,7 @@ export const LuposDOMEventModifiers: Record<EventCategory, CompletionDataItem[]>
 }
 
 
-export const LuposDOMEventCategories: Record<string, EventCategory> = {
+export const LUPOS_DOM_EVENT_CATEGORIES: Record<string, EventCategory> = {
 	keydown: 'keyCode',
 	keyup: 'keyCode',
 	keypress: 'keyCode',

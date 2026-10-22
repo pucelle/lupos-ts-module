@@ -2,7 +2,7 @@ import {Analyzer} from '../analyzer'
 import {TemplateBasis} from '../template'
 import {trimText} from '../utils'
 import {HTMLAttribute, HTMLNode, HTMLNodeType} from './html-node'
-import {HTMLTokenScanner, HTMLTokenType, SelfClosingTags} from './html-token-scanner'
+import {HTMLTokenScanner, HTMLTokenType, SELF_CLOSING_TAGS} from './html-token-scanner'
 
 
 export enum HTMLSyntaxErrorType {
@@ -105,7 +105,7 @@ export class HTMLRoot extends HTMLNode {
 				current.tagEnd = end
 
 				if (current && current.type === HTMLNodeType.Tag
-					&& SelfClosingTags.includes(current.tagName!)
+					&& SELF_CLOSING_TAGS.includes(current.tagName!)
 				) {
 					current.closureEnd = end
 					current = current.parent ?? tree

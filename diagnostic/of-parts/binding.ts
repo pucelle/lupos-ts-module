@@ -1,5 +1,5 @@
 import {Analyzer} from '../../analyzer'
-import {LuposKnownInternalBindings} from '../../complete-data'
+import {LUPOS_KNOWN_INTERNAL_BINDINGS} from '../../complete-data'
 import {TemplateBasis, TemplatePart, TemplatePartPiece, TemplatePartPieceType} from '../../template'
 import {DiagnosticCode} from '../codes'
 import {DiagnosticModifier} from '../diagnostic-modifier'
@@ -19,7 +19,7 @@ export function diagnoseBinding(
 
 	if (piece.type === TemplatePartPieceType.Name) {
 		let binding = analyzer.getBindingByName(mainName, template)
-		if (!binding && !LuposKnownInternalBindings[mainName]) {
+		if (!binding && !LUPOS_KNOWN_INTERNAL_BINDINGS[mainName]) {
 			modifier.add(start, length, DiagnosticCode.MissingImportOrDeclaration, `Binding class '${mainName}' is not existing.`)
 			return
 		}
@@ -29,8 +29,8 @@ export function diagnoseBinding(
 			if (binding) {
 				implementsPart = binding.declaration && helper.class.isImplementedOf(binding.declaration, 'Part', 'lupos.html')
 			}
-			else if (LuposKnownInternalBindings[mainName]) {
-				implementsPart = LuposKnownInternalBindings[mainName].implementsPart
+			else if (LUPOS_KNOWN_INTERNAL_BINDINGS[mainName]) {
+				implementsPart = LUPOS_KNOWN_INTERNAL_BINDINGS[mainName].implementsPart
 			}
 
 			if (!implementsPart) {

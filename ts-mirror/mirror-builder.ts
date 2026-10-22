@@ -12,9 +12,7 @@ import {applyInsertions, composeCopiedTemplates} from './insertion-composer'
 export type {RelativeMapping, MirrorCheck} from './insertion-types'
 
 /** Capabilities supported by exact semantic source copies. */
-const ALL_CAPABILITIES: readonly MirrorCapability[] = ['diagnostic', 'completion', 'definition', 'hover', 'references', 'rename']
-
-export {ALL_CAPABILITIES as AllCapabilities}
+export const ALL_CAPABILITIES: readonly MirrorCapability[] = ['diagnostic', 'completion', 'definition', 'hover', 'references', 'rename']
 
 
 /**

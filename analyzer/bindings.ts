@@ -1,6 +1,7 @@
 import type TS from 'typescript'
 import {LuposBinding} from './types'
-import {Helper, LuposKnownInternalBindingNamesMap} from '..'
+import {Helper} from '../helper'
+import {LUPOS_KNOWN_INTERNAL_BINDING_NAMES_MAP} from '../complete-data/lupos-internal-bindings'
 
 
 /** Walk and Discover all lupos bindings from a given node and it's children. */
@@ -13,7 +14,7 @@ export function analyzeLuposBindings(sourceFile: TS.SourceFile, helper: Helper):
 			&& node.name
 			&& (
 				helper.class.isImplementedOf(node, 'Binding', 'lupos.html')
-				|| LuposKnownInternalBindingNamesMap.has(node.name.text)
+				|| LUPOS_KNOWN_INTERNAL_BINDING_NAMES_MAP.has(node.name.text)
 			)
 		) {
 			bindings.push(createLuposBinding(node, helper))
@@ -31,7 +32,7 @@ export function createLuposBinding(node: TS.ClassDeclaration, helper: Helper): L
 
 	// `ClassBinding` -> `class`
 	if (sourceFile.fileName.includes('/lupos.html/')) {
-		name = LuposKnownInternalBindingNamesMap.get(name) || name
+		name = LUPOS_KNOWN_INTERNAL_BINDING_NAMES_MAP.get(name) || name
 	}
 
 	return {

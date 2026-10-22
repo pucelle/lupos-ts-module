@@ -5,7 +5,7 @@ import {analyzeLuposBindings, createLuposBinding} from './bindings'
 import {Helper, helperOfContext} from '../helper'
 import {ListMap, TwoWayListMap} from '../utils'
 import {TemplateBasis} from '../template'
-import {LuposKnownInternalBindings} from '../complete-data'
+import {LUPOS_KNOWN_INTERNAL_BINDINGS} from '../complete-data'
 
 
 /** 
@@ -286,7 +286,7 @@ export class Analyzer {
 		}
 
 		// Internal bindings like `:class`.
-		else if (LuposKnownInternalBindings[name]) {
+		else if (LUPOS_KNOWN_INTERNAL_BINDINGS[name]) {
 			return this.getWorkspaceBindingsByName(name)?.[0]
 		}
 

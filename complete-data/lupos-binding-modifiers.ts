@@ -7,7 +7,7 @@ export interface ModifierCompletionDataItem extends CompletionDataItem {
  * Lupos binding which get compiled by compiler.
  * Other binding modifiers will detect by binding constructor.
  */
-export const LuposBindingModifiers: Record<string, ModifierCompletionDataItem[]> = {
+export const LUPOS_BINDING_MODIFIERS: Record<string, ModifierCompletionDataItem[]> = {
 	style: [
 		{name: 'px', description: 'Add `px` unit to value.', group: 1},
 		{name: 'percent', description: 'Add `%` unit to value.', group: 1},
